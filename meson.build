@@ -7,8 +7,9 @@ project(
 inc = include_directories('include')
 
 src = files(
+  'src/access/access.cpp',
+  'src/access/sequential.cpp',
   'src/main.cpp',
-  'src/mymath.cpp',
 )
 
 executable(
