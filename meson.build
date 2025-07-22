@@ -7,12 +7,14 @@ project(
 inc = include_directories('include')
 
 src = files(
-  'src/access/unreal.cpp',
-  'src/access/distribution/distribution.cpp',
-  'src/access/distribution/sequential.cpp',
-  'src/access/distribution/random.cpp',
-  'src/access/distribution/binomial.cpp',
-  'src/access/distribution/zipf.cpp',
+  'src/offset/synthetic_strategy.cpp',
+  'src/offset/distribution/offset_distribution.cpp',
+  'src/offset/distribution/sequential_offset.cpp',
+  'src/offset/distribution/random_offset.cpp',
+  'src/offset/distribution/binomial_offset.cpp',
+  'src/offset/distribution/zipf_offset.cpp',
+  'src/operation/fixed_pattern.cpp',
+  'src/operation/percentage_pattern.cpp',
   'src/main.cpp',
 )
 
