@@ -7,8 +7,11 @@ project(
 inc = include_directories('include')
 
 src = files(
-  'src/access/access.cpp',
-  'src/access/sequential.cpp',
+  'src/access/unreal.cpp',
+  'src/access/distribution/distribution.cpp',
+  'src/access/distribution/sequential.cpp',
+  'src/access/distribution/random.cpp',
+  'src/access/distribution/binomial.cpp',
   'src/main.cpp',
 )
 
