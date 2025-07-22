@@ -12,6 +12,7 @@ src = files(
   'src/access/distribution/sequential.cpp',
   'src/access/distribution/random.cpp',
   'src/access/distribution/binomial.cpp',
+  'src/access/distribution/zipf.cpp',
   'src/main.cpp',
 )
 
