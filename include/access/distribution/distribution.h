@@ -11,7 +11,7 @@ protected:
 
 public:
     Distribution() = delete;
-    Distribution(int limit, int block_size);
+    explicit Distribution(int limit, int block_size);
     virtual ~Distribution() = default;
     virtual int sample() = 0;
 };

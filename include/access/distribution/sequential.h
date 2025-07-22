@@ -10,7 +10,7 @@ private:
 
 public:
     Sequential() = delete;
-    Sequential(int limit, int block_size);
+    explicit Sequential(int limit, int block_size);
     ~Sequential() override = default;
     int sample() override;
 };

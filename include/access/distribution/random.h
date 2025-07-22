@@ -12,7 +12,7 @@ private:
 
 public:
     Random() = delete;
-    Random(int limit, int block_size);
+    explicit Random(int limit, int block_size);
     ~Random() override = default;
     int sample() override;
 };

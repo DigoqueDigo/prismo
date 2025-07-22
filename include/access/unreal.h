@@ -12,7 +12,7 @@ private:
 
 public:
     UnrealAccess() = delete;
-    UnrealAccess(std::unique_ptr<Distribution> distribution);
+    explicit UnrealAccess(std::unique_ptr<Distribution> distribution);
     ~UnrealAccess() override = default;
     int next() override;
 };

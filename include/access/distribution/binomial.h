@@ -12,7 +12,7 @@ private:
 
 public:
     Binomial() = delete;
-    Binomial(int limit, int block_size, float probability);
+    explicit Binomial(int limit, int block_size, float probability);
     ~Binomial() override = default;
     int sample() override;
 };

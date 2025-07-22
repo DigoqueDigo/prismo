@@ -12,7 +12,7 @@ private:
 
 public:
     Zipf() = delete;
-    Zipf(int limit, int block_size, double theta);
+    explicit Zipf(int limit, int block_size, double theta);
     ~Zipf() override = default;
     int sample() override;
 };
