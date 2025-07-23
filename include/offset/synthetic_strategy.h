@@ -14,7 +14,7 @@ public:
     SyntheticStrategy() = delete;
     explicit SyntheticStrategy(std::unique_ptr<OffsetDistribution> distribution);
     ~SyntheticStrategy() override = default;
-    int next() override;
+    size_t next() override;
 };
 
 #endif

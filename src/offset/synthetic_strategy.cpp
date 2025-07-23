@@ -7,6 +7,6 @@ SyntheticStrategy::SyntheticStrategy(std::unique_ptr<OffsetDistribution> distrib
         }
     }
 
-int SyntheticStrategy::next() {
+size_t SyntheticStrategy::next() {
     return this->distribution->sample();
 }

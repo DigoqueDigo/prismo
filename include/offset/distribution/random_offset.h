@@ -12,9 +12,9 @@ private:
 
 public:
     RandomOffset() = delete;
-    explicit RandomOffset(int limit, int block_size);
+    explicit RandomOffset(size_t limit, size_t block_size);
     ~RandomOffset() override = default;
-    int sample() override;
+    size_t sample() override;
 };
 
 #endif

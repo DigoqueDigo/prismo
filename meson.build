@@ -15,6 +15,9 @@ src = files(
   'src/offset/distribution/zipf_offset.cpp',
   'src/operation/fixed_pattern.cpp',
   'src/operation/percentage_pattern.cpp',
+  'src/generator/block_generator.cpp',
+  'src/generator/const_generator.cpp',
+  'src/generator/random_generator.cpp',
   'src/main.cpp',
 )
 

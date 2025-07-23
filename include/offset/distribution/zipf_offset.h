@@ -12,9 +12,9 @@ private:
 
 public:
     ZipfOffset() = delete;
-    explicit ZipfOffset(int limit, int block_size, double theta);
+    explicit ZipfOffset(size_t limit, size_t block_size, double theta);
     ~ZipfOffset() override = default;
-    int sample() override;
+    size_t sample() override;
 };
 
 #endif

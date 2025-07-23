@@ -10,9 +10,9 @@ private:
 
 public:
     SequentialOffset() = delete;
-    explicit SequentialOffset(int limit, int block_size);
+    explicit SequentialOffset(size_t limit, size_t block_size);
     ~SequentialOffset() override = default;
-    int sample() override;
+    size_t sample() override;
 };
 
 #endif

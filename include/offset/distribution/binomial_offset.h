@@ -12,9 +12,9 @@ private:
 
 public:
     BinomialOffset() = delete;
-    explicit BinomialOffset(int limit, int block_size, float probability);
+    explicit BinomialOffset(size_t limit, size_t block_size, float probability);
     ~BinomialOffset() override = default;
-    int sample() override;
+    size_t sample() override;
 };
 
 #endif

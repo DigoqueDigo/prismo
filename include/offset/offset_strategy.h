@@ -6,7 +6,7 @@ class OffsetStrategy {
 public:
     OffsetStrategy() = default;
     virtual ~OffsetStrategy() = default;
-    virtual int next(void) = 0;
+    virtual size_t next() = 0;
 };
 
 #endif
