@@ -5,29 +5,31 @@
 
 int main(int argc, char** argv) {
 
-   int N = 10; 
+   int N = 1000; 
 
-   OperationPattern::ReadOperationPattern readPattern;
-   OperationPattern::WriteOperationPattern writePattern;
-   OperationPattern::PercentageOperationPattern percentagePattern(30);
-   OperationPattern::MixedOperationPattern mixedPattern({
+   OperationPattern::ReadOperationPattern readOperationPattern;
+   OperationPattern::WriteOperationPattern writeOperationPattern;
+   OperationPattern::PercentageOperationPattern percentageOperationPattern(30);
+   OperationPattern::MixedOperationPattern mixedOperationPattern({
       OperationPattern::OperationType::READ,
       OperationPattern::OperationType::WRITE,
       OperationPattern::OperationType::WRITE,
       OperationPattern::OperationType::READ,
    });
 
-   AccessPattern::SequentialPattern sequentialPattern(10, 4);
-   AccessPattern::RandomPattern randomPattern(10, 3);
+   AccessPattern::SequentialAccessPattern sequentialAccessPattern(10, 2);
+   AccessPattern::RandomAccessPattern randomAccessPattern(10, 3);
+   AccessPattern::ZipfianAccessPattern zipfianAccessPattern(100, 1, 0.99);
 
    for (int p = 0; p < N; p++) {
-      // std::cout << static_cast<int>(readPattern.nextOperation()) << std::endl;
-      // std::cout << static_cast<int>(writePattern.nextOperation()) << std::endl;
-      // std::cout << static_cast<int>(percentagePattern.nextOperation()) << std::endl;
-      // std::cout << static_cast<int>(mixedPattern.nextOperation()) << std::endl;
+      // std::cout << static_cast<int>(readOperationPattern.nextOperation()) << std::endl;
+      // std::cout << static_cast<int>(writeOperationPattern.nextOperation()) << std::endl;
+      // std::cout << static_cast<int>(percentageOperationPattern.nextOperation()) << std::endl;
+      // std::cout << static_cast<int>(mixedOperationPattern.nextOperation()) << std::endl;
 
-      // std::cout << sequentialPattern.nextOffset() << std::endl;
-      // std::cout << randomPattern.nextOffset() << std::endl;
+      // std::cout << sequentialAccessPattern.nextOffset() << std::endl;
+      // std::cout << randomAccessPattern.nextOffset() << std::endl;
+      std::cout << zipfianAccessPattern.nextOffset() << std::endl;
    }
 
    return 0;
