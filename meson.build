@@ -7,17 +7,6 @@ project(
 inc = include_directories('include')
 
 src = files(
-  'src/offset/synthetic_strategy.cpp',
-  'src/offset/distribution/offset_distribution.cpp',
-  'src/offset/distribution/sequential_offset.cpp',
-  'src/offset/distribution/random_offset.cpp',
-  'src/offset/distribution/binomial_offset.cpp',
-  'src/offset/distribution/zipf_offset.cpp',
-  'src/operation/fixed_pattern.cpp',
-  'src/operation/percentage_pattern.cpp',
-  'src/generator/block_generator.cpp',
-  'src/generator/const_generator.cpp',
-  'src/generator/random_generator.cpp',
   'src/main.cpp',
 )
 
