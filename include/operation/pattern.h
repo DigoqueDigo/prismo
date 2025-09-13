@@ -12,7 +12,7 @@ namespace OperationPattern {
     };
 
     struct ReadOperationPattern {
-        OperationType current;
+        const OperationType current;
 
         constexpr inline ReadOperationPattern()
             : current(OperationType::READ) {}
@@ -23,7 +23,7 @@ namespace OperationPattern {
     };
 
     struct WriteOperationPattern {
-        OperationType current;
+        const OperationType current;
 
         constexpr inline WriteOperationPattern()
             : current(OperationType::WRITE) {}
@@ -35,27 +35,25 @@ namespace OperationPattern {
 
     struct MixedOperationPattern {
         size_t index;
-        size_t length;
-        OperationType current;
+        const size_t length;
         const std::vector<OperationType> operations;
 
         inline MixedOperationPattern(const std::vector<OperationType>& operations)
-            : index(0), length(operations.size()), current(OperationType::READ), operations(operations) {}
+            : index(0), length(operations.size()), operations(operations) {}
 
         inline OperationType nextOperation() {
-            current = operations.at(index);
+            const OperationType operation = operations.at(index);
             index = (index + 1) % length;
-            return current;
+            return operation;
         }
     };
 
     struct PercentageOperationPattern {
-        int read_percentage;
-        OperationType current;
+        const int read_percentage;
         Distribution::UniformDistribution<int> distribution;
 
         inline PercentageOperationPattern(int read_percentage)
-            : read_percentage(read_percentage), current(OperationType::READ), distribution(0, 100) {}
+            : read_percentage(read_percentage), distribution(0, 100) {}
 
         inline OperationType nextOperation() {
             return (distribution.nextValue() < read_percentage) ?
