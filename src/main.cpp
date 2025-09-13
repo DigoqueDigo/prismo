@@ -1,31 +1,34 @@
 #include <operation/pattern.h>
+#include <access/pattern.h>
 #include <chrono>
 #include <iostream>
 
 int main(int argc, char** argv) {
 
-   // Pattern::ReadOperationPattern pattern;
-   // Pattern::WriteOperationPattern pattern;
-   // Pattern::PercentageOperationPattern pattern(30);
-   Pattern::MixedOperationPattern pattern({
-      Pattern::OperationType::READ,
-      Pattern::OperationType::WRITE,
-      Pattern::OperationType::WRITE,
-      Pattern::OperationType::READ,
+   int N = 10; 
+
+   OperationPattern::ReadOperationPattern readPattern;
+   OperationPattern::WriteOperationPattern writePattern;
+   OperationPattern::PercentageOperationPattern percentagePattern(30);
+   OperationPattern::MixedOperationPattern mixedPattern({
+      OperationPattern::OperationType::READ,
+      OperationPattern::OperationType::WRITE,
+      OperationPattern::OperationType::WRITE,
+      OperationPattern::OperationType::READ,
    });
-   
-   auto start = std::chrono::high_resolution_clock::now();
-   const int N = 10;
+
+   AccessPattern::SequentialPattern sequentialPattern(10, 4);
+   AccessPattern::RandomPattern randomPattern(10, 3);
 
    for (int p = 0; p < N; p++) {
-      std::cout << static_cast<int>(pattern.nextOperation()) << std::endl;
+      // std::cout << static_cast<int>(readPattern.nextOperation()) << std::endl;
+      // std::cout << static_cast<int>(writePattern.nextOperation()) << std::endl;
+      // std::cout << static_cast<int>(percentagePattern.nextOperation()) << std::endl;
+      // std::cout << static_cast<int>(mixedPattern.nextOperation()) << std::endl;
+
+      // std::cout << sequentialPattern.nextOffset() << std::endl;
+      // std::cout << randomPattern.nextOffset() << std::endl;
    }
-
-   auto end = std::chrono::high_resolution_clock::now();
-   std::chrono::duration<double> duration = end - start;
-
-   std::cout << "Performed " << N << " operations in " << duration.count() << " seconds.\n";
-   std::cout << "Ops per second: " << N / duration.count() << "\n";
 
    return 0;
 }

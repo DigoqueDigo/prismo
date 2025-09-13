@@ -71,6 +71,9 @@
         "cinttypes": "cpp",
         "typeinfo": "cpp",
         "variant": "cpp",
-        "bitset": "cpp"
+        "bitset": "cpp",
+        "complex": "cpp",
+        "forward_list": "cpp",
+        "cfenv": "cpp"
     }
 }

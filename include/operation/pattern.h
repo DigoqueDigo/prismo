@@ -1,11 +1,11 @@
-#ifndef PATTERN_H
-#define PATTERN_H
+#ifndef OPERATION_PATTERN_H
+#define OPERATION_PATTERN_H
 
 #include <vector>
 #include <cstdint>
 #include <distribution/distribution.h>
 
-namespace Pattern {
+namespace OperationPattern {
     enum class OperationType {
         READ,
         WRITE
