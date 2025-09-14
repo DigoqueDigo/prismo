@@ -1,0 +1,60 @@
+name: Meson CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        buildtype: [debug, release]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        pip install meson ninja
+      if: matrix.os != 'windows-latest'
+
+    - name: Install dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        pip install meson ninja
+        choco install vswhere
+      shell: cmd
+
+    - name: Prepare MSVC (Windows only)
+      if: matrix.os == 'windows-latest'
+      uses: bus1/cabuild/action/msdevshell@v1
+      with:
+        architecture: x64
+
+    - name: Configure Meson
+      run: meson setup builddir --buildtype=${{ matrix.buildtype }} -Dwarning_level=3 -Dcpp_std=c++17
+      env:
+        CFLAGS: ${{ matrix.buildtype == 'release' && '-O2' || '-O0' }}
+        CXXFLAGS: ${{ matrix.buildtype == 'release' && '-O2' || '-O0' }}
+
+    - name: Build
+      run: meson compile -C builddir
+
+    - name: Test
+      run: meson test -C builddir --print-errorlogs
+
+    - name: Cache build
+      uses: actions/cache@v4
+      with:
+        path: builddir
+        key: ${{ matrix.os }}-${{ matrix.buildtype }}-meson-${{ hashFiles('meson.build') }}
