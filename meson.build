@@ -18,7 +18,7 @@ src = files(
 )
 
 # Get the C++ compiler
-cpp = meson.get_compiler('cpp')
+cc = meson.get_compiler('cpp')
 
 # Find Boost.Thread dependency
 boost_dep = dependency(
@@ -27,8 +27,8 @@ boost_dep = dependency(
   required: true
 )
 
-# Find fmt library (required for spdlog)
-fmt_dep = dependency('fmt', required: true)
+# Find spdlog dependency (header-only)
+spdlog_dep = dependency('spdlog', required: true)
 
 # Common flags for all builds
 common_flags = [
@@ -38,7 +38,7 @@ common_flags = [
 ]
 
 # Compiler-specific flags
-if cpp.get_id() == 'gcc' or cpp.get_id() == 'clang'
+if cc.get_id() == 'gcc' or cc.get_id() == 'clang'
   extra_flags = [
     '-Wconversion',                                                 # Warn about implicit conversions
     '-Wsign-conversion',                                            # Warn about sign conversions
@@ -50,7 +50,7 @@ endif
 executable(
   'dedisbench',
   sources: src,
-  include_directories : inc,
-  dependencies: [boost_dep, fmt_dep],
+  include_directories : [inc],
+  dependencies: [boost_dep, spdlog_dep],
   install : true,
 )

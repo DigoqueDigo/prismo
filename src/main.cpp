@@ -67,6 +67,18 @@ int main(void) {
         // std::cout << zipfianAccessPattern.nextOffset() << std::endl;
 
         randomBlockGenerator.fillBlock(block);
+        randomBlockGenerator.fillBlock(block);
+        randomBlockGenerator.fillBlock(block);
+        randomBlockGenerator.fillBlock(block);
+        randomBlockGenerator.fillBlock(block);
+        randomBlockGenerator.fillBlock(block);
+
+        randomBlockGenerator.fillBlock(block);
+        randomBlockGenerator.fillBlock(block);
+        randomBlockGenerator.fillBlock(block);
+        randomBlockGenerator.fillBlock(block);
+        randomBlockGenerator.fillBlock(block);
+        randomBlockGenerator.fillBlock(block);
 
         for (const auto& value : block.data) {
             std::cout << value << "\n";
