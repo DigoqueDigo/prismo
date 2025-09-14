@@ -5,7 +5,8 @@
 #include <distribution/internals/zipfian.h>
 
 namespace Distribution {
-    template<typename DistributionType> struct UniformDistribution {
+    template<typename DistributionType>
+    struct UniformDistribution {
         std::mt19937 engine;
         std::uniform_int_distribution<DistributionType> distribution;
 
@@ -20,7 +21,8 @@ namespace Distribution {
         }
     };
 
-    template<typename DistributionType> struct ZipfianDistribution {
+    template<typename DistributionType>
+    struct ZipfianDistribution {
         std::mt19937 engine;
         zipfian_distribution<DistributionType> distribution;
 

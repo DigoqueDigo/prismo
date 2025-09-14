@@ -2,6 +2,7 @@
 #include <generator/generator.h>
 #include <operation/pattern.h>
 #include <boost/thread.hpp>
+#include <io/logger.h>
 #include <chrono>
 #include <iostream>
 
@@ -21,6 +22,18 @@ void worker(int id, int increments) {
         // Mutex automatically unlocks when lock goes out of scope
     }
 }
+
+
+// Generalized function template
+template <typename Pattern>
+void runPattern(Pattern& pattern, int times) {
+    for (int i = 0; i < times; ++i) {
+        auto op = pattern.nextOperation();
+        std::cout << static_cast<int>(op) << " ";
+    }
+    std::cout << "\n";
+}
+
 
 int main(void) {
 
@@ -60,11 +73,21 @@ int main(void) {
         }
     }
 
+    runPattern(readOperationPattern, 20);
+    runPattern(writeOperationPattern, 20);
+    runPattern(mixedOperationPattern, 20);
+    runPattern(percentageOperationPattern, 20);
+
     boost::thread t1(worker, 1, 5);
     boost::thread t2(worker, 2, 5);
 
     t1.join();
     t2.join();
 
+    auto logger = Logger::initLogger();
+    IOMetric::SyncMetric syncMetric;
+
+    logger->info("{}", syncMetric);
+    logger->flush();
     return 0;
 }

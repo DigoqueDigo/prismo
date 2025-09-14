@@ -13,6 +13,7 @@ project(
 # Define include directories and source files
 inc = include_directories('include')
 src = files(
+  'src/io/logger.cpp',
   'src/main.cpp',
 )
 
@@ -25,6 +26,9 @@ boost_dep = dependency(
   modules: ['thread', 'system'],
   required: true
 )
+
+# Find fmt library (required for spdlog)
+fmt_dep = dependency('fmt', required: true)
 
 # Common flags for all builds
 common_flags = [
@@ -47,6 +51,6 @@ executable(
   'dedisbench',
   sources: src,
   include_directories : inc,
-  dependencies: [boost_dep],
+  dependencies: [boost_dep, fmt_dep],
   install : true,
 )
