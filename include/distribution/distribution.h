@@ -9,10 +9,13 @@ namespace Distribution {
         std::mt19937 engine;
         std::uniform_int_distribution<DistributionType> distribution;
 
-        inline UniformDistribution(DistributionType min, DistributionType max)
+        explicit UniformDistribution()
+            : engine(std::random_device{}()), distribution() {}
+
+        explicit UniformDistribution(DistributionType min, DistributionType max)
             : engine(std::random_device{}()), distribution(min, max) {}
 
-        constexpr inline DistributionType nextValue() {
+        DistributionType nextValue() {
             return distribution(engine);
         }
     };
@@ -21,10 +24,10 @@ namespace Distribution {
         std::mt19937 engine;
         zipfian_distribution<DistributionType> distribution;
 
-        inline ZipfianDistribution(DistributionType lower_bound, DistributionType upper_bound, float skew_factor)
+        explicit ZipfianDistribution(DistributionType lower_bound, DistributionType upper_bound, float skew_factor)
             : engine(std::random_device{}()), distribution(lower_bound, upper_bound, skew_factor) {}
 
-        constexpr inline DistributionType nextValue() {
+        DistributionType nextValue() {
             return distribution(engine);
         }
     };
