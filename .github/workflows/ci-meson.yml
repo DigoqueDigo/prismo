@@ -27,6 +27,18 @@ jobs:
       run: |
         pip install meson ninja
 
+    - name: Install dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential libbz2-dev libz-dev libicu-dev
+        sudo apt install -y libboost-all-dev
+
+    - name: Install dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install boost
+
     - name: Configure Meson
       run: meson setup builddir --buildtype=${{ matrix.buildtype }} -Dwarning_level=3 -Dcpp_std=c++17
       env:

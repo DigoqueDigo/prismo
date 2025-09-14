@@ -1,8 +1,26 @@
 #include <access/pattern.h>
 #include <generator/generator.h>
 #include <operation/pattern.h>
+#include <boost/thread.hpp>
 #include <chrono>
 #include <iostream>
+
+
+int shared_counter = 0;
+
+// Mutex to protect shared data
+boost::mutex mtx;
+
+// Worker function that increments the counter safely
+void worker(int id, int increments) {
+    for (int i = 0; i < increments; ++i) {
+        // Lock the mutex before modifying shared data
+        boost::mutex::scoped_lock lock(mtx);
+        ++shared_counter;
+        std::cout << "Worker " << id << " incremented counter to " << shared_counter << "\n";
+        // Mutex automatically unlocks when lock goes out of scope
+    }
+}
 
 int main(void) {
 
@@ -20,7 +38,7 @@ int main(void) {
 
     AccessPattern::SequentialAccessPattern sequentialAccessPattern(10, 3);
     AccessPattern::RandomAccessPattern randomAccessPattern(10, 3);
-    AccessPattern::ZipfianAccessPattern zipfianAccessPattern(100, 1, 0.99);
+    AccessPattern::ZipfianAccessPattern zipfianAccessPattern(100, 1, 0.99f);
 
     BlockGenerator::Block block(80);
     BlockGenerator::RandomBlockGenerator randomBlockGenerator;
@@ -41,6 +59,12 @@ int main(void) {
             std::cout << value << "\n";
         }
     }
+
+    boost::thread t1(worker, 1, 5);
+    boost::thread t2(worker, 2, 5);
+
+    t1.join();
+    t2.join();
 
     return 0;
 }

@@ -38,8 +38,8 @@ namespace OperationPattern {
         const size_t length;
         const std::vector<OperationType> operations;
 
-        explicit MixedOperationPattern(const std::vector<OperationType>& operations)
-            : index(0), length(operations.size()), operations(operations) {}
+        explicit MixedOperationPattern(const std::vector<OperationType>& _operations)
+            : index(0), length(_operations.size()), operations(_operations) {}
 
         OperationType nextOperation() {
             const OperationType operation = operations.at(index);
@@ -52,8 +52,8 @@ namespace OperationPattern {
         const int read_percentage;
         Distribution::UniformDistribution<int> distribution;
 
-        explicit PercentageOperationPattern(int read_percentage)
-            : read_percentage(read_percentage), distribution(0, 100) {}
+        explicit PercentageOperationPattern(int _read_percentage)
+            : read_percentage(_read_percentage), distribution(0, 100) {}
 
         OperationType nextOperation() {
             return (distribution.nextValue() < read_percentage) ?

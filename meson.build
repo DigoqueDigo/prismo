@@ -19,6 +19,13 @@ src = files(
 # Get the C++ compiler
 cpp = meson.get_compiler('cpp')
 
+# Find Boost.Thread dependency
+boost_dep = dependency(
+  'boost',
+  modules: ['thread', 'system'],
+  required: true
+)
+
 # Common flags for all builds
 common_flags = [
   '-Wpedantic',                                                     # Enforce strict standard compliance
@@ -34,9 +41,12 @@ if cpp.get_id() == 'gcc' or cpp.get_id() == 'clang'
   ]
 endif
 
+# add_project_arguments(common_flags + extra_flags, language: 'cpp')
+
 executable(
   'dedisbench',
   sources: src,
   include_directories : inc,
+  dependencies: [boost_dep],
   install : true,
 )
