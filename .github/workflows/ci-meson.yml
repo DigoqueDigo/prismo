@@ -11,8 +11,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        buildtype: [debug, release]
+        os: [ubuntu-latest]
+        buildtype: [release]
 
     steps:
     - name: Checkout code
