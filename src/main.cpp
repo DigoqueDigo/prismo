@@ -7,23 +7,6 @@
 #include <iostream>
 
 
-int shared_counter = 0;
-
-// Mutex to protect shared data
-boost::mutex mtx;
-
-// Worker function that increments the counter safely
-void worker(int id, int increments) {
-    for (int i = 0; i < increments; ++i) {
-        // Lock the mutex before modifying shared data
-        boost::mutex::scoped_lock lock(mtx);
-        ++shared_counter;
-        std::cout << "Worker " << id << " incremented counter to " << shared_counter << "\n";
-        // Mutex automatically unlocks when lock goes out of scope
-    }
-}
-
-
 // Generalized function template
 template <typename Pattern>
 void runPattern(Pattern& pattern, int times) {
@@ -32,6 +15,18 @@ void runPattern(Pattern& pattern, int times) {
         std::cout << static_cast<int>(op) << " ";
     }
     std::cout << "\n";
+}
+
+int shared_counter = 0;
+boost::mutex mtx;
+
+void worker(int id, int iterations) {
+    for (int i = 0; i < iterations; ++i) {
+        boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+        boost::lock_guard<boost::mutex> lock(mtx);
+        shared_counter++;
+        std::cout << "Thread " << id << " incremented counter to " << shared_counter << "\n";
+    }
 }
 
 
@@ -97,9 +92,38 @@ int main(void) {
     t2.join();
 
     auto logger = Logger::initLogger();
-    IOMetric::SyncMetric syncMetric;
+    IOMetric::SyncMetric syncMetric{
+        .timestamp = "2023-10-05T12:00:00Z",
+        .operation_type = OperationPattern::OperationType::READ,
+        .pid = 1234,
+        .tid = 5678,
+        .requested_bytes = 4096,
+        .written_bytes = 4096,
+        .offset = 0,
+        .return_code = 0,
+        .error_no = 0,
+        .duration_us = 150
+    };
 
     logger->info("{}", syncMetric);
     logger->flush();
+
+    const int num_threads = 4;
+    const int iterations_per_thread = 5;
+
+    // Create a thread group
+    std::vector<boost::thread> threads;
+
+    // Launch threads
+    for (int i = 0; i < num_threads; ++i) {
+        threads.emplace_back(worker, i, iterations_per_thread);
+    }
+
+    // Join all threads
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    std::cout << "Final counter value: " << shared_counter << "\n";
     return 0;
 }

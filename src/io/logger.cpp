@@ -6,7 +6,7 @@ namespace Logger {
         spdlog::init_thread_pool(config.queue_size, config.thread_count);
 
         if (config.log_to_stdout) {
-            auto stdout_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt >();
+            auto stdout_sink = std::make_shared<spdlog::sinks::stdout_sink_mt >();
             sinks.push_back(stdout_sink);
         }
 
