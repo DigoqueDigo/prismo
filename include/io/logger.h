@@ -18,7 +18,7 @@ namespace Logger {
         bool log_to_stdout = true;      
     };
 
-    std::shared_ptr<spdlog::logger> initLogger(const LoggerConfig& config = LoggerConfig{});
+    const std::shared_ptr<spdlog::logger> initLogger(const LoggerConfig& config = LoggerConfig{});
 };
 
 template<>

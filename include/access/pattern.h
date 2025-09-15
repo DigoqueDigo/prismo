@@ -3,7 +3,10 @@
 
 #include <cstddef>
 #include <stdexcept>
+#include <sys/types.h>
 #include <distribution/distribution.h>
+
+// TODO:: does the access pattern need to be aligned to block size?
 
 namespace AccessPattern {
     inline size_t maxBlockIndex(size_t limit, size_t block_size) {
@@ -17,41 +20,41 @@ namespace AccessPattern {
     }
 
     struct SequentialAccessPattern {
-        size_t current;
+        off_t current_offset;
         const size_t block_size;
         const size_t limit;
 
         explicit SequentialAccessPattern(size_t _limit, size_t _block_size)
-            : current(0), block_size(_block_size), limit(maxBlockIndex(_limit, _block_size) * _block_size) {}
+            : current_offset(0), block_size(_block_size), limit(maxBlockIndex(_limit, _block_size) * _block_size) {}
             // TODO: fix if previous TODO is incorrect
 
-        constexpr size_t nextOffset() {
-            const size_t offset = current;
-            current = (current + block_size) % limit;
+        constexpr off_t nextOffset() {
+            const off_t offset = current_offset;
+            current_offset = (current_offset + block_size) % limit;
             return offset;
         }
     };
 
     struct RandomAccessPattern {
         const size_t block_size;
-        Distribution::UniformDistribution<size_t> distribution;
+        Distribution::UniformDistribution<off_t> distribution;
 
         explicit RandomAccessPattern(size_t _limit, size_t _block_size)
             : block_size(_block_size), distribution(0, maxBlockIndex(_limit, _block_size)) {}
 
-        size_t nextOffset() {
+        off_t nextOffset() {
             return distribution.nextValue() * block_size;
         }
     };
 
     struct ZipfianAccessPattern {
         const size_t block_size;
-        Distribution::ZipfianDistribution<size_t> distribution;
+        Distribution::ZipfianDistribution<off_t> distribution;
 
         explicit ZipfianAccessPattern(size_t _limit, size_t _block_size, float _skew)
             : block_size(_block_size), distribution(0, maxBlockIndex(_limit, _block_size), _skew) {}
 
-        size_t nextOffset() {
+        off_t nextOffset() {
             return distribution.nextValue() * block_size;
         }
     };

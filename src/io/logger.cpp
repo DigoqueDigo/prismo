@@ -1,7 +1,7 @@
 #include <io/logger.h>
 
 namespace Logger {
-    std::shared_ptr<spdlog::logger> initLogger(const LoggerConfig& config) {
+    const std::shared_ptr<spdlog::logger> initLogger(const LoggerConfig& config) {
         std::vector<spdlog::sink_ptr> sinks;
         spdlog::init_thread_pool(config.queue_size, config.thread_count);
 

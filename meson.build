@@ -14,6 +14,7 @@ project(
 inc = include_directories('include')
 src = files(
   'src/io/logger.cpp',
+    'src/io/backend/posix.cpp',
   'src/main.cpp',
 )
 
@@ -23,7 +24,7 @@ cc = meson.get_compiler('cpp')
 # Find Boost.Thread dependency
 boost_dep = dependency(
   'boost',
-  modules: ['thread', 'system', 'chrono'],
+  modules: ['thread', 'chrono'],
   required: true
 )
 
