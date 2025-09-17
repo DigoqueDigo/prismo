@@ -52,10 +52,13 @@ endif
 
 # add_project_arguments(common_flags + extra_flags, language: 'cpp')
 
-executable(
+dedisbench_exe = executable(
   'dedisbench',
   sources: src,
   include_directories : [inc],
   dependencies: [boost_dep, spdlog_dep, liburing_dep],
   install : true,
 )
+
+# Define a test to run the dedisbench executable
+test('dedisbench_basic', dedisbench_exe)
