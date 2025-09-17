@@ -4,19 +4,13 @@
 namespace BackendEngineConfig {
     struct IOUringConfig {
         unsigned int queue_depth = 128;
-        unsigned int flags = 0;
-        unsigned int sq_thread_cpu = 0;
-        unsigned int sq_thread_idle = 100;
+        unsigned int ring_flags = 0;
 
         explicit IOUringConfig(
             unsigned int _queue_depth,
-            unsigned int _flags,
-            unsigned int _sq_thread_cpu,
-            unsigned int _sq_thread_idle
+            unsigned int _ring_flags
         ) : queue_depth(_queue_depth),
-            flags(_flags),
-            sq_thread_cpu(_sq_thread_cpu),
-            sq_thread_idle(_sq_thread_idle) {}
+            ring_flags(_ring_flags) {}
     };
 };
 

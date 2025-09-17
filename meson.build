@@ -14,7 +14,8 @@ project(
 inc = include_directories('include')
 src = files(
   'src/io/logger.cpp',
-    'src/io/backend/posix.cpp',
+  'src/io/backend/posix.cpp',
+  'src/io/backend/io_uring.cpp',
   'src/main.cpp',
 )
 
@@ -30,6 +31,9 @@ boost_dep = dependency(
 
 # Find spdlog dependency (header-only)
 spdlog_dep = dependency('spdlog', required: true)
+
+# Find liburing dependency (header-only)
+liburing_dep = dependency('liburing', required: true)
 
 # Common flags for all builds
 common_flags = [
@@ -52,6 +56,6 @@ executable(
   'dedisbench',
   sources: src,
   include_directories : [inc],
-  dependencies: [boost_dep, spdlog_dep],
+  dependencies: [boost_dep, spdlog_dep, liburing_dep],
   install : true,
 )

@@ -4,6 +4,7 @@
 #include <io/logger.h>
 #include <io/backend/engine.h>
 #include <boost/thread.hpp>
+#include <io/backend/config.h>
 #include <chrono>
 #include <iostream>
 #include <fcntl.h>
@@ -17,12 +18,7 @@ void worker(
     D& blockGenerator,
     E& block
     ) {
-    
         int fd = backendEngine._open(filename, O_RDWR | O_CREAT | O_DIRECT, 0666);
-
-        if (fd < 0) {
-            return;
-        }
 
         blockGenerator.fillBlock(block);
 
@@ -46,8 +42,9 @@ int main(void) {
     const size_t block_size = 4096;
     const size_t size_limit = 65536;
     const float zipfian_skew = 0.99f;
-    const int read_percentage = 30; 
-
+    const int read_percentage = 30;
+    const unsigned int queue_depth = 256;
+    const unsigned int ring_flags = IORING_SETUP_SQPOLL | IORING_SETUP_SQ_AFF;
 
     OperationPattern::ReadOperationPattern readOperationPattern;
     OperationPattern::WriteOperationPattern writeOperationPattern;
@@ -67,13 +64,16 @@ int main(void) {
     BlockGenerator::RandomBlockGenerator randomBlockGenerator;
 
     std::shared_ptr<spdlog::logger> logger = Logger::initLogger();
+    BackendEngineConfig::IOUringConfig ioUringConfig(queue_depth, ring_flags);
+
     BackendEngine::PosixEngine posixEngine(logger);
+    BackendEngine::IOUringEngine ioUringEngine(ioUringConfig, logger);
 
     worker(
         "testfile",
-        posixEngine,
+        ioUringEngine,
         readOperationPattern,
-        zipfianAccessPattern,
+        sequentialAccessPattern,
         randomBlockGenerator,
         block
     );
