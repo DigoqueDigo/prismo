@@ -20,7 +20,7 @@ namespace AccessPattern {
     }
 
     struct SequentialAccessPattern {
-        off_t current_offset;
+        unsigned long current_offset;
         const size_t block_size;
         const size_t limit;
 
@@ -28,8 +28,8 @@ namespace AccessPattern {
             : current_offset(0), block_size(_block_size), limit(maxBlockIndex(_limit, _block_size) * _block_size) {}
             // TODO: fix if previous TODO is incorrect
 
-        constexpr off_t nextOffset() {
-            const off_t offset = current_offset;
+        constexpr unsigned long nextOffset() {
+            const unsigned long offset = current_offset;
             current_offset = (current_offset + block_size) % limit;
             return offset;
         }
@@ -37,24 +37,24 @@ namespace AccessPattern {
 
     struct RandomAccessPattern {
         const size_t block_size;
-        Distribution::UniformDistribution<off_t> distribution;
+        Distribution::UniformDistribution<unsigned long> distribution;
 
         explicit RandomAccessPattern(size_t _limit, size_t _block_size)
             : block_size(_block_size), distribution(0, maxBlockIndex(_limit, _block_size)) {}
 
-        off_t nextOffset() {
+        unsigned long nextOffset() {
             return distribution.nextValue() * block_size;
         }
     };
 
     struct ZipfianAccessPattern {
         const size_t block_size;
-        Distribution::ZipfianDistribution<off_t> distribution;
+        Distribution::ZipfianDistribution<unsigned long> distribution;
 
         explicit ZipfianAccessPattern(size_t _limit, size_t _block_size, float _skew)
             : block_size(_block_size), distribution(0, maxBlockIndex(_limit, _block_size), _skew) {}
 
-        off_t nextOffset() {
+        unsigned long nextOffset() {
             return distribution.nextValue() * block_size;
         }
     };

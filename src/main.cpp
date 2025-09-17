@@ -23,13 +23,13 @@ void worker(
         blockGenerator.fillBlock(block);
 
         for (int i = 0; i < 100; i++) {
-            off_t offset = accessPattern.nextOffset();
+            unsigned long offset = accessPattern.nextOffset();
             switch (operationPattern.nextOperation()) {
                 case OperationPattern::OperationType::READ:
-                    backendEngine._read(fd, block.data.data(), block.length * sizeof(uint64_t), offset);
+                    backendEngine._read(fd, block.data.data(), block.length * sizeof(uint64_t), static_cast<off_t>(offset));
                     break;
                 case OperationPattern::OperationType::WRITE:
-                    backendEngine._write(fd, block.data.data(), block.length * sizeof(uint64_t), offset);
+                    backendEngine._write(fd, block.data.data(), block.length * sizeof(uint64_t), static_cast<off_t>(offset));
                     break;
             }
         }
