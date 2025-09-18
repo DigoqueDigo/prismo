@@ -26,17 +26,17 @@ struct fmt::formatter<IOMetric::SyncMetric> : fmt::formatter<std::string> {
     auto format(const IOMetric::SyncMetric& syncMetric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
         return fmt::format_to(
             ctx.out(),
-            "[type={} ts={} pid={} tid={} req={} wrt={} offset={} ret={} errno={} dur={}]",
+            "[type={} sts={} ets={} pid={} tid={} req={} wrt={} offset={} ret={} errno={}]",
             static_cast<uint8_t>(syncMetric.operation_type),
-            syncMetric.timestamp,
+            syncMetric.start_timestamp,
+            syncMetric.end_timestamp,
             syncMetric.pid,
             syncMetric.tid,
             syncMetric.requested_bytes,
             syncMetric.written_bytes,
             syncMetric.offset,
             syncMetric.return_code,
-            syncMetric.error_no,
-            syncMetric.duration_us
+            syncMetric.error_no
         );
     }
 };

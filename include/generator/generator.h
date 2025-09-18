@@ -23,7 +23,7 @@ namespace BlockGenerator {
             id += 1;
         }
 
-        inline void setDataAt(uint64_t value, size_t index) {
+        constexpr inline void setDataAt(uint64_t value, size_t index) {
             data[index] = value;
         }
     };

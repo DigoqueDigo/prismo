@@ -46,7 +46,7 @@ namespace BackendEngine {
             this->logger->info("Got SQE for read operation");
         }
 
-        io_uring_prep_read(sqe, fd, buffer, size, offset);
+        io_uring_prep_read(sqe, fd, buffer, size, static_cast<__u64>(offset));
         io_uring_submit(&ring);
 
         if (io_uring_wait_cqe(&this->ring, &cqe) < 0) {
@@ -74,7 +74,7 @@ namespace BackendEngine {
             this->logger->info("Got SQE for write operation");
         }
 
-        io_uring_prep_write(sqe, fd, buffer, size, offset);
+        io_uring_prep_write(sqe, fd, buffer, size, static_cast<__u64>(offset));
         io_uring_submit(&ring);
 
         if (io_uring_wait_cqe(&this->ring, &cqe) < 0) {

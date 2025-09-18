@@ -49,15 +49,16 @@ namespace OperationPattern {
     };
 
     struct PercentageOperationPattern {
-        const int read_percentage;
-        Distribution::UniformDistribution<int> distribution;
+        const unsigned int read_percentage;
+        Distribution::UniformDistribution<unsigned int> distribution;
 
-        explicit PercentageOperationPattern(int _read_percentage)
+        explicit PercentageOperationPattern(unsigned int _read_percentage)
             : read_percentage(_read_percentage), distribution(0, 100) {}
 
         OperationType nextOperation() {
-            return (distribution.nextValue() < read_percentage) ?
-                OperationType::READ : OperationType::WRITE;
+            return (distribution.nextValue() < read_percentage)
+                ? OperationType::READ
+                : OperationType::WRITE;
         }
     };
 }

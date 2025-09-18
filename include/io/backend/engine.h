@@ -28,7 +28,6 @@ namespace BackendEngine {
 
     struct IOUringEngine {
         io_uring ring;
-
         const BackendEngineConfig::IOUringConfig& config;
         const std::shared_ptr<spdlog::logger> logger;
 

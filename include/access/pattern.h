@@ -3,10 +3,7 @@
 
 #include <cstddef>
 #include <stdexcept>
-#include <sys/types.h>
 #include <distribution/distribution.h>
-
-// TODO:: does the access pattern need to be aligned to block size?
 
 namespace AccessPattern {
     inline size_t maxBlockIndex(size_t limit, size_t block_size) {
@@ -14,7 +11,7 @@ namespace AccessPattern {
             throw std::invalid_argument("AccessPattern :: block_size must be greater than 0");
         if (block_size >= limit) 
             throw std::invalid_argument("AccessPattern :: block_size must be less than limit");
-        return (limit % block_size == 0) // TODO: check if this is correct (should only accept if modulo is 0)
+        return (limit % block_size == 0)
             ? (limit / block_size) - 1
             : (limit / block_size);
     }
@@ -26,7 +23,6 @@ namespace AccessPattern {
 
         explicit SequentialAccessPattern(size_t _limit, size_t _block_size)
             : current_offset(0), block_size(_block_size), limit(maxBlockIndex(_limit, _block_size) * _block_size) {}
-            // TODO: fix if previous TODO is incorrect
 
         constexpr unsigned long nextOffset() {
             const unsigned long offset = current_offset;
