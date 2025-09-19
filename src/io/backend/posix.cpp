@@ -2,6 +2,9 @@
 
 namespace BackendEngine {
 
+    PosixEngine::PosixEngine(const std::shared_ptr<spdlog::logger>& _logger)
+            : logger(_logger) {}
+
     int PosixEngine::_open(const char* filename, int flags, mode_t mode) {
         int fd = open(filename, flags, mode);
         if (fd < 0) {

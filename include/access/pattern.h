@@ -7,10 +7,8 @@
 
 namespace AccessPattern {
     inline size_t maxBlockIndex(size_t limit, size_t block_size) {
-        if (block_size == 0)
-            throw std::invalid_argument("AccessPattern :: block_size must be greater than 0");
-        if (block_size >= limit) 
-            throw std::invalid_argument("AccessPattern :: block_size must be less than limit");
+        if (block_size == 0 || block_size > limit)
+            throw std::invalid_argument("AccessPattern :: invalid block size: " + std::to_string(block_size));
         return (limit % block_size == 0)
             ? (limit / block_size) - 1
             : (limit / block_size);
@@ -22,7 +20,11 @@ namespace AccessPattern {
         const size_t limit;
 
         explicit SequentialAccessPattern(size_t _limit, size_t _block_size)
-            : current_offset(0), block_size(_block_size), limit(maxBlockIndex(_limit, _block_size) * _block_size) {}
+            : current_offset(0), block_size(_block_size), limit(_limit) {
+                if (block_size == 0 || block_size > limit) {
+                    throw std::invalid_argument("AccessPattern :: invalid block size: " + std::to_string(block_size));
+                }
+            }
 
         constexpr unsigned long nextOffset() {
             const unsigned long offset = current_offset;

@@ -20,16 +20,16 @@ void worker(
     ) {
         int fd = backendEngine._open(filename, O_RDWR | O_CREAT | O_DIRECT, 0666);
 
-        blockGenerator.fillBlock(block);
-
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 200; i++) {
+            blockGenerator.fillBlock(block);
             unsigned long offset = accessPattern.nextOffset();
+
             switch (operationPattern.nextOperation()) {
                 case OperationPattern::OperationType::READ:
-                    backendEngine._read(fd, block.data.data(), block.length * sizeof(uint64_t), static_cast<off_t>(offset));
+                    backendEngine._read(fd, block.buffer.data(), block.size, static_cast<off_t>(offset));
                     break;
                 case OperationPattern::OperationType::WRITE:
-                    backendEngine._write(fd, block.data.data(), block.length * sizeof(uint64_t), static_cast<off_t>(offset));
+                    backendEngine._write(fd, block.buffer.data(), block.size, static_cast<off_t>(offset));
                     break;
             }
         }
@@ -43,6 +43,7 @@ int main(void) {
     const size_t size_limit = 65536;
     const float zipfian_skew = 0.99f;
     const int read_percentage = 30;
+    const unsigned int batch_size = 4;
     const unsigned int queue_depth = 256;
     const unsigned int ring_flags = IORING_SETUP_SQPOLL | IORING_SETUP_SQ_AFF;
 
@@ -61,18 +62,18 @@ int main(void) {
     AccessPattern::ZipfianAccessPattern zipfianAccessPattern(size_limit, block_size, zipfian_skew);
 
     BlockGenerator::Block block(block_size);
-    BlockGenerator::RandomBlockGenerator randomBlockGenerator;
+    BlockGenerator::RandomBlockGenerator randomBlockGenerator(block_size);
 
     std::shared_ptr<spdlog::logger> logger = Logger::initLogger();
-    BackendEngineConfig::IOUringConfig ioUringConfig(queue_depth, ring_flags);
+    BackendEngineConfig::IOUringConfig ioUringConfig(batch_size, block_size, queue_depth, ring_flags);
 
     BackendEngine::PosixEngine posixEngine(logger);
     BackendEngine::IOUringEngine ioUringEngine(ioUringConfig, logger);
 
     worker(
         "testfile",
-        ioUringEngine,
-        readOperationPattern,
+        posixEngine,
+        writeOperationPattern,
         sequentialAccessPattern,
         randomBlockGenerator,
         block

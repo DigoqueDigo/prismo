@@ -3,42 +3,41 @@
 
 #include <vector>
 #include <cstddef>
+#include <cstring>
 #include <stdexcept>
+#include <iostream>
 #include <distribution/distribution.h>
 
 namespace BlockGenerator {
     struct Block {
-        unsigned long id;
-        const size_t length;
-        std::vector<uint64_t> data;
+        const size_t size;
+        std::vector<std::byte> buffer;
 
         explicit Block(size_t size)
-            : id(0), length(size / sizeof(uint64_t)), data(size / sizeof(uint64_t), 0ULL) {
-                if (size % sizeof(uint64_t) != 0) {
-                    throw std::invalid_argument("Block size must be a multiple of " + std::to_string(sizeof(uint64_t)));
-                }
-            }
+            : size(size), buffer(size, std::byte(0)) {}
 
-        constexpr inline void incrementId() {
-            id += 1;
-        }
-
-        constexpr inline void setDataAt(uint64_t value, size_t index) {
-            data[index] = value;
+        constexpr inline void fillBuffer(const void* data, size_t size) {
+            std::memcpy(buffer.data(), data, size);
         }
     };
 
     struct RandomBlockGenerator {
+        std::vector<uint64_t> data_buffer;
         Distribution::UniformDistribution<uint64_t> distribution;
 
-        explicit RandomBlockGenerator()
-            : distribution() {}
+        explicit RandomBlockGenerator(size_t block_size)
+            : data_buffer(block_size / sizeof(uint64_t)), distribution() {
+                if (block_size % sizeof(uint64_t) != 0) {
+                    throw std::invalid_argument("Block size must be a multiple of 8 bytes");
+                }
+            }
 
         void fillBlock(Block& block) {
-            block.incrementId();
-            for (size_t index = 0; index < block.length; index++) {
-                block.setDataAt(distribution.nextValue(), index);
+            unsigned int capacity = static_cast<unsigned int>(data_buffer.capacity()); 
+            for (unsigned int iter = 0; iter < capacity; iter++) {
+                data_buffer[iter] = distribution.nextValue();
             }
+            block.fillBuffer(data_buffer.data(), block.size);
         }
     };
 };
