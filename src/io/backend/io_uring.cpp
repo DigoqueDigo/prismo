@@ -30,7 +30,7 @@ namespace BackendEngine {
         } else {
             this->logger->info("Opened file {} with fd {}", filename, fd);
             this->logger->info("Registered file descriptor {} with io_uring", fd);
-            return 0;
+            return fd;
         }
     }
 
@@ -56,6 +56,7 @@ namespace BackendEngine {
                 int count = io_uring_peek_batch_cqe(&ring, cqe_batch.data(), cqe_batch.size());
 
                 if (count == 0){
+                    sleep(1);
                     continue;
                 }
 

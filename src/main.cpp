@@ -20,7 +20,7 @@ void worker(
     ) {
         int fd = backendEngine._open(filename, O_RDWR | O_CREAT | O_DIRECT, 0666);
 
-        for (int i = 0; i < 200; i++) {
+        for (int i = 0; i < 20; i++) {
             blockGenerator.fillBlock(block);
             unsigned long offset = accessPattern.nextOffset();
 
@@ -72,7 +72,7 @@ int main(void) {
 
     worker(
         "testfile",
-        posixEngine,
+        ioUringEngine,
         writeOperationPattern,
         sequentialAccessPattern,
         randomBlockGenerator,
