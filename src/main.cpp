@@ -2,6 +2,7 @@
 #include <generator/generator.h>
 #include <operation/pattern.h>
 #include <io/logger.h>
+#include <io/metric.h>
 #include <io/backend/posix_engine.h>
 #include <io/backend/io_uring_engine.h>
 #include <boost/thread.hpp>
@@ -67,8 +68,8 @@ int main(void) {
     std::shared_ptr<spdlog::logger> logger = Logger::initLogger();
     BackendEngine::IOUringConfig ioUringConfig(batch_size, block_size, queue_depth, ring_flags);
 
-    BackendEngine::PosixEngine<true> posixEngine(logger);
-    BackendEngine::IOUringEngine<true> ioUringEngine(ioUringConfig, logger);
+    BackendEngine::PosixEngine<IOMetric::FullSyncMetric> posixEngine(logger);
+    // BackendEngine::IOUringEngine<> ioUringEngine(ioUringConfig, logger);
 
     worker(
         "testfile_posix",
@@ -79,14 +80,18 @@ int main(void) {
         block
     );
 
-    worker(
-        "testfile_io_uring",
-        ioUringEngine,
-        writeOperationPattern,
-        sequentialAccessPattern,
-        randomBlockGenerator,
-        block
-    );
+    for (auto& metric : posixEngine.metrics) {
+        logger->info("{}", metric);
+    }
+
+    // worker(
+    //     "testfile_io_uring",
+    //     ioUringEngine,
+    //     writeOperationPattern,
+    //     sequentialAccessPattern,
+    //     randomBlockGenerator,
+    //     block
+    // );
 
     return 0;
 }

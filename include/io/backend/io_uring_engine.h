@@ -1,12 +1,13 @@
 #ifndef IO_URING_ENGINE_H
 #define IO_URING_ENGINE_H
 
+#include <memory>
 #include <fcntl.h>
-#include <fcntl.h>
-#include <cstring>
 #include <unistd.h>
+#include <cstring>
 #include <stdexcept>
 #include <liburing.h>
+#include <spdlog/spdlog.h>
 
 namespace BackendEngine {
     struct IOUringConfig {

@@ -1,15 +1,18 @@
 #ifndef POSIX_ENGINE_H
 #define POSIX_ENGINE_H
 
+#include <memory>
 #include <fcntl.h>
-#include <fcntl.h>
-#include <cstring>
 #include <unistd.h>
+#include <cstring>
 #include <stdexcept>
+#include <io/metric.h>
+#include <spdlog/spdlog.h>
 
 namespace BackendEngine {
-    template <bool enable_logging>
+    template <typename Metric = void>
     struct PosixEngine {
+        std::vector<Metric> metrics;
         const std::shared_ptr<spdlog::logger> logger;
 
         explicit PosixEngine(
@@ -22,60 +25,101 @@ namespace BackendEngine {
         void _close(int fd);
     };
 
-    template<bool enable_logging>
-    PosixEngine<enable_logging>::PosixEngine(const std::shared_ptr<spdlog::logger>& _logger)
-        : logger(_logger) {}
+    template<typename Metric>
+    PosixEngine<Metric>::PosixEngine(const std::shared_ptr<spdlog::logger>& _logger)
+        : metrics(), logger(_logger) {}
 
-    template<bool enable_logging>
-    int PosixEngine<enable_logging>::_open(const char* filename, int flags, mode_t mode) {
-        int fd = open(filename, flags, mode);
+    template<typename Metric>
+    int PosixEngine<Metric>::_open(const char* filename, int flags, mode_t mode) {
+        ssize_t fd = open(filename, flags, mode);
         if (fd < 0) {
-            if constexpr (enable_logging)
-                logger->error("Failed to open file {}: {}", filename, strerror(errno));
             throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
         }
-
-        if constexpr (enable_logging)
-            logger->info("Opened file {} with fd {}", filename, fd);
-
         return fd;
     }
 
-    template<bool enable_logging>
-    void PosixEngine<enable_logging>::_read(int fd, void* buffer, size_t size, off_t offset) {
-        ssize_t bytes_read = pread(fd, buffer, size, offset);
-        if constexpr (enable_logging) {
-            if (bytes_read < 0) {
-                this->logger->error("Read error at offset {}: {}", offset, strerror(errno));
-            } else {
-                this->logger->info("Read at offset {}: requested {}, got {}", offset, size, bytes_read);
+    template<typename Metric>
+    void PosixEngine<Metric>::_read(int fd, void* buffer, size_t size, off_t offset) {
+        if constexpr (!std::is_void_v<Metric>) {
+            Metric metric{};
+            
+            metric.start_timestamp =
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now().time_since_epoch()
+            ).count();
+            
+            ssize_t bytes_read = pread(fd, buffer, size, offset);
+
+            metric.end_timestamp =
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now().time_since_epoch()
+                ).count();
+
+            if constexpr (std::is_base_of_v<IOMetric::BaseSyncMetric, Metric>) {
+                metric.operation_type = OperationPattern::OperationType::READ;
             }
+
+            if constexpr (std::is_base_of_v<IOMetric::ThreadSyncMetric, Metric>) {
+                metric.pid = ::getpid();
+                metric.tid = static_cast<int32_t>(::syscall(SYS_gettid));
+            }
+
+            if constexpr (std::is_base_of_v<IOMetric::FullSyncMetric, Metric>) {
+                metric.requested_bytes  = static_cast<uint32_t>(size);
+                metric.processed_bytes  = (bytes_read > 0) ? static_cast<uint32_t>(bytes_read) : 0;
+                metric.offset           = offset;
+                metric.return_code      = static_cast<int32_t>(bytes_read);
+                metric.error_no         = (bytes_read < 0) ? errno : 0;
+            }
+
+            metrics.push_back(metric);
         }
     }
 
-    template<bool enable_logging>
-    void PosixEngine<enable_logging>::_write(int fd, const void* buffer, size_t size, off_t offset) {
-        ssize_t bytes_written = pwrite(fd, buffer, size, offset);
-        if constexpr (enable_logging) {
-            if (bytes_written < 0) {
-                this->logger->error("Write error at offset {}: {}", offset, strerror(errno));
-            } else {
-                this->logger->info("Wrote at offset {}: requested {}, got {}", offset, size, bytes_written);
+    template<typename Metric>
+    void PosixEngine<Metric>::_write(int fd, const void* buffer, size_t size, off_t offset) {
+        if constexpr (!std::is_void_v<Metric>) {
+            Metric metric{};
+
+            metric.start_timestamp =
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now().time_since_epoch()
+                ).count();
+
+            ssize_t bytes_write = pwrite(fd, buffer, size, offset);
+
+            metric.end_timestamp =
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now().time_since_epoch()
+                ).count();
+
+            if constexpr (std::is_base_of_v<IOMetric::BaseSyncMetric, Metric>) {
+                metric.operation_type = OperationPattern::OperationType::WRITE;
             }
+
+            if constexpr (std::is_base_of_v<IOMetric::ThreadSyncMetric, Metric>) {
+                metric.pid = ::getpid();
+                metric.tid = static_cast<int32_t>(::syscall(SYS_gettid));
+            }
+
+            if constexpr (std::is_base_of_v<IOMetric::FullSyncMetric, Metric>) {
+                metric.requested_bytes  = static_cast<uint32_t>(size);
+                metric.processed_bytes  = (bytes_write > 0) ? static_cast<uint32_t>(bytes_write) : 0;
+                metric.offset           = offset;
+                metric.return_code      = static_cast<int32_t>(bytes_write);
+                metric.error_no         = (bytes_write < 0) ? errno : 0;
+            }
+
+            metrics.push_back(metric);
         }
     }
 
-    template<bool enable_logging>
-    void PosixEngine<enable_logging>::_close(int fd) {
-        int rc = close(fd);
-        if (rc < 0) {
-            if constexpr(enable_logging)
-                this->logger->error("Failed to close fd {}: {}", fd, strerror(errno));
+    template<typename Metric>
+    void PosixEngine<Metric>::_close(int fd) {
+        int return_code = close(fd);
+        if (return_code < 0) {
             throw std::runtime_error("Failed to close fd: " + std::string(strerror(errno)));
         }
-        
-        if constexpr (enable_logging)
-            this->logger->info("Closed fd {}", fd);
     }
 };
 

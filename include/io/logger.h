@@ -1,7 +1,7 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
-#include <io/metrics.h>
+#include <io/metric.h>
 #include <operation/pattern.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/async.h>
@@ -22,21 +22,49 @@ namespace Logger {
 };
 
 template<>
-struct fmt::formatter<IOMetric::SyncMetric> : fmt::formatter<std::string> {
-    auto format(const IOMetric::SyncMetric& syncMetric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
+struct fmt::formatter<IOMetric::BaseSyncMetric> : fmt::formatter<std::string> {
+    auto format(const IOMetric::BaseSyncMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
+        return fmt::format_to(
+            ctx.out(),
+            "[type={} sts={} ets={}]",
+            static_cast<uint8_t>(metric.operation_type),
+            metric.start_timestamp,
+            metric.end_timestamp
+        );
+    }
+};
+
+template<>
+struct fmt::formatter<IOMetric::ThreadSyncMetric> : fmt::formatter<std::string> {
+    auto format(const IOMetric::ThreadSyncMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
+        return fmt::format_to(
+            ctx.out(),
+            "[type={} sts={} ets={} pid={} tid={}]",
+            static_cast<uint8_t>(metric.operation_type),
+            metric.start_timestamp,
+            metric.end_timestamp,
+            metric.pid,
+            metric.tid
+        );
+    }
+};
+
+template<>
+struct fmt::formatter<IOMetric::FullSyncMetric> : fmt::formatter<std::string> {
+    auto format(const IOMetric::FullSyncMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
         return fmt::format_to(
             ctx.out(),
             "[type={} sts={} ets={} pid={} tid={} req={} wrt={} offset={} ret={} errno={}]",
-            static_cast<uint8_t>(syncMetric.operation_type),
-            syncMetric.start_timestamp,
-            syncMetric.end_timestamp,
-            syncMetric.pid,
-            syncMetric.tid,
-            syncMetric.requested_bytes,
-            syncMetric.written_bytes,
-            syncMetric.offset,
-            syncMetric.return_code,
-            syncMetric.error_no
+            static_cast<uint8_t>(metric.operation_type),
+            metric.start_timestamp,
+            metric.end_timestamp,
+            metric.pid,
+            metric.tid,
+            metric.requested_bytes,
+            metric.processed_bytes,
+            metric.offset,
+            metric.return_code,
+            metric.error_no
         );
     }
 };

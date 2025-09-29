@@ -8,7 +8,7 @@
 namespace OperationPattern {
     enum class OperationType {
         READ,
-        WRITE
+        WRITE,
     };
 
     struct ReadOperationPattern {
