@@ -90,7 +90,7 @@ namespace BackendEngine {
                     std::chrono::steady_clock::now().time_since_epoch()
                 ).count();
 
-            ssize_t bytes_write = ::pwrite(fd, buffer, size, -1);
+            ssize_t bytes_write = ::pwrite(fd, buffer, size, offset);
 
             metric.end_timestamp =
                 std::chrono::duration_cast<std::chrono::nanoseconds>(
