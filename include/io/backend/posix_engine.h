@@ -12,7 +12,8 @@
 namespace BackendEngine {
     template <typename Metric = void>
     struct PosixEngine {
-        std::vector<Metric> metrics;
+        // TODO :: save metrics in memory???
+        // std::vector<Metric> metrics;
         const std::shared_ptr<spdlog::logger> logger;
 
         explicit PosixEngine(
@@ -27,7 +28,7 @@ namespace BackendEngine {
 
     template<typename Metric>
     PosixEngine<Metric>::PosixEngine(const std::shared_ptr<spdlog::logger>& _logger)
-        : metrics(), logger(_logger) {}
+        : logger(_logger) {}
 
     template<typename Metric>
     int PosixEngine<Metric>::_open(const char* filename, int flags, mode_t mode) {
@@ -72,7 +73,7 @@ namespace BackendEngine {
                 metric.error_no         = (bytes_read < 0) ? errno : 0;
             }
 
-            metrics.push_back(metric);
+            this->logger->info(metric);
         }
     }
 
@@ -110,7 +111,7 @@ namespace BackendEngine {
                 metric.error_no         = (bytes_write < 0) ? errno : 0;
             }
 
-            metrics.push_back(metric);
+            this->logger->info(metric);
         }
     }
 

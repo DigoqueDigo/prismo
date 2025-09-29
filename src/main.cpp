@@ -80,9 +80,9 @@ int main(void) {
         block
     );
 
-    for (auto& metric : posixEngine.metrics) {
-        logger->info("{}", metric);
-    }
+    // for (auto& metric : *(posixEngine.metrics)) {
+    //     logger->info("{}", metric);
+    // }
 
     // worker(
     //     "testfile_io_uring",
