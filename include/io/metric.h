@@ -13,14 +13,14 @@ namespace IOMetric {
     };
 
     struct ThreadSyncMetric : BaseSyncMetric {
-        int32_t pid;
-        int32_t tid;
+        pid_t pid;
+        uint64_t tid;
     };
 
     struct FullSyncMetric : ThreadSyncMetric {
         uint32_t requested_bytes;
         uint32_t processed_bytes;
-        int64_t offset;
+        uint64_t offset;
         int32_t return_code;
         int32_t error_no;
     };

@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstring>
+#include <thread>
 #include <stdexcept>
 #include <io/metric.h>
 #include <spdlog/spdlog.h>
@@ -32,7 +33,7 @@ namespace BackendEngine {
 
     template<typename Metric>
     int PosixEngine<Metric>::_open(const char* filename, int flags, mode_t mode) {
-        ssize_t fd = open(filename, flags, mode);
+        ssize_t fd = ::open(filename, flags, mode);
         if (fd < 0) {
             throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
         }
@@ -49,7 +50,7 @@ namespace BackendEngine {
                 std::chrono::steady_clock::now().time_since_epoch()
             ).count();
             
-            ssize_t bytes_read = pread(fd, buffer, size, offset);
+            ssize_t bytes_read = ::pread(fd, buffer, size, offset);
 
             metric.end_timestamp =
                 std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -62,18 +63,20 @@ namespace BackendEngine {
 
             if constexpr (std::is_base_of_v<IOMetric::ThreadSyncMetric, Metric>) {
                 metric.pid = ::getpid();
-                metric.tid = static_cast<int32_t>(::syscall(SYS_gettid));
+                metric.tid = static_cast<uint64_t>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
             }
 
             if constexpr (std::is_base_of_v<IOMetric::FullSyncMetric, Metric>) {
                 metric.requested_bytes  = static_cast<uint32_t>(size);
                 metric.processed_bytes  = (bytes_read > 0) ? static_cast<uint32_t>(bytes_read) : 0;
-                metric.offset           = offset;
+                metric.offset           = static_cast<uint64_t>(offset);
                 metric.return_code      = static_cast<int32_t>(bytes_read);
-                metric.error_no         = (bytes_read < 0) ? errno : 0;
+                metric.error_no         = errno;
             }
 
             this->logger->info(metric);
+        } else {
+            pread(fd, buffer, size, offset);
         }
     }
 
@@ -87,7 +90,7 @@ namespace BackendEngine {
                     std::chrono::steady_clock::now().time_since_epoch()
                 ).count();
 
-            ssize_t bytes_write = pwrite(fd, buffer, size, offset);
+            ssize_t bytes_write = ::pwrite(fd, buffer, size, -1);
 
             metric.end_timestamp =
                 std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -100,24 +103,26 @@ namespace BackendEngine {
 
             if constexpr (std::is_base_of_v<IOMetric::ThreadSyncMetric, Metric>) {
                 metric.pid = ::getpid();
-                metric.tid = static_cast<int32_t>(::syscall(SYS_gettid));
+                metric.tid = static_cast<uint64_t>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
             }
 
             if constexpr (std::is_base_of_v<IOMetric::FullSyncMetric, Metric>) {
                 metric.requested_bytes  = static_cast<uint32_t>(size);
                 metric.processed_bytes  = (bytes_write > 0) ? static_cast<uint32_t>(bytes_write) : 0;
-                metric.offset           = offset;
+                metric.offset           = static_cast<int64_t>(offset);
                 metric.return_code      = static_cast<int32_t>(bytes_write);
-                metric.error_no         = (bytes_write < 0) ? errno : 0;
+                metric.error_no         = errno;
             }
 
             this->logger->info(metric);
+        } else {
+            pwrite(fd, buffer, size, offset);
         }
     }
 
     template<typename Metric>
     void PosixEngine<Metric>::_close(int fd) {
-        int return_code = close(fd);
+        int return_code = ::close(fd);
         if (return_code < 0) {
             throw std::runtime_error("Failed to close fd: " + std::string(strerror(errno)));
         }
