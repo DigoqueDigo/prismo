@@ -14,8 +14,6 @@ project(
 inc = include_directories('include')
 src = files(
   'src/io/logger.cpp',
-  'src/io/backend/posix.cpp',
-  'src/io/backend/io_uring.cpp',
   'src/main.cpp',
 )
 

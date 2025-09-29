@@ -16,7 +16,7 @@ namespace BlockGenerator {
         explicit Block(size_t size)
             : size(size), buffer(size, std::byte(0)) {}
 
-        constexpr inline void fillBuffer(const void* data, size_t size) {
+        inline void fillBuffer(const void* data, size_t size) {
             std::memcpy(buffer.data(), data, size);
         }
     };

@@ -2,9 +2,9 @@
 #include <generator/generator.h>
 #include <operation/pattern.h>
 #include <io/logger.h>
-#include <io/backend/engine.h>
+#include <io/backend/posix_engine.h>
+#include <io/backend/io_uring_engine.h>
 #include <boost/thread.hpp>
-#include <io/backend/config.h>
 #include <chrono>
 #include <iostream>
 #include <fcntl.h>
@@ -65,13 +65,22 @@ int main(void) {
     BlockGenerator::RandomBlockGenerator randomBlockGenerator(block_size);
 
     std::shared_ptr<spdlog::logger> logger = Logger::initLogger();
-    BackendEngineConfig::IOUringConfig ioUringConfig(batch_size, block_size, queue_depth, ring_flags);
+    BackendEngine::IOUringConfig ioUringConfig(batch_size, block_size, queue_depth, ring_flags);
 
-    BackendEngine::PosixEngine posixEngine(logger);
-    BackendEngine::IOUringEngine ioUringEngine(ioUringConfig, logger);
+    BackendEngine::PosixEngine<true> posixEngine(logger);
+    BackendEngine::IOUringEngine<true> ioUringEngine(ioUringConfig, logger);
 
     worker(
-        "testfile",
+        "testfile_posix",
+        posixEngine,
+        writeOperationPattern,
+        sequentialAccessPattern,
+        randomBlockGenerator,
+        block
+    );
+
+    worker(
+        "testfile_io_uring",
         ioUringEngine,
         writeOperationPattern,
         sequentialAccessPattern,
