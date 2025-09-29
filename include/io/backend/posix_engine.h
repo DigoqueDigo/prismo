@@ -2,6 +2,10 @@
 #define POSIX_ENGINE_H
 
 #include <fcntl.h>
+#include <fcntl.h>
+#include <cstring>
+#include <unistd.h>
+#include <stdexcept>
 
 namespace BackendEngine {
     template <bool enable_logging>

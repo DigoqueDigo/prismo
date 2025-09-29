@@ -2,6 +2,10 @@
 #define IO_URING_ENGINE_H
 
 #include <fcntl.h>
+#include <fcntl.h>
+#include <cstring>
+#include <unistd.h>
+#include <stdexcept>
 #include <liburing.h>
 
 namespace BackendEngine {
