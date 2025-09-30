@@ -1,6 +1,9 @@
 {
+    "block_size": 4096,
+    "size_limit": 65536,
     "operation_pattern": {
-        "type": "read"
+        "type": "constant",
+        "operation": "write"
     },
     "access_pattern": {
         "type": "sequential"

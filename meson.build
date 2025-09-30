@@ -51,7 +51,7 @@ if cc.get_id() == 'gcc' or cc.get_id() == 'clang'
   ]
 endif
 
-# add_project_arguments(common_flags + extra_flags, language: 'cpp')
+add_project_arguments(common_flags + extra_flags, language: 'cpp')
 
 dedisbench_exe = executable(
   'dedisbench',

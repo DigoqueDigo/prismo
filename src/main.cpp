@@ -9,13 +9,12 @@
 // #include <iostream>
 // #include <fcntl.h>
 
-#include <operation/type.h>
-#include <operation/constant_pattern.h>
-#include <operation/percentage_pattern.h>
-#include <operation/mixed_pattern.h>
+#include <deserialize/access_pattern.h>
 
 #include <iostream>
 #include <iomanip>
+#include <fstream>
+
 
 
 // template<typename A, typename B, typename C, typename D, typename E>
@@ -46,7 +45,32 @@
 //         backendEngine._close(fd);
 // }
 
-int main(void) {
+
+template<typename A>
+void foo(A a) {
+    for (int p = 0; p < 10; p++) {
+        std::cout << static_cast<int>(a.nextOperation()) << std::endl;
+    }
+}
+
+
+
+
+int main(int argc, char** argv) {
+    
+    if (argc < 2) {
+        throw std::logic_error("Invalid number of arguments");
+    }
+    
+    std::ifstream config_file(argv[1]);
+    json data = json::parse(config_file);
+
+    Deserialize::PatternVariant p11 = Deserialize::pattern_variant_map
+        .at(data.at("operation_pattern").at("type"))
+        (data.at("operation_pattern"));
+    
+
+    std::visit([](auto& a){ foo(a); }, p11);
 
     // const size_t block_size = 4096;
     // const size_t size_limit = 65536;
@@ -56,25 +80,26 @@ int main(void) {
     // const unsigned int queue_depth = 256;
     // const unsigned int ring_flags = IORING_SETUP_SQPOLL | IORING_SETUP_SQ_AFF;
 
-    OperationPattern::ConstantOperationPattern readOperationPattern;
-    OperationPattern::ConstantOperationPattern writeOperationPattern(OperationPattern::OperationType::WRITE);
-    OperationPattern::PercentageOperationPattern percentageOperationPattern(0.6);
-    OperationPattern::MixedOperationPattern mixedOperationPattern({
-        OperationPattern::OperationType::READ,
-        OperationPattern::OperationType::WRITE,
-        OperationPattern::OperationType::WRITE,
-        OperationPattern::OperationType::READ,
-    });
 
-    json j_read_pattern = readOperationPattern;
-    json j_write_pattern = writeOperationPattern;
-    json j_percentage_pattern = percentageOperationPattern;
-    json j_mixed_pattern = mixedOperationPattern;
+    // OperationPattern::ConstantOperationPattern readOperationPattern;
+    // OperationPattern::ConstantOperationPattern writeOperationPattern(OperationPattern::OperationType::WRITE);
+    // OperationPattern::PercentageOperationPattern percentageOperationPattern(60);
+    // OperationPattern::MixedOperationPattern mixedOperationPattern({
+    //     OperationPattern::OperationType::READ,
+    //     OperationPattern::OperationType::WRITE,
+    //     OperationPattern::OperationType::WRITE,
+    //     OperationPattern::OperationType::READ,
+    // });
 
-    std::cout << std::setw(4) << j_read_pattern << std::endl;
-    std::cout << std::setw(4) << j_write_pattern << std::endl;
-    std::cout << std::setw(4) << j_percentage_pattern << std::endl;
-    std::cout << std::setw(4) << j_mixed_pattern << std::endl;
+    // json j_read_pattern = readOperationPattern;
+    // json j_write_pattern = writeOperationPattern;
+    // json j_percentage_pattern = percentageOperationPattern;
+    // json j_mixed_pattern = mixedOperationPattern;
+
+    // std::cout << std::setw(4) << j_read_pattern << std::endl;
+    // std::cout << std::setw(4) << j_write_pattern << std::endl;
+    // std::cout << std::setw(4) << j_percentage_pattern << std::endl;
+    // std::cout << std::setw(4) << j_mixed_pattern << std::endl;
 
 
     // AccessPattern::SequentialAccessPattern sequentialAccessPattern(size_limit, block_size);

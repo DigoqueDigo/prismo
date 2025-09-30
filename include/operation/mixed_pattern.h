@@ -33,14 +33,16 @@ namespace OperationPattern {
     }
 
     void from_json(const json& j, MixedOperationPattern& mixed_pattern) {
-        if (j.at("type").get<std::string>() != "mixed") {
+        if (j.at("type") != "mixed") {
             throw std::runtime_error("Invalid JSON type for MixedOperationPattern");
         }
         for (auto& item : j.at("operations")) {
             if (item == "read") {
                 mixed_pattern.operations.push_back(OperationType::READ);
-            } else {
+            } else if (item == "write") {
                 mixed_pattern.operations.push_back(OperationType::WRITE);
+            } else {
+                throw std::runtime_error("Invalid JSON operations for MixedOperationPattern");
             }
         }
         mixed_pattern.length = mixed_pattern.operations.size();

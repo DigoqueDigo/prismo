@@ -22,22 +22,24 @@ namespace OperationPattern {
     };
 
     void to_json(json& j, const ConstantOperationPattern& constant_pattern) {
+        j = json{{"type", "constant"}};
         if (constant_pattern.operation == OperationType::READ) {
-            j = json{{"type", "read"}};
+            j["operation"] = "read";
         } else {
-            j = json{{"type", "write"}};
+            j["operation"] = "write";
         }
     }
 
     void from_json(const json& j, ConstantOperationPattern& constant_pattern) {
-        std::string type = j.at("type").get<std::string>();
-        if (type != "read" || type != "write") {
+        if (j.at("type") != "constant") {
             throw std::runtime_error("Invalid JSON type for ConstantOperationPattern");
         }
-        if (type == "read") {
+        if (j.at("operation") == "read") {
             constant_pattern.operation = OperationType::READ;
-        } else {
+        } else if (j.at("operation") == "write") {
             constant_pattern.operation = OperationType::WRITE;
+        } else {
+            throw std::runtime_error("Invalid JSON operation for ConstantOperationPattern");
         }
     }
 };

@@ -33,7 +33,7 @@ namespace OperationPattern {
     }
 
     void from_json(const json& j, PercentageOperationPattern& percentage_pattern) {
-        if (j.at("type").get<std::string>() != "percentage") {
+        if (j.at("type") != "percentage") {
             throw std::runtime_error("Invalid JSON type for PercentageOperationPattern");
         }
         j.at("read_percentage").get_to(percentage_pattern.read_percentage);
