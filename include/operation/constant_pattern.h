@@ -13,8 +13,8 @@ namespace OperationPattern {
         explicit ConstantOperationPattern()
             : operation(OperationType::READ) {}
 
-        explicit ConstantOperationPattern(OperationType operation_type)
-            : operation(operation_type) {}
+        // explicit ConstantOperationPattern(OperationType operation_type)
+        //     : operation(operation_type) {}
 
         OperationType nextOperation() {
             return operation;

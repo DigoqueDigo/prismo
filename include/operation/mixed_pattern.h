@@ -15,8 +15,8 @@ namespace OperationPattern {
         explicit MixedOperationPattern()
             : index(0), length(0), pattern{} {}
 
-        explicit MixedOperationPattern(const std::vector<OperationType>& _pattern)
-            : index(0), length(_pattern.size()), pattern(_pattern) {}
+        // explicit MixedOperationPattern(const std::vector<OperationType>& _pattern)
+        //     : index(0), length(_pattern.size()), pattern(_pattern) {}
 
         OperationType nextOperation() {
             const OperationType operation = pattern.at(index);

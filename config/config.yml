@@ -1,14 +1,16 @@
-block_size: 4096
-size_limit: 65536
+
 # operation_pattern:
 #   type: constant
 #   operation: read
+
 # operation_pattern:
 #   type: constant
 #   operation: write
+
 # operation_pattern:
 #   type: percentage
 #   read_percentage: 60 
+
 operation_pattern:
   type: mixed
   pattern:
@@ -19,3 +21,20 @@ operation_pattern:
     - write
     - read
     - read
+
+access_pattern:
+  type: sequential
+  block_size: 4096
+  size_limit: 65536
+
+access_pattern:
+  type: random
+  block_size: 4096
+  size_limit: 65536
+
+access_pattern:
+  type: zipfian
+  block_size: 4096
+  size_limit: 65536
+  skew: 
+
