@@ -33,6 +33,9 @@ spdlog_dep = dependency('spdlog', required: true)
 # Find liburing dependency (header-only)
 liburing_dep = dependency('liburing', required: true)
 
+# Find json dependency (nlohmann/json wrap)
+json_dep = dependency('nlohmann_json', required: true)
+
 # Common flags for all builds
 common_flags = [
   '-Wpedantic',                                                     # Enforce strict standard compliance
@@ -54,7 +57,7 @@ dedisbench_exe = executable(
   'dedisbench',
   sources: src,
   include_directories : [inc],
-  dependencies: [boost_dep, spdlog_dep, liburing_dep],
+  dependencies: [boost_dep, spdlog_dep, liburing_dep, json_dep],
   install : true,
 )
 

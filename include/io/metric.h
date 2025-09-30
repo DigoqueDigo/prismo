@@ -2,7 +2,8 @@
 #define METRIC_H
 
 #include <cstdint>
-#include <operation/pattern.h>
+#include <sys/types.h>
+#include <operation/type.h>
 
 namespace IOMetric {
 

@@ -2,7 +2,7 @@
 #define LOGGER_H
 
 #include <io/metric.h>
-#include <operation/pattern.h>
+#include <operation/type.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/async.h>
 #include <spdlog/fmt/fmt.h>
