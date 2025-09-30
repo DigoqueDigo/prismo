@@ -1,14 +1,3 @@
-// #include <access/pattern.h>
-// #include <generator/generator.h>
-// #include <io/logger.h>
-// #include <io/metric.h>
-// #include <io/backend/posix_engine.h>
-// #include <io/backend/io_uring_engine.h>
-// #include <boost/thread.hpp>
-// #include <chrono>
-// #include <iostream>
-// #include <fcntl.h>
-
 #include <deserialize/access_pattern.h>
 
 #include <iostream>

@@ -1,0 +1,21 @@
+block_size: 4096
+size_limit: 65536
+# operation_pattern:
+#   type: constant
+#   operation: read
+# operation_pattern:
+#   type: constant
+#   operation: write
+# operation_pattern:
+#   type: percentage
+#   read_percentage: 60 
+operation_pattern:
+  type: mixed
+  pattern:
+    - read
+    - read
+    - write
+    - write
+    - write
+    - read
+    - read

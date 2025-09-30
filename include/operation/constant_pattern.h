@@ -31,12 +31,12 @@ namespace OperationPattern {
     }
 
     void from_json(const json& j, ConstantOperationPattern& constant_pattern) {
-        if (j.at("type") != "constant") {
+        if (j.at("type").template get<std::string>() != "constant") {
             throw std::runtime_error("Invalid JSON type for ConstantOperationPattern");
         }
-        if (j.at("operation") == "read") {
+        if (j.at("operation").template get<std::string>() == "read") {
             constant_pattern.operation = OperationType::READ;
-        } else if (j.at("operation") == "write") {
+        } else if (j.at("operation").template get<std::string>() == "write") {
             constant_pattern.operation = OperationType::WRITE;
         } else {
             throw std::runtime_error("Invalid JSON operation for ConstantOperationPattern");

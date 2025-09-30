@@ -1,0 +1,16 @@
+{
+  "block_size": 4096,
+  "size_limit": 65536,
+  "operation_pattern": {
+    "type": "mixed",
+    "pattern": [
+      "read",
+      "read",
+      "write",
+      "write",
+      "write",
+      "read",
+      "read"
+    ]
+  }
+}
