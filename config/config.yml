@@ -1,4 +1,3 @@
-
 # operation_pattern:
 #   type: constant
 #   operation: read
@@ -22,19 +21,19 @@ operation_pattern:
     - read
     - read
 
-access_pattern:
-  type: sequential
-  block_size: 4096
-  size_limit: 65536
+# access_pattern:
+#   type: sequential
+#   block_size: 4096
+#   limit: 65536
 
-access_pattern:
-  type: random
-  block_size: 4096
-  size_limit: 65536
+# access_pattern:
+#   type: random
+#   block_size: 2
+#   limit: 10
 
 access_pattern:
   type: zipfian
-  block_size: 4096
-  size_limit: 65536
-  skew: 
+  block_size: 2
+  limit: 65536
+  skew: 0.2
 

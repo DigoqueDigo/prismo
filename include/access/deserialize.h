@@ -29,6 +29,15 @@ namespace Deserialize {
             return AccessPattern::ZipfianAccessPattern(config);
         }}
     };
+
+    AccessPatternVariant getAccessPattern(const std::string& type, const json& j) {
+        auto it  = access_pattern_variant_map.find(type);
+        if (it != access_pattern_variant_map.end()) {
+            return it->second(j);
+        } else {
+            throw std::invalid_argument("Access pattern type '" + type + "' is not recognized");
+        }
+    }
 }
 
 #endif

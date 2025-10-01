@@ -46,6 +46,7 @@ namespace AccessPattern {
         j.at("block_size").get_to(config.block_size);
         j.at("limit").get_to(config.limit);
         config.validate();
+        config.limit = config.block_size * (config.limit / config.block_size);
     }
 }
 

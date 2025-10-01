@@ -43,8 +43,8 @@ void foo(
     OperationPattern operation_pattern, 
     AccessPattern access_pattern
 ) {
-    for (int p = 0; p < 10; p++) {
-        std::cout << "Offset: " << tatic_cast<int>(access_pattern.nextOffset()) << std::endl;
+    for (int p = 0; p < 20; p++) {
+        std::cout << "Offset: " << static_cast<int>(access_pattern.nextOffset()) << std::endl;
         std::cout << "Operation: " << static_cast<int>(operation_pattern.nextOperation()) << std::endl;
     }
 }
@@ -61,14 +61,18 @@ int main(int argc, char** argv) {
     std::ifstream config_file(argv[1]);
     json data = json::parse(config_file);
 
-    Deserialize::OperationPatternVariant operation_pattern = Deserialize::operation_pattern_variant_map
-        .at(data.at("operation_pattern").at("type"))
-        (data.at("operation_pattern"));
+    json access_pattern_j = data.at("access_pattern");
+    json operation_pattern_j = data.at("operation_pattern");
 
-    Deserialize::AccessPatternVariant access_pattern = Deserialize::access_pattern_variant_map
-        .at(data.at("access_pattern").at("type"))
-        (data.at("access_pattern"));
-    
+    Deserialize::OperationPatternVariant operation_pattern = Deserialize::getOperationPattern(
+      operation_pattern_j.at("type").template get<std::string>(),
+      operation_pattern_j
+    );
+
+    Deserialize::AccessPatternVariant access_pattern = Deserialize::getAccessPattern(
+        access_pattern_j.at("type").template get<std::string>(),
+        access_pattern_j
+    );
 
     std::visit([](auto& a, auto& b){ foo(a, b); }, operation_pattern, access_pattern);
 

@@ -29,6 +29,15 @@ namespace Deserialize {
             return OperationPattern::MixedOperationPattern(config);
         }}
     };
+
+    OperationPatternVariant getOperationPattern(const std::string& type, const json& j) {
+        auto it = operation_pattern_variant_map.find(type);
+        if (it != operation_pattern_variant_map.end()) {
+            return it->second(j);
+        } else {
+            throw std::invalid_argument("Operation pattern type '" + type + "' is not recognized");
+        }
+    }
 };
 
 #endif

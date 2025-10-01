@@ -1,6 +1,4 @@
 {
-  "block_size": 4096,
-  "size_limit": 65536,
   "operation_pattern": {
     "type": "mixed",
     "pattern": [
@@ -12,5 +10,11 @@
       "read",
       "read"
     ]
+  },
+  "access_pattern": {
+    "type": "zipfian",
+    "block_size": 4096,
+    "limit": 65536,
+    "skew": 0.99
   }
 }

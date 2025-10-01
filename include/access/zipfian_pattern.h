@@ -12,7 +12,6 @@ namespace AccessPattern {
     struct ZipfianAccessPatternConfig {
         size_t block_size;
         size_t limit;
-        size_t distribution_max_limit;
         float skew;
 
         void validate(void) {
@@ -20,20 +19,19 @@ namespace AccessPattern {
                 throw std::invalid_argument("Invalid block_size for ZipfianAccessPatternConfig");
             if (block_size > limit)
                 throw std::invalid_argument("Invalid limit for ZipfianAccessPatternConfig");
-            if (skew < 0 || skew > 1)
+            if (skew <= 0 || skew >= 1)
                 throw std::invalid_argument("Invalid skew for ZipfianAccessPatternConfig");
         }
     };
 
     struct ZipfianAccessPattern {
         const ZipfianAccessPatternConfig config;
-        // TODO :: mudar para <size_t> ????
-        Distribution::ZipfianDistribution<unsigned long> distribution;
+        Distribution::ZipfianDistribution<size_t> distribution;
 
         explicit ZipfianAccessPattern(const ZipfianAccessPatternConfig& _config)
-            : config(_config), distribution(0, _config.distribution_max_limit, _config.skew) {}
+            : config(_config), distribution(0, _config.limit, _config.skew) {}
 
-        unsigned long nextOffset() {
+        size_t nextOffset() {
             return distribution.nextValue() * config.block_size;
         }
     };
@@ -51,10 +49,8 @@ namespace AccessPattern {
         j.at("block_size").get_to(config.block_size);
         j.at("limit").get_to(config.limit);
         j.at("skew").get_to(config.skew);
-        config.distribution_max_limit = (config.limit % config.block_size == 0)
-            ? (config.limit / config.block_size) - 1
-            : (config.limit / config.block_size);
         config.validate();
+        config.limit = config.limit / config.block_size - 1;
     }
 }
 
