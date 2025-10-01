@@ -9,51 +9,46 @@
 using json = nlohmann::json;
 
 namespace AccessPattern {
-    struct RandomAccessPattern {
+    struct RandomAccessPatternConfig {
         size_t block_size;
         size_t limit;
-        Distribution::UniformDistribution<unsigned long> distribution;
+        size_t distribution_max_limit;
 
-        explicit RandomAccessPattern()
-            : block_size(0), limit(0), distribution() {}
-
-        // explicit RandomAccessPattern(size_t _limit, size_t _block_size)
-        //     : block_size(_block_size), limit(_limit), distribution(0, maxBlockIndex(_limit, _block_size)) {}
-
-        unsigned long nextOffset() {
-            return distribution.nextValue() * block_size;
+        void validate(void) {
+            if (block_size == 0)
+                throw std::invalid_argument("Invalid block_size for RandomAccessPatternConfig");
+            if (block_size > limit)
+                throw std::invalid_argument("Invalid limit for RandomAccessPatternConfig");
         }
     };
 
-    void to_json(json& j, const RandomAccessPattern& random_pattern) {
+    struct RandomAccessPattern {
+        const RandomAccessPatternConfig config;
+        Distribution::UniformDistribution<unsigned long> distribution;
+
+        explicit RandomAccessPattern(const RandomAccessPatternConfig& _config)
+            : config(_config), distribution(0, _config.distribution_max_limit) {}
+
+        unsigned long nextOffset() {
+            return distribution.nextValue() * config.block_size;
+        }
+    };
+
+    void to_json(json& j, const RandomAccessPatternConfig& config) {
         j = json{
             {"type", "random"},
-            {"block_size", random_pattern.block_size},
-            {"limit", random_pattern.limit}
+            {"block_size", config.block_size},
+            {"limit", config.limit}
         };
     }
 
-    void from_json(const json& j, RandomAccessPattern& random_pattern) {
-        if (j.at("type").template get<std::string>() != "random") {
-            throw std::runtime_error("Invalid JSON type for RandomAccessPattern");
-        }
-
-        j.at("block_size").get_to(random_pattern.block_size);
-        if (random_pattern.block_size == 0) {
-            throw std::invalid_argument("Invalid JSON block_size for RandomAccessPattern");
-        }
-
-        j.at("limit").get_to(random_pattern.limit);
-        if (random_pattern.block_size > random_pattern.limit) {
-            throw std::invalid_argument("Invalid JSON limit for RandomAccessPattern");
-        }
-
-        random_pattern.distribution.setParams(
-            0,
-            (random_pattern.limit % random_pattern.block_size == 0)
-            ? static_cast<unsigned long>((random_pattern.limit / random_pattern.block_size) - 1)
-            : static_cast<unsigned long>((random_pattern.limit / random_pattern.block_size))
-        );
+    void from_json(const json& j, RandomAccessPatternConfig& config) {
+        j.at("block_size").get_to(config.block_size);        
+        j.at("limit").get_to(config.limit);
+        config.distribution_max_limit = (config.limit % config.block_size == 0)
+            ? (config.limit / config.block_size) - 1
+            : (config.limit / config.block_size);
+        config.validate();
     }
 }
 

@@ -8,50 +8,44 @@
 using json = nlohmann::json;
 
 namespace AccessPattern {
-    struct SequentialAccessPattern {
-        unsigned long current_offset;
+    struct SequentialAccessPatternConfig {
         size_t block_size;
         size_t limit;
 
-        explicit SequentialAccessPattern()
-            : current_offset(0), block_size(0), limit(0) {}
+        void validate(void) {
+            if (block_size == 0)
+                throw std::invalid_argument("Invalid block_size for SequentialAccessPatternConfig");
+            if (block_size > limit)
+                throw std::invalid_argument("Invalid limit for SequentialAccessPatternConfig");
+        }
+    };
 
-        // explicit SequentialAccessPattern(size_t _limit, size_t _block_size)
-        //     : current_offset(0), block_size(_block_size), limit(_limit) {
-        //         if (block_size == 0 || block_size > limit) {
-        //             throw std::invalid_argument("AccessPattern :: invalid block size: " + std::to_string(block_size));
-        //         }
-        //     }
+    struct SequentialAccessPattern {
+        const SequentialAccessPatternConfig config;
+        unsigned long current_offset;
+
+        explicit SequentialAccessPattern(const SequentialAccessPatternConfig& _config)
+            : config(_config), current_offset(0) {}
 
         constexpr unsigned long nextOffset() {
             const unsigned long offset = current_offset;
-            current_offset = (current_offset + block_size) % limit;
+            current_offset = (current_offset + config.block_size) % config.limit;
             return offset;
         }
     };
 
-    void to_json(json& j, const SequentialAccessPattern& sequential_pattern) {
+    void to_json(json& j, const SequentialAccessPatternConfig& config) {
         j = json{
             {"type", "sequential"},
-            {"block_size", sequential_pattern.block_size},
-            {"limit", sequential_pattern.limit}
+            {"block_size", config.block_size},
+            {"limit", config.limit}
         };
     }
 
-    void from_json(const json& j, SequentialAccessPattern& sequential_pattern) {
-        if (j.at("type").template get<std::string>() != "sequential") {
-            throw std::runtime_error("Invalid JSON type for SequentialAccessPattern");
-        }
-
-        j.at("block_size").get_to(sequential_pattern.block_size);
-        if (sequential_pattern.block_size == 0) {
-            throw std::invalid_argument("Invalid JSON block_size for SequentialAccessPattern");
-        }
-
-        j.at("limit").get_to(sequential_pattern.limit);
-        if (sequential_pattern.block_size > sequential_pattern.limit) {
-            throw std::invalid_argument("Invalid JSON limit for SequentialAccessPattern");
-        }
+    void from_json(const json& j, SequentialAccessPatternConfig& config) {
+        j.at("block_size").get_to(config.block_size);
+        j.at("limit").get_to(config.limit);
+        config.validate();
     }
 }
 

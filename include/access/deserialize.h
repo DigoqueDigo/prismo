@@ -17,13 +17,16 @@ namespace Deserialize {
         std::function<AccessPatternVariant(const json& j)>>
     access_pattern_variant_map = {
         {"sequential", [](const json& j) {
-            return j.template get<AccessPattern::SequentialAccessPattern>();
+            auto config = j.template get<AccessPattern::SequentialAccessPatternConfig>();
+            return AccessPattern::SequentialAccessPattern(config);
         }},
         {"random", [](const json& j) {
-            return j.template get<AccessPattern::RandomAccessPattern>();
+            auto config = j.template get<AccessPattern::RandomAccessPatternConfig>();
+            return AccessPattern::RandomAccessPattern(config);
         }},
         {"zipfian", [](const json& j) {
-            return j.template get<AccessPattern::ZipfianAccessPattern>();
+            auto config = j.template get<AccessPattern::ZipfianAccessPatternConfig>();
+            return AccessPattern::ZipfianAccessPattern(config);
         }}
     };
 }

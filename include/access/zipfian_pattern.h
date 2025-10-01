@@ -9,59 +9,52 @@
 using json = nlohmann::json;
 
 namespace AccessPattern {
-    struct ZipfianAccessPattern {
+    struct ZipfianAccessPatternConfig {
         size_t block_size;
         size_t limit;
+        size_t distribution_max_limit;
         float skew;
-        Distribution::ZipfianDistribution<unsigned long> distribution;
 
-        explicit ZipfianAccessPattern()
-            : block_size(0), limit(0), skew(), distribution() {}
-
-        // explicit ZipfianAccessPattern(size_t _limit, size_t _block_size, float _skew)
-        //     : block_size(_block_size), distribution(0, maxBlockIndex(_limit, _block_size), _skew) {}
-
-        unsigned long nextOffset() {
-            return distribution.nextValue() * block_size;
+        void validate(void) {
+            if (block_size == 0)
+                throw std::invalid_argument("Invalid block_size for ZipfianAccessPatternConfig");
+            if (block_size > limit)
+                throw std::invalid_argument("Invalid limit for ZipfianAccessPatternConfig");
+            if (skew < 0 || skew > 1)
+                throw std::invalid_argument("Invalid skew for ZipfianAccessPatternConfig");
         }
     };
 
-        void to_json(json& j, const ZipfianAccessPattern& zipfian_pattern) {
+    struct ZipfianAccessPattern {
+        const ZipfianAccessPatternConfig config;
+        // TODO :: mudar para <size_t> ????
+        Distribution::ZipfianDistribution<unsigned long> distribution;
+
+        explicit ZipfianAccessPattern(const ZipfianAccessPatternConfig& _config)
+            : config(_config), distribution(0, _config.distribution_max_limit, _config.skew) {}
+
+        unsigned long nextOffset() {
+            return distribution.nextValue() * config.block_size;
+        }
+    };
+
+        void to_json(json& j, const ZipfianAccessPatternConfig& config) {
         j = json{
             {"type", "zipfian"},
-            {"block_size", zipfian_pattern.block_size},
-            {"limit", zipfian_pattern.limit},
-            {"skew", zipfian_pattern.skew},
+            {"block_size", config.block_size},
+            {"limit", config.limit},
+            {"skew", config.skew},
         };
     }
 
-    void from_json(const json& j, ZipfianAccessPattern& zipfian_pattern) {
-        if (j.at("type").template get<std::string>() != "zipfian") {
-            throw std::runtime_error("Invalid JSON type for ZipfianAccessPattern");
-        }
-
-        j.at("block_size").get_to(zipfian_pattern.block_size);
-        if (zipfian_pattern.block_size == 0) {
-            throw std::invalid_argument("Invalid JSON block_size for ZipfianAccessPattern");
-        }
-
-        j.at("limit").get_to(zipfian_pattern.limit);
-        if (zipfian_pattern.block_size > zipfian_pattern.limit) {
-            throw std::invalid_argument("Invalid JSON limit for ZipfianAccessPattern");
-        }
-
-        j.at("skew").get_to(zipfian_pattern.skew);
-        if (zipfian_pattern.skew < 0 || zipfian_pattern.skew > 1) {
-            throw std::invalid_argument("Invalid JSON skew for ZipfianAccessPattern");
-        }
-
-        zipfian_pattern.distribution.setParams(
-            0,
-            (zipfian_pattern.limit % zipfian_pattern.block_size == 0)
-            ? static_cast<unsigned long>((zipfian_pattern.limit / zipfian_pattern.block_size) - 1)
-            : static_cast<unsigned long>((zipfian_pattern.limit / zipfian_pattern.block_size)),
-            zipfian_pattern.skew
-        );
+    void from_json(const json& j, ZipfianAccessPatternConfig& config) {
+        j.at("block_size").get_to(config.block_size);
+        j.at("limit").get_to(config.limit);
+        j.at("skew").get_to(config.skew);
+        config.distribution_max_limit = (config.limit % config.block_size == 0)
+            ? (config.limit / config.block_size) - 1
+            : (config.limit / config.block_size);
+        config.validate();
     }
 }
 
