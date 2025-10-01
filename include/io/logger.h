@@ -15,7 +15,7 @@ namespace Logger {
         const char* filename = "logs/log.txt";
         size_t queue_size = 8192;
         size_t thread_count = 1;
-        bool log_to_stdout = true;      
+        bool log_to_stdout = true;
     };
 
     const std::shared_ptr<spdlog::logger> initLogger(const LoggerConfig& config = LoggerConfig{});

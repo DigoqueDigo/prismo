@@ -18,18 +18,20 @@ namespace OperationPattern {
     };
 
     struct MixedOperationPattern {
-        const MixedOperationPatternConfig config;
-        size_t index;
-        const size_t length;
+        private:
+            const MixedOperationPatternConfig config;
+            size_t index;
+            const size_t length;
 
-        explicit MixedOperationPattern(const MixedOperationPatternConfig& _config)
-            : config(_config), index(0), length(_config.pattern.size()) {}
+        public:
+            explicit MixedOperationPattern(const MixedOperationPatternConfig& _config)
+                : config(_config), index(0), length(_config.pattern.size()) {}
 
-        OperationType nextOperation() {
-            const OperationType operation = config.pattern.at(index);
-            index = (index + 1) % length;
-            return operation;
-        }
+            OperationType nextOperation(void) {
+                const OperationType operation = config.pattern.at(index);
+                index = (index + 1) % length;
+                return operation;
+            }
     };
 
     void to_json(json& j, const MixedOperationPatternConfig& config) {

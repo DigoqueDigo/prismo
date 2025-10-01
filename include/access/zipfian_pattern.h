@@ -25,18 +25,20 @@ namespace AccessPattern {
     };
 
     struct ZipfianAccessPattern {
-        const ZipfianAccessPatternConfig config;
-        Distribution::ZipfianDistribution<size_t> distribution;
+        private:
+            const ZipfianAccessPatternConfig config;
+            Distribution::ZipfianDistribution<size_t> distribution;
 
-        explicit ZipfianAccessPattern(const ZipfianAccessPatternConfig& _config)
-            : config(_config), distribution(0, _config.limit, _config.skew) {}
+        public:
+            explicit ZipfianAccessPattern(const ZipfianAccessPatternConfig& _config)
+                : config(_config), distribution(0, _config.limit, _config.skew) {}
 
-        size_t nextOffset() {
-            return distribution.nextValue() * config.block_size;
-        }
+            size_t nextOffset(void) {
+                return distribution.nextValue() * config.block_size;
+            }
     };
 
-        void to_json(json& j, const ZipfianAccessPatternConfig& config) {
+    void to_json(json& j, const ZipfianAccessPatternConfig& config) {
         j = json{
             {"type", "zipfian"},
             {"block_size", config.block_size},

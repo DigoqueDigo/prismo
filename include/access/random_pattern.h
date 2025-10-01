@@ -22,15 +22,17 @@ namespace AccessPattern {
     };
 
     struct RandomAccessPattern {
-        const RandomAccessPatternConfig config;
-        Distribution::UniformDistribution<size_t> distribution;
+        private:
+            const RandomAccessPatternConfig config;
+            Distribution::UniformDistribution<size_t> distribution;
 
-        explicit RandomAccessPattern(const RandomAccessPatternConfig& _config)
-            : config(_config), distribution(0, _config.limit) {}
+        public:
+            explicit RandomAccessPattern(const RandomAccessPatternConfig& _config)
+                : config(_config), distribution(0, _config.limit) {}
 
-        size_t nextOffset() {
-            return distribution.nextValue() * config.block_size;
-        }
+            size_t nextOffset(void) {
+                return distribution.nextValue() * config.block_size;
+            }
     };
 
     void to_json(json& j, const RandomAccessPatternConfig& config) {
@@ -42,7 +44,7 @@ namespace AccessPattern {
     }
 
     void from_json(const json& j, RandomAccessPatternConfig& config) {
-        j.at("block_size").get_to(config.block_size);        
+        j.at("block_size").get_to(config.block_size);
         j.at("limit").get_to(config.limit);
         config.validate();
         config.limit = config.limit / config.block_size - 1;

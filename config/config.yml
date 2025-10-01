@@ -1,39 +1,89 @@
-# operation_pattern:
-#   type: constant
-#   operation: read
-
-# operation_pattern:
-#   type: constant
-#   operation: write
+operation_pattern:
+  type: constant
+  operation: read
 
 # operation_pattern:
 #   type: percentage
 #   read_percentage: 60 
 
-operation_pattern:
-  type: mixed
-  pattern:
-    - read
-    - read
-    - write
-    - write
-    - write
-    - read
-    - read
+# operation_pattern:
+#   type: mixed
+#   pattern:
+#     - read
+#     - read
+#     - write
+#     - write
+#     - write
+#     - read
+#     - read
 
-# access_pattern:
-#   type: sequential
-#   block_size: 4096
-#   limit: 65536
+## Operation Pattern Mandatory ##
+
+operation_pattern:
+  type: constant
+  operation: read
+
+# operation_pattern:
+#   type: percentage
+#   read_percentage: 60 
+
+# operation_pattern:
+#   type: mixed
+#   pattern:
+#     - read
+#     - read
+#     - write
+#     - write
+#     - write
+#     - read
+#     - read
+
+## Access Pattern Mandatory ##
+
+access_pattern:
+  type: sequential
+  block_size: 4096
+  limit: 65536
 
 # access_pattern:
 #   type: random
 #   block_size: 2
 #   limit: 10
 
-access_pattern:
-  type: zipfian
-  block_size: 2
-  limit: 65536
-  skew: 0.2
+# access_pattern:
+#   type: zipfian
+#   block_size: 2
+#   limit: 65536
+#   skew: 0.2
 
+## Block Generator Mandatory ##
+
+block_generator:
+  tpye: constant
+  block_size: 4096
+
+# block_generator:
+#   type: random
+#   block_size: 4096
+
+## Backend Engine Mandatory ##
+
+backend_engine:
+  tpye: posix
+
+# backend_engine:
+#   type: io_uring
+
+## Monitoring Optional ##
+
+monitoring:
+  metric_type: base || thread || full
+  logging:
+    name: dedisbench
+    queue_size: 8192
+    thread_count: 1
+    stdout: true || false
+    files:
+      - log1.txt
+      - log2.txt
+      - log3.txt

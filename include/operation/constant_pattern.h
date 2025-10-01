@@ -18,14 +18,16 @@ namespace OperationPattern {
     };
 
     struct ConstantOperationPattern {
-        const ConstantOperationPatternConfig config;
+        private:
+            const ConstantOperationPatternConfig config;
 
-        explicit ConstantOperationPattern(const ConstantOperationPatternConfig& _config)
-            : config(_config) {}
+        public:
+            explicit ConstantOperationPattern(const ConstantOperationPatternConfig& _config)
+                : config(_config) {}
 
-        OperationType nextOperation() {
-            return config.operation;
-        }
+            OperationType nextOperation(void) {
+                return config.operation;
+            }
     };
 
     void to_json(json& j, const ConstantOperationPatternConfig& config) {

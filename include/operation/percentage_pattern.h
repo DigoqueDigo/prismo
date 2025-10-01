@@ -19,17 +19,19 @@ namespace OperationPattern {
     };
 
     struct PercentageOperationPattern {
-        const PercentageOperationPatternConfig config;
-        Distribution::UniformDistribution<unsigned int> distribution;
+        private:
+            const PercentageOperationPatternConfig config;
+            Distribution::UniformDistribution<unsigned int> distribution;
 
-        explicit PercentageOperationPattern(const PercentageOperationPatternConfig& _config)
-            : config(_config), distribution(0, 100) {}
+        public:
+            explicit PercentageOperationPattern(const PercentageOperationPatternConfig& _config)
+                : config(_config), distribution(0, 100) {}
 
-        OperationType nextOperation() {
-            return (distribution.nextValue() < config.read_percentage)
-                ? OperationType::READ
-                : OperationType::WRITE;
-        }
+            OperationType nextOperation(void) {
+                return (distribution.nextValue() < config.read_percentage)
+                    ? OperationType::READ
+                    : OperationType::WRITE;
+            }
     };
 
     void to_json(json& j, const PercentageOperationPatternConfig& config) {

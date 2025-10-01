@@ -21,17 +21,19 @@ namespace AccessPattern {
     };
 
     struct SequentialAccessPattern {
-        const SequentialAccessPatternConfig config;
-        unsigned long current_offset;
+        private:
+            const SequentialAccessPatternConfig config;
+            size_t current_offset;
 
-        explicit SequentialAccessPattern(const SequentialAccessPatternConfig& _config)
-            : config(_config), current_offset(0) {}
+        public:
+            explicit SequentialAccessPattern(const SequentialAccessPatternConfig& _config)
+                : config(_config), current_offset(0) {}
 
-        constexpr unsigned long nextOffset() {
-            const unsigned long offset = current_offset;
-            current_offset = (current_offset + config.block_size) % config.limit;
-            return offset;
-        }
+            size_t nextOffset(void) {
+                const size_t offset = current_offset;
+                current_offset = (current_offset + config.block_size) % config.limit;
+                return offset;
+            }
     };
 
     void to_json(json& j, const SequentialAccessPatternConfig& config) {

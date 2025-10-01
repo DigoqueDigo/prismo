@@ -40,7 +40,7 @@ template<
     typename OperationPattern,
     typename AccessPattern>
 void foo( 
-    OperationPattern operation_pattern, 
+    OperationPattern operation_pattern,
     AccessPattern access_pattern
 ) {
     for (int p = 0; p < 20; p++) {
@@ -53,11 +53,11 @@ void foo(
 
 
 int main(int argc, char** argv) {
-    
+
     if (argc < 2) {
         throw std::logic_error("Invalid number of arguments");
     }
-    
+
     std::ifstream config_file(argv[1]);
     json data = json::parse(config_file);
 

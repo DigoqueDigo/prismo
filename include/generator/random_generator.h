@@ -1,5 +1,5 @@
-#ifndef GENERATOR_H
-#define GENERATOR_H
+#ifndef RANDOM_BLOCK_GENERATOR_H
+#define RANDOM_BLOCK_GENERATOR_H
 
 #include <vector>
 #include <cstddef>
@@ -9,20 +9,17 @@
 #include <distribution/distribution.h>
 
 namespace BlockGenerator {
-    struct Block {
-        const size_t size;
-        std::vector<std::byte> buffer;
+    struct ConstantBlockGeneratorConfig {
+        size_t block_size;
 
-        explicit Block(size_t size)
-            : size(size), buffer(size, std::byte(0)) {}
-
-        inline void fillBuffer(const void* data, size_t size) {
-            std::memcpy(buffer.data(), data, size);
+        void validate(void) {
+            if (block_size == 0 || block_size % sizeof(u_int64_t) != 0)
+                throw std::invalid_argument("Invalid block_size for RandomBlockGeneratorConfig");
         }
     };
 
     struct RandomBlockGenerator {
-        std::vector<uint64_t> data_buffer;
+        Block
         Distribution::UniformDistribution<uint64_t> distribution;
 
         explicit RandomBlockGenerator(size_t block_size)
