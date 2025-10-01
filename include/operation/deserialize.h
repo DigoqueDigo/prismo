@@ -11,19 +11,22 @@ namespace Deserialize {
         OperationPattern::ConstantOperationPattern,
         OperationPattern::PercentageOperationPattern,
         OperationPattern::MixedOperationPattern>;
-    
+
     inline static const std::unordered_map<
         std::string,
         std::function<OperationPatternVariant(const json& j)>>
     operation_pattern_variant_map = {
         {"constant", [](const json& j) {
-            return j.template get<OperationPattern::ConstantOperationPattern>();
+            auto config = j.template get<OperationPattern::ConstantOperationPatternConfig>();
+            return OperationPattern::ConstantOperationPattern(config);
         }},
         {"percentage", [](const json& j) {
-            return j.template get<OperationPattern::PercentageOperationPattern>();
+            auto config = j.template get<OperationPattern::PercentageOperationPatternConfig>();
+            return OperationPattern::PercentageOperationPattern(config);
         }},
         {"mixed", [](const json& j) {
-            return j.template get<OperationPattern::MixedOperationPattern>();
+            auto config = j.template get<OperationPattern::MixedOperationPatternConfig>();
+            return OperationPattern::MixedOperationPattern(config);
         }}
     };
 };

@@ -7,45 +7,47 @@
 using json = nlohmann::json;
 
 namespace OperationPattern {
+    struct MixedOperationPatternConfig {
+        std::vector<OperationType> pattern;   
+
+        void validate(void) {
+            if (pattern.size() == 0) {
+                throw std::invalid_argument("Invalid pattern for MixedOperationPatternConfig");
+            }
+        }
+    };
+
     struct MixedOperationPattern {
+        const MixedOperationPatternConfig config;
         size_t index;
-        size_t length;
-        std::vector<OperationType> pattern;
+        const size_t length;
 
-        explicit MixedOperationPattern()
-            : index(0), length(0), pattern{} {}
-
-        // explicit MixedOperationPattern(const std::vector<OperationType>& _pattern)
-        //     : index(0), length(_pattern.size()), pattern(_pattern) {}
+        explicit MixedOperationPattern(const MixedOperationPatternConfig& _config)
+            : config(_config), index(0), length(_config.pattern.size()) {}
 
         OperationType nextOperation() {
-            const OperationType operation = pattern.at(index);
+            const OperationType operation = config.pattern.at(index);
             index = (index + 1) % length;
             return operation;
         }
     };
 
-    void to_json(json& j, const MixedOperationPattern& mixed_pattern) {
+    void to_json(json& j, const MixedOperationPatternConfig& config) {
         j = json{{"type", "mixed"}};
-        for (OperationType operation : mixed_pattern.pattern) {
+        for (OperationType operation : config.pattern) {
             j["pattern"].push_back(operation == OperationType::READ ? "read" : "write");
         }
     }
 
-    void from_json(const json& j, MixedOperationPattern& mixed_pattern) {
-        if (j.at("type").template get<std::string>() != "mixed") {
-            throw std::runtime_error("Invalid JSON type for MixedOperationPattern");
-        }
+    void from_json(const json& j, MixedOperationPatternConfig& config) {
         for (auto& item : j.at("pattern")) {
-            if (item.template get<std::string>() == "read") {
-                mixed_pattern.pattern.push_back(OperationType::READ);
-            } else if (item.template get<std::string>() == "write") {
-                mixed_pattern.pattern.push_back(OperationType::WRITE);
-            } else {
-                throw std::runtime_error("Invalid JSON pattern for MixedOperationPattern");
-            }
+            config.pattern.push_back(
+                item.template get<std::string>() == "write" 
+                ? OperationType::WRITE
+                : OperationType::READ
+            );
         }
-        mixed_pattern.length = mixed_pattern.pattern.size();
+        config.validate();
     }
 };
 

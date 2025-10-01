@@ -8,38 +8,40 @@
 using json = nlohmann::json;
 
 namespace OperationPattern {
-    struct PercentageOperationPattern {
+    struct PercentageOperationPatternConfig {
         unsigned int read_percentage;
+
+        void validate(void) {
+            if (read_percentage > 100) {
+                throw std::invalid_argument("Invalid read_percentage for PercentageOperationPatternConfig");
+            }
+        }
+    };
+
+    struct PercentageOperationPattern {
+        const PercentageOperationPatternConfig config;
         Distribution::UniformDistribution<unsigned int> distribution;
 
-        explicit PercentageOperationPattern() :
-            read_percentage(0), distribution(0, 100) {}
-
-        // explicit PercentageOperationPattern(unsigned int _read_percentage)
-        //     : read_percentage(_read_percentage), distribution(0, 100) {}
+        explicit PercentageOperationPattern(const PercentageOperationPatternConfig& _config)
+            : config(_config), distribution(0, 100) {}
 
         OperationType nextOperation() {
-            return (distribution.nextValue() < read_percentage)
+            return (distribution.nextValue() < config.read_percentage)
                 ? OperationType::READ
                 : OperationType::WRITE;
         }
     };
 
-    void to_json(json& j, const PercentageOperationPattern& percentage_pattern) {
+    void to_json(json& j, const PercentageOperationPatternConfig& config) {
         j = json{
             {"type", "percentage"},
-            {"read_percentage", percentage_pattern.read_percentage},
+            {"read_percentage", config.read_percentage},
         };
     }
 
-    void from_json(const json& j, PercentageOperationPattern& percentage_pattern) {
-        if (j.at("type").template get<std::string>() != "percentage") {
-            throw std::runtime_error("Invalid JSON type for PercentageOperationPattern");
-        }
-        j.at("read_percentage").get_to(percentage_pattern.read_percentage);
-        if (percentage_pattern.read_percentage > 100) {
-            throw std::runtime_error("Invalid JSON read_percentage for PercentageOperationPattern");
-        }
+    void from_json(const json& j, PercentageOperationPatternConfig& config) {
+        j.at("read_percentage").get_to(config.read_percentage);
+        config.validate();
     }
 };
 

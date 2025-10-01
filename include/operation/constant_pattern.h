@@ -7,40 +7,41 @@
 using json = nlohmann::json;
 
 namespace OperationPattern {
-    struct ConstantOperationPattern {
+    struct ConstantOperationPatternConfig {
         OperationType operation;
 
-        explicit ConstantOperationPattern()
-            : operation(OperationType::READ) {}
-
-        // explicit ConstantOperationPattern(OperationType operation_type)
-        //     : operation(operation_type) {}
-
-        OperationType nextOperation() {
-            return operation;
+        void validate(void) {
+            if (operation != OperationType::READ && operation != OperationType::WRITE) {
+                throw std::invalid_argument("Invalid operation for ConstantOperationPatternConfig");
+            }
         }
     };
 
-    void to_json(json& j, const ConstantOperationPattern& constant_pattern) {
+    struct ConstantOperationPattern {
+        const ConstantOperationPatternConfig config;
+
+        explicit ConstantOperationPattern(const ConstantOperationPatternConfig& _config)
+            : config(_config) {}
+
+        OperationType nextOperation() {
+            return config.operation;
+        }
+    };
+
+    void to_json(json& j, const ConstantOperationPatternConfig& config) {
         j = json{{"type", "constant"}};
-        if (constant_pattern.operation == OperationType::READ) {
+        if (config.operation == OperationType::READ) {
             j["operation"] = "read";
         } else {
             j["operation"] = "write";
         }
     }
 
-    void from_json(const json& j, ConstantOperationPattern& constant_pattern) {
-        if (j.at("type").template get<std::string>() != "constant") {
-            throw std::runtime_error("Invalid JSON type for ConstantOperationPattern");
+    void from_json(const json& j, ConstantOperationPatternConfig& config) {
+        if (j.at("operation").template get<std::string>() == "write") {
+            config.operation = OperationType::WRITE;
         }
-        if (j.at("operation").template get<std::string>() == "read") {
-            constant_pattern.operation = OperationType::READ;
-        } else if (j.at("operation").template get<std::string>() == "write") {
-            constant_pattern.operation = OperationType::WRITE;
-        } else {
-            throw std::runtime_error("Invalid JSON operation for ConstantOperationPattern");
-        }
+        config.validate();
     }
 };
 

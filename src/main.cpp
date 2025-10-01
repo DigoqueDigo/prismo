@@ -1,4 +1,5 @@
-#include <deserialize/access_pattern.h>
+#include <access/deserialize.h>
+#include <operation/deserialize.h>
 
 #include <iostream>
 #include <iomanip>
@@ -35,10 +36,16 @@
 // }
 
 
-template<typename A>
-void foo(A a) {
+template<
+    typename OperationPattern,
+    typename AccessPattern>
+void foo( 
+    OperationPattern operation_pattern, 
+    AccessPattern access_pattern
+) {
     for (int p = 0; p < 10; p++) {
-        std::cout << static_cast<int>(a.nextOperation()) << std::endl;
+        std::cout << "Offset: " << tatic_cast<int>(access_pattern.nextOffset()) << std::endl;
+        std::cout << "Operation: " << static_cast<int>(operation_pattern.nextOperation()) << std::endl;
     }
 }
 
@@ -54,12 +61,16 @@ int main(int argc, char** argv) {
     std::ifstream config_file(argv[1]);
     json data = json::parse(config_file);
 
-    Deserialize::PatternVariant p11 = Deserialize::pattern_variant_map
+    Deserialize::OperationPatternVariant operation_pattern = Deserialize::operation_pattern_variant_map
         .at(data.at("operation_pattern").at("type"))
         (data.at("operation_pattern"));
+
+    Deserialize::AccessPatternVariant access_pattern = Deserialize::access_pattern_variant_map
+        .at(data.at("access_pattern").at("type"))
+        (data.at("access_pattern"));
     
 
-    std::visit([](auto& a){ foo(a); }, p11);
+    std::visit([](auto& a, auto& b){ foo(a, b); }, operation_pattern, access_pattern);
 
     // const size_t block_size = 4096;
     // const size_t size_limit = 65536;
