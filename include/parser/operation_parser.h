@@ -1,12 +1,15 @@
-#ifndef DESERIALIZE_OPERATION_PATTERN_H
-#define DESERIALIZE_OPERATION_PATTERN_H
+#ifndef OPERATION_PATTERN_PARSER_H
+#define OPERATION_PATTERN_PARSER_H
 
 #include <variant>
+#include <stdexcept>
+#include <functional>
+#include <unordered_map>
 #include <operation/constant_pattern.h>
 #include <operation/percentage_pattern.h>
 #include <operation/mixed_pattern.h>
 
-namespace Deserialize {
+namespace Parser {
     using OperationPatternVariant = std::variant<
         OperationPattern::ConstantOperationPattern,
         OperationPattern::PercentageOperationPattern,

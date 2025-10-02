@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <stdexcept>
 #include <nlohmann/json.hpp>
-#include <distribution/distribution.h>
+#include <lib/distribution/distribution.h>
 
 using json = nlohmann::json;
 

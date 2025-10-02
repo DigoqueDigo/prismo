@@ -1,12 +1,15 @@
-#ifndef DESERIALIZE_ACCESS_PATTERN_H
-#define DESERIALIZE_ACCESS_PATTERN_H
+#ifndef ACCESS_PATTERN_PARSER_H
+#define ACCESS_PATTERN_PARSER_H
 
 #include <variant>
+#include <stdexcept>
+#include <functional>
+#include <unordered_map>
 #include <access/sequential_pattern.h>
 #include <access/random_pattern.h>
 #include <access/zipfian_pattern.h>
 
-namespace Deserialize {
+namespace Parser {
     using AccessPatternVariant = std::variant<
         AccessPattern::SequentialAccessPattern,
         AccessPattern::RandomAccessPattern,

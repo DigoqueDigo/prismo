@@ -3,7 +3,7 @@
 
 #include <nlohmann/json.hpp>
 #include <operation/type.h>
-#include <distribution/distribution.h>
+#include <lib/distribution/distribution.h>
 
 using json = nlohmann::json;
 

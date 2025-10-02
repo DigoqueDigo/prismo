@@ -59,7 +59,7 @@ access_pattern:
 ## Block Generator Mandatory ##
 
 block_generator:
-  tpye: constant
+  type: constant
   block_size: 4096
 
 # block_generator:
@@ -69,7 +69,7 @@ block_generator:
 ## Backend Engine Mandatory ##
 
 backend_engine:
-  tpye: posix
+  type: posix
 
 # backend_engine:
 #   type: io_uring

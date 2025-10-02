@@ -2,7 +2,7 @@
 #define DISTRIBUTION_H
 
 #include <random>
-#include <distribution/internals/zipfian.h>
+#include <lib/distribution/zipfian.h>
 
 namespace Distribution {
     template<typename DistributionType>

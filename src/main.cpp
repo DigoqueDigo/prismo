@@ -1,5 +1,6 @@
-#include <access/deserialize.h>
-#include <operation/deserialize.h>
+#include <parser/access_parser.h>
+#include <parser/operation_parser.h>
+#include <parser/generator_parser.h>
 
 #include <iostream>
 #include <iomanip>
@@ -59,19 +60,24 @@ int main(int argc, char** argv) {
     }
 
     std::ifstream config_file(argv[1]);
-    json data = json::parse(config_file);
+    json config_j = json::parse(config_file);
 
-    json access_pattern_j = data.at("access_pattern");
-    json operation_pattern_j = data.at("operation_pattern");
+    json access_pattern_j = config_j.at("access_pattern");
+    json operation_pattern_j = config_j.at("operation_pattern");
+    json block_generator_j = config_j.at("block_generator");
 
-    Deserialize::OperationPatternVariant operation_pattern = Deserialize::getOperationPattern(
+    Parser::OperationPatternVariant operation_pattern = Parser::getOperationPattern(
       operation_pattern_j.at("type").template get<std::string>(),
       operation_pattern_j
     );
 
-    Deserialize::AccessPatternVariant access_pattern = Deserialize::getAccessPattern(
+    Parser::AccessPatternVariant access_pattern = Parser::getAccessPattern(
         access_pattern_j.at("type").template get<std::string>(),
         access_pattern_j
+    );
+
+    Parser::BlockGeneratorVariant block_generator = Parser::getBlockGenerator(
+        block_generator_j.at("type").template get<std::string>()
     );
 
     std::visit([](auto& a, auto& b){ foo(a, b); }, operation_pattern, access_pattern);
@@ -142,6 +148,8 @@ int main(int argc, char** argv) {
     //     randomBlockGenerator,
     //     block
     // );
+
+    config_file.close();
 
     return 0;
 }

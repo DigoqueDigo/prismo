@@ -1,20 +1,32 @@
 {
   "operation_pattern": {
-    "type": "mixed",
-    "pattern": [
-      "read",
-      "read",
-      "write",
-      "write",
-      "write",
-      "read",
-      "read"
-    ]
+    "type": "constant",
+    "operation": "read"
   },
   "access_pattern": {
-    "type": "zipfian",
+    "type": "sequential",
     "block_size": 4096,
-    "limit": 65536,
-    "skew": 0.99
+    "limit": 65536
+  },
+  "block_generator": {
+    "type": "constant",
+    "block_size": 4096
+  },
+  "backend_engine": {
+    "tpye": "posix"
+  },
+  "monitoring": {
+    "metric_type": "base || thread || full",
+    "logging": {
+      "name": "dedisbench",
+      "queue_size": 8192,
+      "thread_count": 1,
+      "stdout": "true || false",
+      "files": [
+        "log1.txt",
+        "log2.txt",
+        "log3.txt"
+      ]
+    }
   }
 }
