@@ -10,7 +10,7 @@ namespace OperationPattern {
     struct MixedOperationPatternConfig {
         std::vector<OperationType> pattern;   
 
-        void validate(void) {
+        void validate(void) const {
             if (pattern.size() == 0) {
                 throw std::invalid_argument("Invalid pattern for MixedOperationPatternConfig");
             }
@@ -28,14 +28,13 @@ namespace OperationPattern {
                 : config(_config), index(0), length(_config.pattern.size()) {}
 
             OperationType nextOperation(void) {
-                const OperationType operation = config.pattern.at(index);
+                OperationType operation = config.pattern.at(index);
                 index = (index + 1) % length;
                 return operation;
             }
     };
 
     void to_json(json& j, const MixedOperationPatternConfig& config) {
-        j = json{{"type", "mixed"}};
         for (OperationType operation : config.pattern) {
             j["pattern"].push_back(operation == OperationType::READ ? "read" : "write");
         }

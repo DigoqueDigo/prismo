@@ -10,7 +10,7 @@ namespace OperationPattern {
     struct ConstantOperationPatternConfig {
         OperationType operation;
 
-        void validate(void) {
+        void validate(void) const {
             if (operation != OperationType::READ && operation != OperationType::WRITE) {
                 throw std::invalid_argument("Invalid operation for ConstantOperationPatternConfig");
             }
@@ -31,7 +31,6 @@ namespace OperationPattern {
     };
 
     void to_json(json& j, const ConstantOperationPatternConfig& config) {
-        j = json{{"type", "constant"}};
         if (config.operation == OperationType::READ) {
             j["operation"] = "read";
         } else {

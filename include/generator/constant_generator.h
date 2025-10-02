@@ -8,7 +8,7 @@
 namespace BlockGenerator {
     struct ConstantBlockGenerator {
         void nextBlock(Block& block) {
-            std::memset(block.buffer, 0, block.size);
+            std::memset(block.buffer, 0, block.config.size);
         }
     };
 };

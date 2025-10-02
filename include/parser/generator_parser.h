@@ -30,7 +30,7 @@ namespace Parser {
         if (it != block_generator_variant_map.end()) {
             return it->second();
         } else {
-            throw std::invalid_argument("Access pattern type '" + type + "' is not recognized");
+            throw std::invalid_argument("Block generator type '" + type + "' is not recognized");
         }
     }
 }

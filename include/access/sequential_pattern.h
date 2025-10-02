@@ -12,7 +12,7 @@ namespace AccessPattern {
         size_t block_size;
         size_t limit;
 
-        void validate(void) {
+        void validate(void) const {
             if (block_size == 0)
                 throw std::invalid_argument("Invalid block_size for SequentialAccessPatternConfig");
             if (block_size > limit)
@@ -38,9 +38,8 @@ namespace AccessPattern {
 
     void to_json(json& j, const SequentialAccessPatternConfig& config) {
         j = json{
-            {"type", "sequential"},
             {"block_size", config.block_size},
-            {"limit", config.limit}
+            {"limit", config.limit},
         };
     }
 

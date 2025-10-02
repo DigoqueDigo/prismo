@@ -11,7 +11,7 @@ namespace OperationPattern {
     struct PercentageOperationPatternConfig {
         unsigned int read_percentage;
 
-        void validate(void) {
+        void validate(void) const {
             if (read_percentage > 100) {
                 throw std::invalid_argument("Invalid read_percentage for PercentageOperationPatternConfig");
             }
@@ -35,10 +35,7 @@ namespace OperationPattern {
     };
 
     void to_json(json& j, const PercentageOperationPatternConfig& config) {
-        j = json{
-            {"type", "percentage"},
-            {"read_percentage", config.read_percentage},
-        };
+        j = json{{"read_percentage", config.read_percentage}};
     }
 
     void from_json(const json& j, PercentageOperationPatternConfig& config) {

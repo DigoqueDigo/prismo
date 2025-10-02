@@ -14,7 +14,7 @@ namespace AccessPattern {
         size_t limit;
         float skew;
 
-        void validate(void) {
+        void validate(void) const {
             if (block_size == 0)
                 throw std::invalid_argument("Invalid block_size for ZipfianAccessPatternConfig");
             if (block_size > limit)
@@ -40,7 +40,6 @@ namespace AccessPattern {
 
     void to_json(json& j, const ZipfianAccessPatternConfig& config) {
         j = json{
-            {"type", "zipfian"},
             {"block_size", config.block_size},
             {"limit", config.limit},
             {"skew", config.skew},

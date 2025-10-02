@@ -1,5 +1,5 @@
-#ifndef POSIX_ENGINE_H
-#define POSIX_ENGINE_H
+#ifndef POSIX_BACKEND_ENGINE_H
+#define POSIX_BACKEND_ENGINE_H
 
 #include <memory>
 #include <fcntl.h>
@@ -13,8 +13,6 @@
 namespace BackendEngine {
     template <typename Metric = void>
     struct PosixEngine {
-        // TODO :: save metrics in memory???
-        // std::vector<Metric> metrics;
         const std::shared_ptr<spdlog::logger> logger;
 
         explicit PosixEngine(

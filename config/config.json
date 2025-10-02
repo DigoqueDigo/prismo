@@ -1,32 +1,57 @@
 {
+  "block": {
+    "size": 4096
+  },
+
   "operation_pattern": {
-    "type": "constant",
-    "operation": "read"
-  },
-  "access_pattern": {
-    "type": "sequential",
-    "block_size": 4096,
-    "limit": 65536
-  },
-  "block_generator": {
-    "type": "constant",
-    "block_size": 4096
-  },
-  "backend_engine": {
-    "tpye": "posix"
-  },
-  "monitoring": {
-    "metric_type": "base || thread || full",
-    "logging": {
-      "name": "dedisbench",
-      "queue_size": 8192,
-      "thread_count": 1,
-      "stdout": "true || false",
-      "files": [
-        "log1.txt",
-        "log2.txt",
-        "log3.txt"
+    "constant": {
+      "operation": "write"
+    },
+    "percentage": {
+      "read_percentage": 50
+    },
+    "mixed": {
+      "pattern": [
+        "read",
+        "read",
+        "write",
+        "read",
+        "write",
+        "write",
+        "write"
       ]
     }
+  },
+
+  "access_pattern": {
+    "sequential": {
+      "block_size": 4096,
+      "limit": 4096000
+    },
+    "random": {
+      "block_size": 4096,
+      "limit": 65536
+    },
+    "zipfian": {
+      "block_size": 4096,
+      "limit": 65536,
+      "skew": 0.9
+    }
+  },
+
+  "block_generator": {
+    "constant": {},
+    "random": {}
+  },
+
+  "backend_engine": {
+    "posix": {}
+  },
+
+  "run": {
+    "operation_pattern": "constant",
+    "access_pattern": "sequential",
+    "block_generator": "random",
+    "backend_engine": "posix"
   }
 }

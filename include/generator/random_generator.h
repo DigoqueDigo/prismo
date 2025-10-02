@@ -15,7 +15,7 @@ namespace BlockGenerator {
         };
 
         void nextBlock(Block& block) {
-            prng_gen(&generator, block.buffer, block.size);
+            prng_gen(&generator, block.buffer, block.config.size);
         }
     };
 };
