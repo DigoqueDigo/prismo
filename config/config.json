@@ -1,11 +1,18 @@
 {
-  "block": {
-    "size": 4096
+  "workload": {
+    "limit": 65536,
+    "block_size": 4096,
+    "filename": "testfile",
+    "operation_pattern": "constant",
+    "access_pattern": "sequential",
+    "block_generator": "random",
+    "backend_engine": "posix",
+    "logging": "spdlog"
   },
 
   "operation_pattern": {
     "constant": {
-      "operation": "write"
+      "operation": "read"
     },
     "percentage": {
       "read_percentage": 50
@@ -24,17 +31,9 @@
   },
 
   "access_pattern": {
-    "sequential": {
-      "block_size": 4096,
-      "limit": 4096000
-    },
-    "random": {
-      "block_size": 4096,
-      "limit": 65536
-    },
+    "sequential": {},
+    "random": {},
     "zipfian": {
-      "block_size": 4096,
-      "limit": 65536,
       "skew": 0.9
     }
   },
@@ -45,13 +44,25 @@
   },
 
   "backend_engine": {
-    "posix": {}
+    "posix": {
+      "metric": "base"
+    },
+    "io_uring": {
+      "metric": "full"
+    }
   },
 
-  "run": {
-    "operation_pattern": "constant",
-    "access_pattern": "sequential",
-    "block_generator": "random",
-    "backend_engine": "posix"
+  "logging": {
+    "spdlog": {
+      "name": "dedisbench",
+      "queue_size": 8192,
+      "thread_count": 1,
+      "stdout": true,
+      "files": [
+        "log1.log",
+        "log2.log",
+        "log3.log"
+      ]
+    }
   }
 }

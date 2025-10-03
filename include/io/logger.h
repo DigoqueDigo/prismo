@@ -1,24 +1,76 @@
-#ifndef LOGGER_H
-#define LOGGER_H
+#ifndef SPDLOG_LOGGER_H
+#define SPDLOG_LOGGER_H
 
+#include <string>
+#include <vector>
 #include <io/metric.h>
 #include <operation/type.h>
+#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include <spdlog/async.h>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_sinks.h>
 
+using json = nlohmann::json;
+
 namespace Logger {
-    struct LoggerConfig {
-        const char* name = "dedisbench";
-        const char* filename = "logs/log.txt";
+    struct SpdlogConfig {
+        std::string name;
         size_t queue_size = 8192;
         size_t thread_count = 1;
-        bool log_to_stdout = true;
+        bool to_stdout = false;
+        std::vector<std::string> files;
     };
 
-    const std::shared_ptr<spdlog::logger> initLogger(const LoggerConfig& config = LoggerConfig{});
+    struct Spdlog {
+        private:
+            const std::shared_ptr<spdlog::logger> spdlog;
+        
+        public:
+            explicit Spdlog(const SpdlogConfig& config) {
+                std::vector<spdlog::sink_ptr> sinks;
+                spdlog::init_thread_pool(config.queue_size, config.thread_count);
+
+                if (config.to_stdout) {
+                    auto stdout_sink = std::make_shared<spdlog::sinks::stdout_sink_mt >();
+                    sinks.push_back(stdout_sink);
+                }
+
+                for (auto& file : config.files) {
+                    auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(file);
+                    sinks.push_back(file_sink);
+                }
+
+                auto logger = std::make_shared<spdlog::async_logger>(
+                    config.name,
+                    sinks.begin(),
+                    sinks.end(),
+                    spdlog::thread_pool(),
+                    spdlog::async_overflow_policy::block
+                );
+
+                spdlog::register_logger(logger);
+            }
+    };
+
+    void to_json(json& j, const SpdlogConfig& config) {
+        j = json{
+            {"name", config.name},
+            {"queue_size", config.queue_size,
+            {"thread_count", config.thread_count},
+            {"stdout", config.to_stdout},
+            {"files", config.files},
+        }};
+    }
+
+    void from_json(const json& j, SpdlogConfig& config) {
+        j.at("name").get_to(config.name);
+        j.at("queue_size").get_to(config.queue_size);
+        j.at("thread_count").get_to(config.thread_count);
+        j.at("stdout").get_to(config.to_stdout);
+        j.at("files").get_to(config.files);
+    }
 };
 
 template<>
@@ -54,7 +106,7 @@ struct fmt::formatter<IOMetric::FullSyncMetric> : fmt::formatter<std::string> {
     auto format(const IOMetric::FullSyncMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
         return fmt::format_to(
             ctx.out(),
-            "[type={} sts={} ets={} pid={} tid={} req={} wrt={} offset={} ret={} errno={}]",
+            "[type={} sts={} ets={} pid={} tid={} req={} proc={} offset={} ret={} errno={}]",
             static_cast<uint8_t>(metric.operation_type),
             metric.start_timestamp,
             metric.end_timestamp,

@@ -20,7 +20,7 @@ namespace Parser {
         std::function<BackendEngineVariant(const std::shared_ptr<spdlog::logger>& logger)>>
     backend_engine_variant_map = {
         {"posix", [](const std::shared_ptr<spdlog::logger>& logger) {
-            return BackendEngine::PosixEngine<void>(logger);
+            return BackendEngine::PosixEngine<IOMetric::FullSyncMetric>(logger);
         }}
     };
 

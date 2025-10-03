@@ -17,26 +17,29 @@ namespace Parser {
 
     inline static const std::unordered_map<
         std::string,
-        std::function<AccessPatternVariant(const json& j)>>
+        std::function<AccessPatternVariant(json& specialized, const json& workload)>>
     access_pattern_variant_map = {
-        {"sequential", [](const json& j) {
-            auto config = j.template get<AccessPattern::SequentialAccessPatternConfig>();
+        {"sequential", [](json& specialized, const json& workload) {
+            specialized.merge_patch(workload);
+            auto config = specialized.template get<AccessPattern::SequentialAccessPatternConfig>();
             return AccessPattern::SequentialAccessPattern(config);
         }},
-        {"random", [](const json& j) {
-            auto config = j.template get<AccessPattern::RandomAccessPatternConfig>();
+        {"random", [](json& specialized, const json& workload) {
+            specialized.merge_patch(workload);
+            auto config = specialized.template get<AccessPattern::RandomAccessPatternConfig>();
             return AccessPattern::RandomAccessPattern(config);
         }},
-        {"zipfian", [](const json& j) {
-            auto config = j.template get<AccessPattern::ZipfianAccessPatternConfig>();
+        {"zipfian", [](json& specialized, const json& workload) {
+            specialized.merge_patch(workload);
+            auto config = specialized.template get<AccessPattern::ZipfianAccessPatternConfig>();
             return AccessPattern::ZipfianAccessPattern(config);
         }}
     };
 
-    AccessPatternVariant getAccessPattern(const std::string& type, const json& j) {
+    AccessPatternVariant getAccessPattern(const std::string& type, json& specialized, const json& workload) {
         auto it  = access_pattern_variant_map.find(type);
         if (it != access_pattern_variant_map.end()) {
-            return it->second(j);
+            return it->second(specialized, workload);
         } else {
             throw std::invalid_argument("Access pattern type '" + type + "' is not recognized");
         }

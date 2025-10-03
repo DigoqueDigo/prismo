@@ -38,11 +38,11 @@ namespace BlockGenerator {
     };
 
     void to_json(json& j, const BlockConfig& config) {
-        j = json{{"size", config.size}};
+        j = json{{"block_size", config.size}};
     }
 
     void from_json(const json& j, BlockConfig& config) {
-        j.at("size").get_to(config.size);
+        j.at("block_size").get_to(config.size);
         config.validate();
     }
 };

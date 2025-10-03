@@ -13,7 +13,6 @@ project(
 # Define include directories and source files
 inc = include_directories('include')
 src = files(
-  'src/io/logger.cpp',
   'src/main.cpp',
 )
 

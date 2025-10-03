@@ -42,12 +42,12 @@ namespace BackendEngine {
     void PosixEngine<Metric>::_read(int fd, void* buffer, size_t size, off_t offset) {
         if constexpr (!std::is_void_v<Metric>) {
             Metric metric{};
-            
+
             metric.start_timestamp =
             std::chrono::duration_cast<std::chrono::nanoseconds>(
                 std::chrono::steady_clock::now().time_since_epoch()
             ).count();
-            
+
             ssize_t bytes_read = ::pread(fd, buffer, size, offset);
 
             metric.end_timestamp =
