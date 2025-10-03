@@ -25,24 +25,24 @@ namespace Logger {
 
     struct Spdlog {
         private:
-            const std::shared_ptr<spdlog::logger> spdlog;
-        
+            std::shared_ptr<spdlog::logger> logger;
+
         public:
             explicit Spdlog(const SpdlogConfig& config) {
                 std::vector<spdlog::sink_ptr> sinks;
                 spdlog::init_thread_pool(config.queue_size, config.thread_count);
 
                 if (config.to_stdout) {
-                    auto stdout_sink = std::make_shared<spdlog::sinks::stdout_sink_mt >();
+                    auto stdout_sink = std::make_shared<spdlog::sinks::stdout_sink_mt>();
                     sinks.push_back(stdout_sink);
                 }
 
                 for (auto& file : config.files) {
-                    auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(file);
+                    auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(file, true);
                     sinks.push_back(file_sink);
                 }
 
-                auto logger = std::make_shared<spdlog::async_logger>(
+                this->logger = std::make_shared<spdlog::async_logger>(
                     config.name,
                     sinks.begin(),
                     sinks.end(),
@@ -51,6 +51,11 @@ namespace Logger {
                 );
 
                 spdlog::register_logger(logger);
+            }
+
+            template<typename... Args>
+            inline void info(Args&&... args) const {
+                this->logger->info(std::forward<Args>(args)...);
             }
     };
 

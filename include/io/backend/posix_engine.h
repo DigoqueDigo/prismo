@@ -8,16 +8,14 @@
 #include <thread>
 #include <stdexcept>
 #include <io/metric.h>
-#include <spdlog/spdlog.h>
+#include <io/logger.h>
 
 namespace BackendEngine {
-    template <typename Metric = void>
+    template <typename Logger, typename Metric = void>
     struct PosixEngine {
-        const std::shared_ptr<spdlog::logger> logger;
+        const Logger logger;
 
-        explicit PosixEngine(
-            const std::shared_ptr<spdlog::logger>& _logger
-        );
+        explicit PosixEngine(const Logger& _logger);
 
         int _open(const char* filename, int flags, mode_t mode);        
         void _read(int fd, void* buffer, size_t size, off_t offset); 
@@ -25,12 +23,12 @@ namespace BackendEngine {
         void _close(int fd);
     };
 
-    template<typename Metric>
-    PosixEngine<Metric>::PosixEngine(const std::shared_ptr<spdlog::logger>& _logger)
+    template<typename Logger, typename Metric>
+    PosixEngine<Logger, Metric>::PosixEngine(const Logger& _logger)
         : logger(_logger) {}
 
-    template<typename Metric>
-    int PosixEngine<Metric>::_open(const char* filename, int flags, mode_t mode) {
+    template<typename Logger, typename Metric>
+    int PosixEngine<Logger, Metric>::_open(const char* filename, int flags, mode_t mode) {
         ssize_t fd = ::open(filename, flags, mode);
         if (fd < 0) {
             throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
@@ -38,8 +36,8 @@ namespace BackendEngine {
         return fd;
     }
 
-    template<typename Metric>
-    void PosixEngine<Metric>::_read(int fd, void* buffer, size_t size, off_t offset) {
+    template<typename Logger, typename Metric>
+    void PosixEngine<Logger, Metric>::_read(int fd, void* buffer, size_t size, off_t offset) {
         if constexpr (!std::is_void_v<Metric>) {
             Metric metric{};
 
@@ -72,14 +70,14 @@ namespace BackendEngine {
                 metric.error_no         = errno;
             }
 
-            this->logger->info(metric);
+            this->logger.info(metric);
         } else {
             pread(fd, buffer, size, offset);
         }
     }
 
-    template<typename Metric>
-    void PosixEngine<Metric>::_write(int fd, const void* buffer, size_t size, off_t offset) {
+    template<typename Logger, typename Metric>
+    void PosixEngine<Logger, Metric>::_write(int fd, const void* buffer, size_t size, off_t offset) {
         if constexpr (!std::is_void_v<Metric>) {
             Metric metric{};
 
@@ -112,14 +110,14 @@ namespace BackendEngine {
                 metric.error_no         = errno;
             }
 
-            this->logger->info(metric);
+            this->logger.info(metric);
         } else {
             pwrite(fd, buffer, size, offset);
         }
     }
 
-    template<typename Metric>
-    void PosixEngine<Metric>::_close(int fd) {
+    template<typename Logger, typename Metric>
+    void PosixEngine<Logger, Metric>::_close(int fd) {
         int return_code = ::close(fd);
         if (return_code < 0) {
             throw std::runtime_error("Failed to close fd: " + std::string(strerror(errno)));

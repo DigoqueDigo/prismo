@@ -1,6 +1,6 @@
 {
   "workload": {
-    "limit": 65536,
+    "limit": 4096000,
     "block_size": 4096,
     "filename": "testfile",
     "operation_pattern": "constant",
@@ -59,9 +59,9 @@
       "thread_count": 1,
       "stdout": true,
       "files": [
-        "log1.log",
-        "log2.log",
-        "log3.log"
+        "./log1.log",
+        "./log2.log",
+        "./log3.log"
       ]
     }
   }

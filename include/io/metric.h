@@ -6,7 +6,6 @@
 #include <operation/type.h>
 
 namespace IOMetric {
-
     struct BaseSyncMetric {
         uint64_t start_timestamp;
         uint64_t end_timestamp;
