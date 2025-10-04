@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest]
         buildtype: [release]
 
     steps:
@@ -37,7 +37,8 @@ jobs:
     - name: Install dependencies (macOS)
       if: matrix.os == 'macos-latest'
       run: |
-        brew install boost
+        brew update
+        brew install boost liburing spdlog
 
     - name: Configure Meson
       run: meson setup builddir --buildtype=${{ matrix.buildtype }} -Dwarning_level=3 -Dcpp_std=c++17
