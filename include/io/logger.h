@@ -17,9 +17,10 @@ using json = nlohmann::json;
 namespace Logger {
     struct SpdlogConfig {
         std::string name;
-        size_t queue_size = 8192;
-        size_t thread_count = 1;
-        bool to_stdout = false;
+        size_t queue_size;
+        size_t thread_count;
+        bool truncate;
+        bool to_stdout;
         std::vector<std::string> files;
     };
 
@@ -38,7 +39,7 @@ namespace Logger {
                 }
 
                 for (auto& file : config.files) {
-                    auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(file, true);
+                    auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(file, config.truncate);
                     sinks.push_back(file_sink);
                 }
 
@@ -53,9 +54,9 @@ namespace Logger {
                 spdlog::register_logger(logger);
             }
 
-            template<typename... Args>
-            inline void info(Args&&... args) const {
-                this->logger->info(std::forward<Args>(args)...);
+            template<typename... ArgsT>
+            inline void info(ArgsT&&... args) const {
+                this->logger->info(std::forward<ArgsT>(args)...);
             }
     };
 
@@ -64,6 +65,7 @@ namespace Logger {
             {"name", config.name},
             {"queue_size", config.queue_size,
             {"thread_count", config.thread_count},
+            {"truncate", config.truncate},
             {"stdout", config.to_stdout},
             {"files", config.files},
         }};
@@ -73,14 +75,15 @@ namespace Logger {
         j.at("name").get_to(config.name);
         j.at("queue_size").get_to(config.queue_size);
         j.at("thread_count").get_to(config.thread_count);
+        j.at("truncate").get_to(config.truncate);
         j.at("stdout").get_to(config.to_stdout);
         j.at("files").get_to(config.files);
     }
 };
 
 template<>
-struct fmt::formatter<IOMetric::BaseSyncMetric> : fmt::formatter<std::string> {
-    auto format(const IOMetric::BaseSyncMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
+struct fmt::formatter<Metric::BaseSyncMetric> : fmt::formatter<std::string> {
+    auto format(const Metric::BaseSyncMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
         return fmt::format_to(
             ctx.out(),
             "[type={} sts={} ets={}]",
@@ -92,8 +95,8 @@ struct fmt::formatter<IOMetric::BaseSyncMetric> : fmt::formatter<std::string> {
 };
 
 template<>
-struct fmt::formatter<IOMetric::ThreadSyncMetric> : fmt::formatter<std::string> {
-    auto format(const IOMetric::ThreadSyncMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
+struct fmt::formatter<Metric::StandardSyncMetric> : fmt::formatter<std::string> {
+    auto format(const Metric::StandardSyncMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
         return fmt::format_to(
             ctx.out(),
             "[type={} sts={} ets={} pid={} tid={}]",
@@ -107,8 +110,8 @@ struct fmt::formatter<IOMetric::ThreadSyncMetric> : fmt::formatter<std::string> 
 };
 
 template<>
-struct fmt::formatter<IOMetric::FullSyncMetric> : fmt::formatter<std::string> {
-    auto format(const IOMetric::FullSyncMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
+struct fmt::formatter<Metric::FullSyncMetric> : fmt::formatter<std::string> {
+    auto format(const Metric::FullSyncMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
         return fmt::format_to(
             ctx.out(),
             "[type={} sts={} ets={} pid={} tid={} req={} proc={} offset={} ret={} errno={}]",

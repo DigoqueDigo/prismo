@@ -1,8 +1,9 @@
 #include <parser/access_parser.h>
 #include <parser/operation_parser.h>
 #include <parser/generator_parser.h>
-#include <parser/backend_parser.h>
 #include <parser/logger_parser.h>
+#include <parser/metric_parser.h>
+#include <parser/backend_parser.h>
 
 #include <io/logger.h>
 #include <operation/type.h>
@@ -14,18 +15,18 @@
 
 
 template<
-    typename _Block,
-    typename _OperationPattern,
-    typename _AccessPattern,
-    typename _BlockGenerator,
-    typename _BackendEngine>
+    typename BlockT,
+    typename OperationPatternT,
+    typename AccessPatternT,
+    typename BlockGeneratorT,
+    typename BackendEngineT>
 void worker(
     const std::string filename,
-    _Block& block,
-    _OperationPattern& operation_pattern,
-    _AccessPattern& access_pattern,
-    _BlockGenerator& block_generator,
-    _BackendEngine& backend_engine
+    BlockT& block,
+    OperationPatternT& operation_pattern,
+    AccessPatternT& access_pattern,
+    BlockGeneratorT& block_generator,
+    BackendEngineT& backend_engine
 ) {
     int fd = backend_engine._open(filename.c_str(), O_RDWR | O_CREAT | O_DIRECT, 0666);
     block_generator.nextBlock(block);
@@ -88,19 +89,32 @@ int main(int argc, char** argv) {
         config_j.at("logging").at(logging_key)
     );
 
+    std::string metric_key = workload_j.at("metric").template get<std::string>();
+    Parser::MetricVariant metric = Parser::getMetric(
+        metric_key
+    );
+
     std::string backend_engine_key = workload_j.at("backend_engine").template get<std::string>();
     Parser::BackendEngineVariant backend_engine = Parser::getBanckendEngine(
         backend_engine_key,
-        logger
+        logger,
+        metric
     );
 
     std::visit(
         [&filename, &block](
-            auto& operation_pattern,
-            auto& access_pattern,
-            auto& block_generator,
-            auto& backend_engine) {
-            worker(filename, block, operation_pattern, access_pattern, block_generator, backend_engine);
+            auto& _operation_pattern,
+            auto& _access_pattern,
+            auto& _block_generator,
+            auto& _backend_engine) {
+            worker(
+                filename,
+                block,
+                _operation_pattern,
+                _access_pattern,
+                _block_generator,
+                _backend_engine
+            );
         },
         operation_pattern,
         access_pattern,

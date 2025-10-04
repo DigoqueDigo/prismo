@@ -5,19 +5,19 @@
 #include <sys/types.h>
 #include <operation/type.h>
 
-namespace IOMetric {
+namespace Metric {
     struct BaseSyncMetric {
-        uint64_t start_timestamp;
-        uint64_t end_timestamp;
+        int64_t start_timestamp;
+        int64_t end_timestamp;
         OperationPattern::OperationType operation_type;
     };
 
-    struct ThreadSyncMetric : BaseSyncMetric {
+    struct StandardSyncMetric : BaseSyncMetric {
         pid_t pid;
         uint64_t tid;
     };
 
-    struct FullSyncMetric : ThreadSyncMetric {
+    struct FullSyncMetric : StandardSyncMetric {
         uint32_t requested_bytes;
         uint32_t processed_bytes;
         uint64_t offset;

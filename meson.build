@@ -4,7 +4,7 @@ project(
   version: '1.0.0',
   default_options: [
     'warning_level=3',                                                # Equivalent to -Wall and -Wextra
-    'cpp_std=c++20',                                                  # Equivalent to -std=c++17
+    'cpp_std=c++20',                                                  # Equivalent to -std=c++20
     'optimization=0',                                                 # Default to -O0 for debug
     'debug=true'                                                      # Default to -g for debug
   ]

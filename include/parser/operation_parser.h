@@ -17,26 +17,26 @@ namespace Parser {
 
     inline static const std::unordered_map<
         std::string,
-        std::function<OperationPatternVariant(const json& j)>>
+        std::function<OperationPatternVariant(const json& specialized)>>
     operation_pattern_variant_map = {
-        {"constant", [](const json& j) {
-            auto config = j.template get<OperationPattern::ConstantOperationPatternConfig>();
+        {"constant", [](const json& specialized) {
+            auto config = specialized.template get<OperationPattern::ConstantOperationPatternConfig>();
             return OperationPattern::ConstantOperationPattern(config);
         }},
-        {"percentage", [](const json& j) {
-            auto config = j.template get<OperationPattern::PercentageOperationPatternConfig>();
+        {"percentage", [](const json& specialized) {
+            auto config = specialized.template get<OperationPattern::PercentageOperationPatternConfig>();
             return OperationPattern::PercentageOperationPattern(config);
         }},
-        {"mixed", [](const json& j) {
-            auto config = j.template get<OperationPattern::MixedOperationPatternConfig>();
+        {"mixed", [](const json& specialized) {
+            auto config = specialized.template get<OperationPattern::MixedOperationPatternConfig>();
             return OperationPattern::MixedOperationPattern(config);
         }}
     };
 
-    OperationPatternVariant getOperationPattern(const std::string& type, const json& j) {
+    OperationPatternVariant getOperationPattern(const std::string& type, const json& specialized) {
         auto it = operation_pattern_variant_map.find(type);
         if (it != operation_pattern_variant_map.end()) {
-            return it->second(j);
+            return it->second(specialized);
         } else {
             throw std::invalid_argument("Operation pattern type '" + type + "' is not recognized");
         }

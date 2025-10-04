@@ -5,35 +5,40 @@
 #include <stdexcept>
 #include <functional>
 #include <unordered_map>
-#include <io/metric.h>
 #include <io/backend/posix_engine.h>
+#include <parser/metric_parser.h>
 #include <parser/logger_parser.h>
 
 namespace Parser {
     using BackendEngineVariant = std::variant<
-        BackendEngine::PosixEngine<Logger::Spdlog, void>,
-        BackendEngine::PosixEngine<Logger::Spdlog, IOMetric::BaseSyncMetric>,
-        BackendEngine::PosixEngine<Logger::Spdlog, IOMetric::ThreadSyncMetric>,
-        BackendEngine::PosixEngine<Logger::Spdlog, IOMetric::FullSyncMetric>>;
+        BackendEngine::PosixEngine<Logger::Spdlog, std::monostate>,
+        BackendEngine::PosixEngine<Logger::Spdlog, Metric::BaseSyncMetric>,
+        BackendEngine::PosixEngine<Logger::Spdlog, Metric::StandardSyncMetric>,
+        BackendEngine::PosixEngine<Logger::Spdlog, Metric::FullSyncMetric>>;
 
     inline static const std::unordered_map<
         std::string,
-        std::function<BackendEngineVariant(const LoggerVariant& logger)>>
+        std::function<BackendEngineVariant(const LoggerVariant& logger, const MetricVariant& metric)>>
     backend_engine_variant_map = {
-        {"posix", [](const LoggerVariant& logger_variant) -> BackendEngineVariant {
-            return std::visit([](auto&& actual_logger) -> BackendEngineVariant {
-                using LoggerType = std::decay_t<decltype(actual_logger)>;
-                return BackendEngine::PosixEngine<LoggerType, IOMetric::FullSyncMetric>(actual_logger);
+        {"posix", [](const LoggerVariant& logger_variant,const MetricVariant& metric_variant) {
+            return std::visit([&](auto&& actual_logger) -> BackendEngineVariant {
+                using ActualLoggerType = std::decay_t<decltype(actual_logger)>;
+
+                return std::visit([&](auto&& actual_metric) -> BackendEngineVariant {
+                    using ActualMetricType = std::decay_t<decltype(actual_metric)>;
+                    return BackendEngine::PosixEngine<ActualLoggerType, ActualMetricType>(actual_logger);
+                }, metric_variant);
+
             }, logger_variant);
         }}
     };
 
-    BackendEngineVariant getBanckendEngine(const std::string& type, const LoggerVariant& logger) {
+    BackendEngineVariant getBanckendEngine(const std::string& type, const LoggerVariant& logger, const MetricVariant& metric) {
         auto it  = backend_engine_variant_map.find(type);
         if (it != backend_engine_variant_map.end()) {
-            return it->second(logger);
+            return it->second(logger, metric);
         } else {
-            throw std::invalid_argument("Access pattern type '" + type + "' is not recognized");
+            throw std::invalid_argument("Backend engine type '" + type + "' is not recognized");
         }
     }
 }

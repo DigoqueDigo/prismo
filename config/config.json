@@ -7,6 +7,7 @@
     "access_pattern": "sequential",
     "block_generator": "random",
     "backend_engine": "posix",
+    "metric": "full",
     "logging": "spdlog"
   },
 
@@ -44,12 +45,15 @@
   },
 
   "backend_engine": {
-    "posix": {
-      "metric": "base"
-    },
-    "io_uring": {
-      "metric": "full"
-    }
+    "posix": {},
+    "io_uring": {}
+  },
+
+  "metric": {
+    "none": {},
+    "base": {},
+    "standard": {},
+    "full": {}
   },
 
   "logging": {
@@ -57,6 +61,7 @@
       "name": "dedisbench",
       "queue_size": 8192,
       "thread_count": 1,
+      "truncate": true,
       "stdout": true,
       "files": [
         "./log1.log",

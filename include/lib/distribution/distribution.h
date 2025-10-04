@@ -5,42 +5,42 @@
 #include <lib/distribution/zipfian.h>
 
 namespace Distribution {
-    template<typename DistributionType>
+    template<typename DistributionTypeT>
     struct UniformDistribution {
         std::mt19937 engine;
-        std::uniform_int_distribution<DistributionType> distribution;
+        std::uniform_int_distribution<DistributionTypeT> distribution;
 
         explicit UniformDistribution()
             : engine(std::random_device{}()), distribution() {}
 
-        explicit UniformDistribution(DistributionType min, DistributionType max)
+        explicit UniformDistribution(DistributionTypeT min, DistributionTypeT max)
             : engine(std::random_device{}()), distribution(min, max) {}
 
-        void setParams(DistributionType min, DistributionType max) {
-            distribution.param(std::uniform_int_distribution<DistributionType>::param_type(min, max));
+        void setParams(DistributionTypeT min, DistributionTypeT max) {
+            distribution.param(std::uniform_int_distribution<DistributionTypeT>::param_type(min, max));
         }
 
-        DistributionType nextValue() {
+        DistributionTypeT nextValue() {
             return distribution(engine);
         }
     };
 
-    template<typename DistributionType>
+    template<typename DistributionTypeT>
     struct ZipfianDistribution {
         std::mt19937 engine;
-        zipfian_distribution<DistributionType> distribution;
+        zipfian_distribution<DistributionTypeT> distribution;
 
         explicit ZipfianDistribution()
             : engine(std::random_device{}()), distribution() {}
 
-        explicit ZipfianDistribution(DistributionType lower_bound, DistributionType upper_bound, float skew)
+        explicit ZipfianDistribution(DistributionTypeT lower_bound, DistributionTypeT upper_bound, float skew)
             : engine(std::random_device{}()), distribution(lower_bound, upper_bound, skew) {}
 
-        void setParams(DistributionType min, DistributionType max, float skew) {
-            distribution.param(zipfian_distribution<DistributionType>::param_type(min, max, skew));
+        void setParams(DistributionTypeT min, DistributionTypeT max, float skew) {
+            distribution.param(zipfian_distribution<DistributionTypeT>::param_type(min, max, skew));
         }
 
-        DistributionType nextValue() {
+        DistributionTypeT nextValue() {
             return distribution(engine);
         }
     };
