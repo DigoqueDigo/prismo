@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         buildtype: [release]
 
     steps:
@@ -33,12 +33,6 @@ jobs:
         sudo apt update
         sudo apt install -y build-essential libbz2-dev libz-dev libicu-dev
         sudo apt install -y libboost-all-dev libspdlog-dev liburing-dev
-
-    - name: Install dependencies (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew update
-        brew install boost liburing spdlog
 
     - name: Configure Meson
       run: meson setup builddir --buildtype=${{ matrix.buildtype }} -Dwarning_level=3 -Dcpp_std=c++17
