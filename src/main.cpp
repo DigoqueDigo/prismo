@@ -28,7 +28,7 @@ void worker(
     BlockGeneratorT& block_generator,
     BackendEngineT& backend_engine
 ) {
-    int fd = backend_engine._open(filename.c_str(), O_RDWR | O_CREAT | O_DIRECT, 0666);
+    int fd = backend_engine.open(filename.c_str(), O_RDWR | O_CREAT | O_DIRECT, 0666);
     block_generator.nextBlock(block);
 
     for (int i = 0; i < 100000; i++) {
@@ -36,15 +36,17 @@ void worker(
 
         switch (operation_pattern.nextOperation()) {
             case OperationPattern::OperationType::READ:
-                backend_engine._read(fd, block.buffer, block.config.size, static_cast<off_t>(offset));
+                backend_engine.template submit<OperationPattern::OperationType::READ>
+                    (fd, block.buffer, block.config.size, static_cast<off_t>(offset));
                 break;
             case OperationPattern::OperationType::WRITE:
-                backend_engine._write(fd, block.buffer, block.config.size, static_cast<off_t>(offset));
+                backend_engine.template submit<OperationPattern::OperationType::WRITE>
+                    (fd, block.buffer, block.config.size, static_cast<off_t>(offset));
                 break;
         }
     }
 
-    backend_engine._close(fd);
+    backend_engine.close(fd);
 }
 
 
