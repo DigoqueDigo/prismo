@@ -35,13 +35,6 @@ namespace AccessPattern {
             }
     };
 
-    void to_json(json& j, const RandomAccessPatternConfig& config) {
-        j = json{
-            {"block_size", config.block_size},
-            {"limit", config.limit},
-        };
-    }
-
     void from_json(const json& j, RandomAccessPatternConfig& config) {
         j.at("block_size").get_to(config.block_size);
         j.at("limit").get_to(config.limit);

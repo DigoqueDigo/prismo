@@ -34,12 +34,6 @@ namespace OperationPattern {
             }
     };
 
-    void to_json(json& j, const MixedOperationPatternConfig& config) {
-        for (OperationType operation : config.pattern) {
-            j["pattern"].push_back(operation == OperationType::READ ? "read" : "write");
-        }
-    }
-
     void from_json(const json& j, MixedOperationPatternConfig& config) {
         for (auto& item : j.at("pattern")) {
             config.pattern.push_back(

@@ -22,12 +22,8 @@ namespace Parser {
     };
 
     LoggerVariant getLoggerVariant(const std::string& type, const json& specialized) {
-        auto it  = logger_variant_map.find(type);
-        if (it != logger_variant_map.end()) {
-            return it->second(specialized);
-        } else {
-            throw std::invalid_argument("Logger type '" + type + "' is not recognized");
-        }
+        auto func = logger_variant_map.at(type);
+        return func(specialized);
     }
 }
 

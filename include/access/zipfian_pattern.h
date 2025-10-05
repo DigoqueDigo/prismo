@@ -38,14 +38,6 @@ namespace AccessPattern {
             }
     };
 
-    void to_json(json& j, const ZipfianAccessPatternConfig& config) {
-        j = json{
-            {"block_size", config.block_size},
-            {"limit", config.limit},
-            {"skew", config.skew},
-        };
-    }
-
     void from_json(const json& j, ZipfianAccessPatternConfig& config) {
         j.at("block_size").get_to(config.block_size);
         j.at("limit").get_to(config.limit);

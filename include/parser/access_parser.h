@@ -37,12 +37,8 @@ namespace Parser {
     };
 
     AccessPatternVariant getAccessPattern(const std::string& type, json& specialized, const json& workload) {
-        auto it  = access_pattern_variant_map.find(type);
-        if (it != access_pattern_variant_map.end()) {
-            return it->second(specialized, workload);
-        } else {
-            throw std::invalid_argument("Access pattern type '" + type + "' is not recognized");
-        }
+        auto func = access_pattern_variant_map.at(type);
+        return func(specialized, workload);
     }
 }
 

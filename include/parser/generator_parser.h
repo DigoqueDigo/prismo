@@ -26,12 +26,8 @@ namespace Parser {
     };
 
     BlockGeneratorVariant getBlockGenerator(const std::string& type) {
-        auto it  = block_generator_variant_map.find(type);
-        if (it != block_generator_variant_map.end()) {
-            return it->second();
-        } else {
-            throw std::invalid_argument("Block generator type '" + type + "' is not recognized");
-        }
+        auto func = block_generator_variant_map.at(type);
+        return func();
     }
 }
 

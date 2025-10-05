@@ -30,14 +30,6 @@ namespace OperationPattern {
             }
     };
 
-    void to_json(json& j, const ConstantOperationPatternConfig& config) {
-        if (config.operation == OperationType::READ) {
-            j["operation"] = "read";
-        } else {
-            j["operation"] = "write";
-        }
-    }
-
     void from_json(const json& j, ConstantOperationPatternConfig& config) {
         if (j.at("operation").template get<std::string>() == "write") {
             config.operation = OperationType::WRITE;

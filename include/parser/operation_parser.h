@@ -34,12 +34,8 @@ namespace Parser {
     };
 
     OperationPatternVariant getOperationPattern(const std::string& type, const json& specialized) {
-        auto it = operation_pattern_variant_map.find(type);
-        if (it != operation_pattern_variant_map.end()) {
-            return it->second(specialized);
-        } else {
-            throw std::invalid_argument("Operation pattern type '" + type + "' is not recognized");
-        }
+        auto func = operation_pattern_variant_map.at(type);
+        return func(specialized);
     }
 };
 

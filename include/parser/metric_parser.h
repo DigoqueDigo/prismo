@@ -33,12 +33,8 @@ namespace Parser {
     };
 
     MetricVariant getMetric(const std::string& type) {
-        auto it  = metric_variant_map.find(type);
-        if (it != metric_variant_map.end()) {
-            return it->second();
-        } else {
-            throw std::invalid_argument("Metric type '" + type + "' is not recognized");
-        }
+        auto func = metric_variant_map.at(type);
+        return func();
     }
 }
 

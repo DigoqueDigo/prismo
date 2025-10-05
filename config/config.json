@@ -14,6 +14,7 @@
   "operation_pattern": {
     "constant": {
       "operation": "read"
+
     },
     "percentage": {
       "read_percentage": 50
@@ -45,8 +46,20 @@
   },
 
   "backend_engine": {
-    "posix": {},
-    "io_uring": {}
+    "posix": {
+      "flags": [
+        "O_CREAT",
+        "O_RDWR",
+        "O_DIRECT"
+      ],
+      "barrier": {
+        "flush": 0,
+        "fsync": 0,
+        "fdata_sync": 0
+      },
+      "close": {
+        "fsync": true
+      }
   },
 
   "metric": {

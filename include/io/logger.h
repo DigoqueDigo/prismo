@@ -60,17 +60,6 @@ namespace Logger {
             }
     };
 
-    void to_json(json& j, const SpdlogConfig& config) {
-        j = json{
-            {"name", config.name},
-            {"queue_size", config.queue_size,
-            {"thread_count", config.thread_count},
-            {"truncate", config.truncate},
-            {"stdout", config.to_stdout},
-            {"files", config.files},
-        }};
-    }
-
     void from_json(const json& j, SpdlogConfig& config) {
         j.at("name").get_to(config.name);
         j.at("queue_size").get_to(config.queue_size);

@@ -9,20 +9,26 @@
 #include <stdexcept>
 #include <io/metric.h>
 #include <io/logger.h>
+#include <io/backend/posix/posix_config.h>
 
 namespace BackendEngine {
     template <typename LoggerT, typename MetricT>
     struct PosixEngine {
         private:
+            const PosixConfig config;
             const LoggerT logger;
+
+            uint32_t flush_barrier = 0;
+            uint32_t fsync_barrier = 0;
+            uint32_t fdata_sync_barrier = 0;
 
             inline ssize_t read(int fd, void* buffer, size_t size, off_t offset); 
             inline ssize_t write(int fd, const void* buffer, size_t size, off_t offset);
 
         public:
-            explicit PosixEngine(const LoggerT& _logger);
+            explicit PosixEngine(const PosixConfig& config, const LoggerT& _logger);
 
-            int open(const char* filename, int flags, mode_t mode);        
+            int open(const char* filename, mode_t mode);        
             void close(int fd);
 
             template<OperationPattern::OperationType OperationT>
@@ -30,12 +36,12 @@ namespace BackendEngine {
     };
 
     template<typename LoggerT, typename MetricT>
-    PosixEngine<LoggerT, MetricT>::PosixEngine(const LoggerT& _logger)
-        : logger(_logger) {}
+    PosixEngine<LoggerT, MetricT>::PosixEngine(const PosixConfig& _config, const LoggerT& _logger)
+        : config(_config), logger(_logger) {}
 
     template<typename LoggerT, typename MetricT>
-    int PosixEngine<LoggerT, MetricT>::open(const char* filename, int flags, mode_t mode) {
-        ssize_t fd = ::open(filename, flags, mode);
+    int PosixEngine<LoggerT, MetricT>::open(const char* filename, mode_t mode) {
+        ssize_t fd = ::open(filename, this->config.flags, mode);
         if (fd < 0) {
             throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
         }
@@ -49,12 +55,33 @@ namespace BackendEngine {
 
     template<typename LoggerT, typename MetricT>
     inline ssize_t PosixEngine<LoggerT, MetricT>::write(int fd, const void* buffer, size_t size, off_t offset) {
-        return ::pwrite(fd, buffer, size, offset);
+        int result ::pwrite(fd, buffer, size, offset);
+
+        this->flush_barrier += 1;
+        if (this->config.flush_barrier && this->flush_barrier == this->config.flush_barrier) {
+            ::fflush(fd);
+            this->flush_barrier = 0;
+        }
+
+        this->fsync_barrier += 1;        
+        if (this->config.fsync_barrier && this->fsync_barrier == this->config.fsync_barrier) {
+            ::fsync(fd);
+            this->flush_barrier = 0;
+        }
+
+        this->fdata_sync_barrier += 1;
+        if (this->config.fdata_sync_barrier && this->fdata_sync_barrier == this->config.fdata_sync_barrier) {
+            ::fdatasync(fd);
+            this->fdata_sync_barrier= 0;
+        }
     }
 
     template<typename LoggerT, typename MetricT>
     void PosixEngine<LoggerT, MetricT>::close(int fd) {
         int return_code = ::close(fd);
+        if (this->config.fsync_close) {
+            ::fsync(fd);
+        }
         if (return_code < 0) {
             throw std::runtime_error("Failed to close fd: " + std::string(strerror(errno)));
         }

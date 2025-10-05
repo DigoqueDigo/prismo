@@ -97,7 +97,8 @@
         "stacktrace": "cpp",
         "syncstream": "cpp",
         "typeindex": "cpp",
-        "valarray": "cpp"
+        "valarray": "cpp",
+        "*.inc": "cpp"
     },
     "C_Cpp.default.compileCommands": "/home/digo/Desktop/dedisbench/builddir/compile_commands.json",
     "C_Cpp.default.configurationProvider": "mesonbuild.mesonbuild"

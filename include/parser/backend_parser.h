@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <functional>
 #include <unordered_map>
-#include <io/backend/posix_engine.h>
+#include <io/backend/posix/posix_engine.h>
 #include <parser/metric_parser.h>
 #include <parser/logger_parser.h>
 
@@ -34,12 +34,8 @@ namespace Parser {
     };
 
     BackendEngineVariant getBanckendEngine(const std::string& type, const LoggerVariant& logger, const MetricVariant& metric) {
-        auto it  = backend_engine_variant_map.find(type);
-        if (it != backend_engine_variant_map.end()) {
-            return it->second(logger, metric);
-        } else {
-            throw std::invalid_argument("Backend engine type '" + type + "' is not recognized");
-        }
+        auto func = backend_engine_variant_map.at(type);
+        return func(logger, metric);
     }
 }
 

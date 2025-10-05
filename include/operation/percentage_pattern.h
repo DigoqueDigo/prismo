@@ -34,10 +34,6 @@ namespace OperationPattern {
             }
     };
 
-    void to_json(json& j, const PercentageOperationPatternConfig& config) {
-        j = json{{"read_percentage", config.read_percentage}};
-    }
-
     void from_json(const json& j, PercentageOperationPatternConfig& config) {
         j.at("read_percentage").get_to(config.read_percentage);
         config.validate();

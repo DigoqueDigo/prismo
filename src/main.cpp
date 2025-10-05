@@ -28,7 +28,7 @@ void worker(
     BlockGeneratorT& block_generator,
     BackendEngineT& backend_engine
 ) {
-    int fd = backend_engine.open(filename.c_str(), O_RDWR | O_CREAT | O_DIRECT, 0666);
+    int fd = backend_engine.open(filename.c_str());
     block_generator.nextBlock(block);
 
     for (int i = 0; i < 100000; i++) {
