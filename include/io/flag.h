@@ -8,24 +8,25 @@
 using json = nlohmann::json;
 
 namespace Engine {
-    inline const std::unordered_map<std::string, int> flag_map = {
-        {"O_CREAT", O_CREAT},
-        {"O_TRUNC", O_TRUNC},
-        {"O_APPEND", O_APPEND},
-        {"O_RDONLY", O_RDONLY},
-        {"O_WRONLY", O_WRONLY},
-        {"O_RDWR", O_RDWR},
-        {"O_SYNC", O_SYNC},
-        {"O_DSYNC", O_DSYNC},
-        {"O_RSYNC", O_RSYNC},
-        {"O_DIRECT", O_DIRECT}
-    };
-
+    
     struct Flags {
         int value;
     };
-
+    
     void from_json(const json& j, Flags& config) {
+        static const std::unordered_map<std::string, int> flag_map = {
+            {"O_CREAT", O_CREAT},
+            {"O_TRUNC", O_TRUNC},
+            {"O_APPEND", O_APPEND},
+            {"O_RDONLY", O_RDONLY},
+            {"O_WRONLY", O_WRONLY},
+            {"O_RDWR", O_RDWR},
+            {"O_SYNC", O_SYNC},
+            {"O_DSYNC", O_DSYNC},
+            {"O_RSYNC", O_RSYNC},
+            {"O_DIRECT", O_DIRECT}
+        };
+
         for (const auto& value : j) {
             std::string key = value.template get<std::string>();
             auto it = flag_map.find(key);

@@ -3,42 +3,70 @@
 
 #include <vector>
 #include <operation/type.h>
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
 
 namespace Operation {
     struct BarrierCounter {
-        OperationType barrierOp;
-        OperationType triggerOp;
-        size_t everyN;
-        size_t counter = 0;
+        private:
+            OperationType barrierOp;
+            OperationType triggerOp;
+            size_t everyN;
+            size_t counter = 0;
 
-        BarrierCounter(OperationType _barrierOp, OperationType _triggerOp, size_t _everyN)
-            : barrierOp(_barrierOp), triggerOp(_triggerOp), everyN(_everyN), counter(0) {}
+        public:
+            BarrierCounter(OperationType _barrierOp, OperationType _triggerOp, size_t _everyN)
+                : barrierOp(_barrierOp), triggerOp(_triggerOp), everyN(_everyN), counter(0) {}
 
-        OperationType apply(OperationType operation) {
-            if (operation == triggerOp && ++counter >= everyN) {
-                counter = 0;
-                return barrierOp;
+            OperationType apply(OperationType operation) {
+                if (operation == triggerOp && counter++ == everyN) {
+                    counter = 0;
+                    return barrierOp;
+                }
+                return operation;
             }
-            return operation;
-        }
     };
 
     struct MultipleBarrier {
-        std::vector<BarrierCounter> barriers;
+        private:
+            std::vector<BarrierCounter> barriers;
 
-        explicit MultipleBarrier() = default;
+        public:
+            explicit MultipleBarrier() = default;
 
-        void addBarrier(OperationType barrierOp, OperationType triggerOp, size_t everyN) {
-            barriers.emplace_back(barrierOp, triggerOp, everyN);
-        }
-
-        OperationType apply(OperationType operation) {
-            for (auto& barrier : barriers) {
-                operation = barrier.apply(operation);
+            void addBarrier(OperationType barrierOp, OperationType triggerOp, size_t everyN) {
+                barriers.emplace_back(barrierOp, triggerOp, everyN);
             }
-            return operation;
-        }
+
+            OperationType apply(OperationType operation) {
+                for (auto& barrier : barriers) {
+                    operation = barrier.apply(operation);
+                }
+                return operation;
+            }
     };
+
+    void from_json(const json& j, MultipleBarrier& barrier) {
+        static const std::unordered_map<std::string, OperationType> barrier_types = {
+            {"fsync", OperationType::FSYNC},
+            {"fdatasync", OperationType::FDATASYNC}
+        };
+
+        for (const auto& element : j.items()) {
+            const std::string& key = element.key();
+            const size_t value = element.value();
+
+            if (value > 0) {
+                auto it = barrier_types.find(key);
+                if (it != barrier_types.end()) {
+                    barrier.addBarrier(it->second, OperationType::WRITE, value);
+                } else {
+                    throw std::invalid_argument("Barrier type: '" + key + "' is not recognized");
+                }
+            }
+        }
+    }
 };
 
 #endif

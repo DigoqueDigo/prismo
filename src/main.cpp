@@ -7,6 +7,7 @@
 
 #include <io/logger.h>
 #include <operation/type.h>
+#include <operation/barrier.h>
 
 #include <iostream>
 #include <iomanip>
@@ -21,6 +22,7 @@ template<
 void worker(
     const std::string filename,
     Engine::Flags flags,
+    Operation::MultipleBarrier barrier,
     BlockT& block,
     OperationT& operation,
     AccessT& access,
@@ -33,7 +35,7 @@ void worker(
         generator.nextBlock(block);
         size_t offset = access.nextOffset();
 
-        switch (operation.nextOperation()) {
+        switch (barrier.apply(operation.nextOperation())) {
             case Operation::OperationType::READ:
                 engine.template submit<Operation::OperationType::READ>
                     (fd, block.buffer, block.config.size, static_cast<off_t>(offset));
@@ -42,15 +44,19 @@ void worker(
                 engine.template submit<Operation::OperationType::WRITE>
                     (fd, block.buffer, block.config.size, static_cast<off_t>(offset));
                 break;
-            default:
+            case Operation::OperationType::FSYNC:
+                engine.template submit<Operation::OperationType::FSYNC>
+                    (fd, block.buffer, block.config.size, static_cast<off_t>(offset));
+                break;
+            case Operation::OperationType::FDATASYNC:
+                engine.template submit<Operation::OperationType::FDATASYNC>
+                    (fd, block.buffer, block.config.size, static_cast<off_t>(offset));
                 break;
         }
     }
 
     engine.close(fd);
 }
-
-
 
 
 int main(int argc, char** argv) {
@@ -74,6 +80,7 @@ int main(int argc, char** argv) {
     const std::string filename = job_j.at("filename").template get<std::string>();
 
     Engine::Flags flags = engine_j.at("flags").template get<Engine::Flags>();
+    Operation::MultipleBarrier barrier = operation_j.at("barrier").template get<Operation::MultipleBarrier>();
 
     Generator::BlockConfig block_config = job_j.template get<Generator::BlockConfig>();
     Generator::Block block = Generator::Block(block_config);
@@ -87,7 +94,7 @@ int main(int argc, char** argv) {
     Parser::EngineVariant engine = Parser::getEngine(engine_j, logger, metric);
 
     std::visit(
-        [&filename, &flags, &block](
+        [&filename, &flags, &barrier, &block](
             auto& _operation,
             auto& _access,
             auto& _generator,
@@ -95,6 +102,7 @@ int main(int argc, char** argv) {
             worker(
                 filename,
                 flags,
+                barrier,
                 block,
                 _operation,
                 _access,

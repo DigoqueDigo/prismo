@@ -20,9 +20,8 @@
       "read"
     ],
     "barrier": {
-      "flush": 0,
       "fsync": 0,
-      "fdata_sync": 0
+      "fdatasync": 0
     }
   },
 
