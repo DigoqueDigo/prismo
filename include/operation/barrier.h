@@ -4,7 +4,7 @@
 #include <vector>
 #include <operation/type.h>
 
-namespace OperationPattern {
+namespace Operation {
     struct BarrierCounter {
         OperationType barrierOp;
         OperationType triggerOp;

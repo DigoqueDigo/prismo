@@ -1,7 +1,7 @@
-#ifndef TYPE_OPERATION_PATTERN_H
-#define TYPE_OPERATION_PATTERN_H
+#ifndef TYPE_OPERATION_H
+#define TYPE_OPERATION_H
 
-namespace OperationPattern {
+namespace Operation {
     enum class OperationType {
         READ,
         WRITE,

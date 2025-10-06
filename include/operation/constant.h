@@ -1,28 +1,28 @@
-#ifndef CONSTANT_OPERATION_PATTERN_H
-#define CONSTANT_OPERATION_PATTERN_H
+#ifndef CONSTANT_OPERATION_H
+#define CONSTANT_OPERATION_H
 
 #include <nlohmann/json.hpp>
 #include <operation/type.h>
 
 using json = nlohmann::json;
 
-namespace OperationPattern {
-    struct ConstantOperationPatternConfig {
+namespace Operation {
+    struct ConstantOperationConfig {
         OperationType operation;
 
         void validate(void) const {
             if (operation != OperationType::READ && operation != OperationType::WRITE) {
-                throw std::invalid_argument("Invalid operation for ConstantOperationPatternConfig");
+                throw std::invalid_argument("Invalid operation for ConstantOperationConfig");
             }
         }
     };
 
-    struct ConstantOperationPattern {
+    struct ConstantOperation {
         private:
-            const ConstantOperationPatternConfig config;
+            const ConstantOperationConfig config;
 
         public:
-            explicit ConstantOperationPattern(const ConstantOperationPatternConfig& _config)
+            explicit ConstantOperation(const ConstantOperationConfig& _config)
                 : config(_config) {}
 
             OperationType nextOperation(void) {
@@ -30,7 +30,7 @@ namespace OperationPattern {
             }
     };
 
-    void from_json(const json& j, ConstantOperationPatternConfig& config) {
+    void from_json(const json& j, ConstantOperationConfig& config) {
         if (j.at("operation").template get<std::string>() == "write") {
             config.operation = OperationType::WRITE;
         }

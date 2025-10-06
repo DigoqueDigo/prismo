@@ -1,5 +1,5 @@
-#ifndef PERCENTAGE_OPERATION_PATTERN_H
-#define PERCENTAGE_OPERATION_PATTERN_H
+#ifndef PERCENTAGE_OPERATION_H
+#define PERCENTAGE_OPERATION_H
 
 #include <nlohmann/json.hpp>
 #include <operation/type.h>
@@ -7,24 +7,24 @@
 
 using json = nlohmann::json;
 
-namespace OperationPattern {
-    struct PercentageOperationPatternConfig {
+namespace Operation {
+    struct PercentageOperationConfig {
         unsigned int read_percentage;
 
         void validate(void) const {
             if (read_percentage > 100) {
-                throw std::invalid_argument("Invalid read_percentage for PercentageOperationPatternConfig");
+                throw std::invalid_argument("Invalid read_percentage for PercentageOperationConfig");
             }
         }
     };
 
-    struct PercentageOperationPattern {
+    struct PercentageOperation {
         private:
-            const PercentageOperationPatternConfig config;
+            const PercentageOperationConfig config;
             Distribution::UniformDistribution<unsigned int> distribution;
 
         public:
-            explicit PercentageOperationPattern(const PercentageOperationPatternConfig& _config)
+            explicit PercentageOperation(const PercentageOperationConfig& _config)
                 : config(_config), distribution(0, 100) {}
 
             OperationType nextOperation(void) {
@@ -34,7 +34,7 @@ namespace OperationPattern {
             }
     };
 
-    void from_json(const json& j, PercentageOperationPatternConfig& config) {
+    void from_json(const json& j, PercentageOperationConfig& config) {
         j.at("read_percentage").get_to(config.read_percentage);
         config.validate();
     }

@@ -1,5 +1,5 @@
-#ifndef SEQUENTIAL_ACCESS_PATTERN_H
-#define SEQUENTIAL_ACCESS_PATTERN_H
+#ifndef SEQUENTIAL_ACCESS_H
+#define SEQUENTIAL_ACCESS_H
 
 #include <cstddef>
 #include <stdexcept>
@@ -7,26 +7,26 @@
 
 using json = nlohmann::json;
 
-namespace AccessPattern {
-    struct SequentialAccessPatternConfig {
+namespace Access {
+    struct SequentialAccessConfig {
         size_t block_size;
         size_t limit;
 
         void validate(void) const {
             if (block_size == 0)
-                throw std::invalid_argument("Invalid block_size for SequentialAccessPatternConfig");
+                throw std::invalid_argument("Invalid block_size for SequentialAccessConfig");
             if (block_size > limit)
-                throw std::invalid_argument("Invalid limit for SequentialAccessPatternConfig");
+                throw std::invalid_argument("Invalid limit for SequentialAccessConfig");
         }
     };
 
-    struct SequentialAccessPattern {
+    struct SequentialAccess {
         private:
-            const SequentialAccessPatternConfig config;
+            const SequentialAccessConfig config;
             size_t current_offset;
 
         public:
-            explicit SequentialAccessPattern(const SequentialAccessPatternConfig& _config)
+            explicit SequentialAccess(const SequentialAccessConfig& _config)
                 : config(_config), current_offset(0) {}
 
             size_t nextOffset(void) {
@@ -36,7 +36,7 @@ namespace AccessPattern {
             }
     };
 
-    void from_json(const json& j, SequentialAccessPatternConfig& config) {
+    void from_json(const json& j, SequentialAccessConfig& config) {
         j.at("block_size").get_to(config.block_size);
         j.at("limit").get_to(config.limit);
         config.validate();

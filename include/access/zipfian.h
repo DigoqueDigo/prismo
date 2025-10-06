@@ -1,5 +1,5 @@
-#ifndef ZIPFIAN_ACCESS_PATTERN_H
-#define ZIPFIAN_ACCESS_PATTERN_H
+#ifndef ZIPFIAN_ACCESS_H
+#define ZIPFIAN_ACCESS_H
 
 #include <cstddef>
 #include <stdexcept>
@@ -8,29 +8,29 @@
 
 using json = nlohmann::json;
 
-namespace AccessPattern {
-    struct ZipfianAccessPatternConfig {
+namespace Access {
+    struct ZipfianAccessConfig {
         size_t block_size;
         size_t limit;
         float skew;
 
         void validate(void) const {
             if (block_size == 0)
-                throw std::invalid_argument("Invalid block_size for ZipfianAccessPatternConfig");
+                throw std::invalid_argument("Invalid block_size for ZipfianAccessConfig");
             if (block_size > limit)
-                throw std::invalid_argument("Invalid limit for ZipfianAccessPatternConfig");
+                throw std::invalid_argument("Invalid limit for ZipfianAccessConfig");
             if (skew <= 0 || skew >= 1)
-                throw std::invalid_argument("Invalid skew for ZipfianAccessPatternConfig");
+                throw std::invalid_argument("Invalid skew for ZipfianAccessConfig");
         }
     };
 
-    struct ZipfianAccessPattern {
+    struct ZipfianAccess {
         private:
-            const ZipfianAccessPatternConfig config;
+            const ZipfianAccessConfig config;
             Distribution::ZipfianDistribution<size_t> distribution;
 
         public:
-            explicit ZipfianAccessPattern(const ZipfianAccessPatternConfig& _config)
+            explicit ZipfianAccess(const ZipfianAccessConfig& _config)
                 : config(_config), distribution(0, _config.limit, _config.skew) {}
 
             size_t nextOffset(void) {
@@ -38,7 +38,7 @@ namespace AccessPattern {
             }
     };
 
-    void from_json(const json& j, ZipfianAccessPatternConfig& config) {
+    void from_json(const json& j, ZipfianAccessConfig& config) {
         j.at("block_size").get_to(config.block_size);
         j.at("limit").get_to(config.limit);
         j.at("skew").get_to(config.skew);

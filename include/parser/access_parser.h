@@ -1,43 +1,43 @@
-#ifndef ACCESS_PATTERN_PARSER_H
-#define ACCESS_PATTERN_PARSER_H
+#ifndef ACCESS_PARSER_H
+#define ACCESS_PARSER_H
 
 #include <variant>
 #include <stdexcept>
 #include <functional>
 #include <unordered_map>
-#include <access/sequential_pattern.h>
-#include <access/random_pattern.h>
-#include <access/zipfian_pattern.h>
+#include <access/sequential.h>
+#include <access/random.h>
+#include <access/zipfian.h>
 
 namespace Parser {
-    using AccessPatternVariant = std::variant<
-        AccessPattern::SequentialAccessPattern,
-        AccessPattern::RandomAccessPattern,
-        AccessPattern::ZipfianAccessPattern>;
+    using AccessVariant = std::variant<
+        Access::SequentialAccess,
+        Access::RandomAccess,
+        Access::ZipfianAccess>;
 
     inline static const std::unordered_map<
         std::string,
-        std::function<AccessPatternVariant(json& specialized, const json& workload)>>
-    access_pattern_variant_map = {
+        std::function<AccessVariant(json& specialized, const json& workload)>>
+    access__variant_map = {
         {"sequential", [](json& specialized, const json& workload) {
             specialized.merge_patch(workload);
-            auto config = specialized.template get<AccessPattern::SequentialAccessPatternConfig>();
-            return AccessPattern::SequentialAccessPattern(config);
+            auto config = specialized.template get<Access::SequentialAccessConfig>();
+            return Access::SequentialAccess(config);
         }},
         {"random", [](json& specialized, const json& workload) {
             specialized.merge_patch(workload);
-            auto config = specialized.template get<AccessPattern::RandomAccessPatternConfig>();
-            return AccessPattern::RandomAccessPattern(config);
+            auto config = specialized.template get<Access::RandomAccessConfig>();
+            return Access::RandomAccess(config);
         }},
         {"zipfian", [](json& specialized, const json& workload) {
             specialized.merge_patch(workload);
-            auto config = specialized.template get<AccessPattern::ZipfianAccessPatternConfig>();
-            return AccessPattern::ZipfianAccessPattern(config);
+            auto config = specialized.template get<Access::ZipfianAccessConfig>();
+            return Access::ZipfianAccess(config);
         }}
     };
 
-    AccessPatternVariant getAccessPattern(const std::string& type, json& specialized, const json& workload) {
-        auto func = access_pattern_variant_map.at(type);
+    AccessVariant getAccess(const std::string& type, json& specialized, const json& workload) {
+        auto func = access__variant_map.at(type);
         return func(specialized, workload);
     }
 }

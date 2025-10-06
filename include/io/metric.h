@@ -9,7 +9,7 @@ namespace Metric {
     struct BaseSyncMetric {
         int64_t start_timestamp;
         int64_t end_timestamp;
-        OperationPattern::OperationType operation_type;
+        Operation::OperationType operation_type;
     };
 
     struct StandardSyncMetric : BaseSyncMetric {
@@ -29,7 +29,7 @@ namespace Metric {
     // struct AsyncMetric {
     //     uint64_t submission_timestamp_us;
     //     uint64_t completion_timestamp_us;
-    //     OperationPattern::OperationType operation_type;
+    //     Operation::OperationType operation_type;
     //     int32_t pid;
     //     int32_t tid;
     //     uint32_t requested_bytes;

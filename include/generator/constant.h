@@ -1,8 +1,6 @@
 #ifndef CONSTANT_BLOCK_GENERATOR_H
 #define CONSTANT_BLOCK_GENERATOR_H
 
-#include <cstdint>
-#include <cstring>
 #include <generator/block.h>
 
 namespace BlockGenerator {
