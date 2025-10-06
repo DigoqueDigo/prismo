@@ -21,13 +21,19 @@ namespace Engine {
         {"O_DIRECT", O_DIRECT}
     };
 
-    struct Flag {
+    struct Flags {
         int value;
     };
 
-    void from_json(const json& j, Flag& config) {
-        for (const auto& value : j.at("flags")) {
-            config.value |= flag_map.at(value);
+    void from_json(const json& j, Flags& config) {
+        for (const auto& value : j) {
+            std::string key = value.template get<std::string>();
+            auto it = flag_map.find(key);
+            if (it != flag_map.end()) {
+                config.value |= it->second;
+            } else {
+                throw std::invalid_argument("Flag value '" + key + "' is not recognized");
+            }
         }
     }
 };

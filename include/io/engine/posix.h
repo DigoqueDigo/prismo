@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <io/metric.h>
 #include <io/logger.h>
+#include <io/flag.h>
 
 namespace Engine {
     template <typename LoggerT, typename MetricT>
@@ -22,7 +23,7 @@ namespace Engine {
         public:
             explicit PosixEngine(const LoggerT& _logger);
 
-            int open(const char* filename, int flags, mode_t mode);        
+            int open(const char* filename, Flags flags, mode_t mode);        
             void close(int fd);
 
             template<Operation::OperationType OperationT>
@@ -34,8 +35,8 @@ namespace Engine {
         : logger(_logger) {}
 
     template<typename LoggerT, typename MetricT>
-    int PosixEngine<LoggerT, MetricT>::open(const char* filename, int flags, mode_t mode) {
-        ssize_t fd = ::open(filename, flags, mode);
+    int PosixEngine<LoggerT, MetricT>::open(const char* filename, Flags flags, mode_t mode) {
+        ssize_t fd = ::open(filename, flags.value, mode);
         if (fd < 0) {
             throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
         }

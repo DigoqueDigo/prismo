@@ -27,12 +27,12 @@
   },
 
   "access": {
-    "type": "zipfian",
+    "type": "sequential",
     "skew": 0.9
   },
 
   "generator": {
-    "type": "random"
+    "type": "constant"
   },
 
   "engine": {

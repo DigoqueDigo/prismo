@@ -20,13 +20,14 @@ template<
     typename EngineT>
 void worker(
     const std::string filename,
+    Engine::Flags flags,
     BlockT& block,
     OperationT& operation,
     AccessT& access,
     GeneratorT& generator,
     EngineT& engine
 ) {
-    int fd = engine.open(filename.c_str(), O_CREAT | O_RDWR | O_DIRECT, 0666);
+    int fd = engine.open(filename.c_str(), flags, 0666);
     
     for (int i = 0; i < 100000; i++) {
         generator.nextBlock(block);
@@ -72,6 +73,8 @@ int main(int argc, char** argv) {
 
     const std::string filename = job_j.at("filename").template get<std::string>();
 
+    Engine::Flags flags = engine_j.at("flags").template get<Engine::Flags>();
+
     Generator::BlockConfig block_config = job_j.template get<Generator::BlockConfig>();
     Generator::Block block = Generator::Block(block_config);
 
@@ -84,13 +87,14 @@ int main(int argc, char** argv) {
     Parser::EngineVariant engine = Parser::getEngine(engine_j, logger, metric);
 
     std::visit(
-        [&filename, &block](
+        [&filename, &flags, &block](
             auto& _operation,
             auto& _access,
             auto& _generator,
             auto& _engine) {
             worker(
                 filename,
+                flags,
                 block,
                 _operation,
                 _access,
