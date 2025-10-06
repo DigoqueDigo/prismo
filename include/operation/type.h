@@ -5,6 +5,9 @@ namespace OperationPattern {
     enum class OperationType {
         READ,
         WRITE,
+        FLUSH,
+        FSYNC,
+        FDATA_SYNC,
     };
 };
 
