@@ -10,7 +10,7 @@ using json = nlohmann::json;
 
 #define BLOCK_BASE_SIZE 128
 
-namespace BlockGenerator {
+namespace Generator {
     struct BlockConfig {
         size_t size;
 

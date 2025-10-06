@@ -4,13 +4,21 @@
     "numjobs": 1,
     "filename": "testfile",
     "block_size": 4096,
-    "limit": 65536,
-    "iometric": "none"
+    "limit": 4096000,
+    "metric": "full"
   },
 
   "operation": {
     "type": "constant",
-    "operation": "read",
+    "operation": "write",
+    "read_percentage": 100,
+    "operations": [
+      "read",
+      "write",
+      "write",
+      "read",
+      "read"
+    ],
     "barrier": {
       "flush": 0,
       "fsync": 0,
@@ -24,28 +32,29 @@
   },
 
   "generator": {
-    "type": "constant"
+    "type": "random"
   },
 
   "engine": {
-    "posix": {
-      "flags": ["O_CREAT", "O_RDWR", "O_DIRECT"],
-      "fsync_close": true
-    }
+    "type": "posix",
+    "flags": [
+      "O_CREAT",
+      "O_RDWR",
+      "O_DIRECT"
+    ]
   },
 
   "logging": {
-    "spdlog": {
-      "name": "dedisbench",
-      "queue_size": 8192,
-      "thread_count": 1,
-      "truncate": true,
-      "stdout": true,
-      "files": [
-        "./log1.log",
-        "./log2.log",
-        "./log3.log"
-      ]
-    }
+    "type": "spdlog",
+    "name": "dedisbench",
+    "queue_size": 8192,
+    "thread_count": 1,
+    "truncate": true,
+    "stdout": true,
+    "files": [
+      "./log1.log",
+      "./log2.log",
+      "./log3.log"
+    ]
   }
 }

@@ -1,9 +1,9 @@
-#include <parser/access_parser.h>
-#include <parser/operation_parser.h>
-#include <parser/generator_parser.h>
-#include <parser/logger_parser.h>
-#include <parser/metric_parser.h>
-#include <parser/backend_parser.h>
+#include <parser/access.h>
+#include <parser/operation.h>
+#include <parser/generator.h>
+#include <parser/logger.h>
+#include <parser/metric.h>
+#include <parser/engine.h>
 
 #include <io/logger.h>
 #include <operation/type.h>
@@ -12,41 +12,41 @@
 #include <iomanip>
 #include <fstream>
 
-
-
 template<
     typename BlockT,
-    typename OperationPatternT,
-    typename AccessPatternT,
-    typename BlockGeneratorT,
-    typename BackendEngineT>
+    typename OperationT,
+    typename AccessT,
+    typename GeneratorT,
+    typename EngineT>
 void worker(
     const std::string filename,
     BlockT& block,
-    OperationPatternT& operation_pattern,
-    AccessPatternT& access_pattern,
-    BlockGeneratorT& block_generator,
-    BackendEngineT& backend_engine
+    OperationT& operation,
+    AccessT& access,
+    GeneratorT& generator,
+    EngineT& engine
 ) {
-    int fd = backend_engine.open(filename.c_str());
-    block_generator.nextBlock(block);
-
+    int fd = engine.open(filename.c_str(), O_CREAT | O_RDWR | O_DIRECT, 0666);
+    
     for (int i = 0; i < 100000; i++) {
-        size_t offset = access_pattern.nextOffset();
+        generator.nextBlock(block);
+        size_t offset = access.nextOffset();
 
-        switch (operation_pattern.nextOperation()) {
-            case OperationPattern::OperationType::READ:
-                backend_engine.template submit<OperationPattern::OperationType::READ>
+        switch (operation.nextOperation()) {
+            case Operation::OperationType::READ:
+                engine.template submit<Operation::OperationType::READ>
                     (fd, block.buffer, block.config.size, static_cast<off_t>(offset));
                 break;
-            case OperationPattern::OperationType::WRITE:
-                backend_engine.template submit<OperationPattern::OperationType::WRITE>
+            case Operation::OperationType::WRITE:
+                engine.template submit<Operation::OperationType::WRITE>
                     (fd, block.buffer, block.config.size, static_cast<off_t>(offset));
+                break;
+            default:
                 break;
         }
     }
 
-    backend_engine.close(fd);
+    engine.close(fd);
 }
 
 
@@ -57,71 +57,51 @@ int main(int argc, char** argv) {
     if (argc < 2) {
         throw std::invalid_argument("Invalid number of arguments");
     }
-    
+
     std::ifstream config_file(argv[1]);
     json config_j = json::parse(config_file);
-    json workload_j = config_j.at("workload");
 
-    const std::string filename = workload_j.at("filename").template get<std::string>();
-    
-    BlockGenerator::BlockConfig block_config = config_j.at("workload").template get<BlockGenerator::BlockConfig>(); 
-    BlockGenerator::Block block(block_config);
+    json job_j = config_j.at("job");
+    json operation_j = config_j.at("operation");
+    json access_j = config_j.at("access");
+    json generator_j = config_j.at("generator");
+    json engine_j = config_j.at("engine");
+    json logging_j = config_j.at("logging");
 
-    std::string operation_pattern_key = workload_j.at("operation_pattern").template get<std::string>();
-    Parser::OperationPatternVariant operation_pattern = Parser::getOperationPattern(
-        operation_pattern_key,
-        config_j.at("operation_pattern").at(operation_pattern_key)
-    );
+    access_j.merge_patch(job_j);
 
-    std::string access_pattern_key = workload_j.at("access_pattern").template get<std::string>();
-    Parser::AccessPatternVariant access_pattern = Parser::getAccessPattern(
-        access_pattern_key,
-        config_j.at("access_pattern").at(access_pattern_key),
-        workload_j
-    );
+    const std::string filename = job_j.at("filename").template get<std::string>();
 
-    std::string block_generator_key = workload_j.at("block_generator").template get<std::string>();
-    Parser::BlockGeneratorVariant block_generator = Parser::getBlockGenerator(
-        block_generator_key
-    );
+    Generator::BlockConfig block_config = job_j.template get<Generator::BlockConfig>();
+    Generator::Block block = Generator::Block(block_config);
 
-    std::string logging_key = workload_j.at("logging").template get<std::string>();
-    Parser::LoggerVariant logger = Parser::getLoggerVariant(
-        logging_key,
-        config_j.at("logging").at(logging_key)
-    );
+    Parser::AccessVariant access = Parser::getAccess(access_j);
+    Parser::OperationVariant operation = Parser::getOperation(operation_j);
+    Parser::GeneratorVariant generator = Parser::getGenerator(generator_j);
 
-    std::string metric_key = workload_j.at("metric").template get<std::string>();
-    Parser::MetricVariant metric = Parser::getMetric(
-        metric_key
-    );
-
-    std::string backend_engine_key = workload_j.at("backend_engine").template get<std::string>();
-    Parser::BackendEngineVariant backend_engine = Parser::getBanckendEngine(
-        backend_engine_key,
-        logger,
-        metric
-    );
+    Parser::MetricVariant metric = Parser::getMetric(job_j);
+    Parser::LoggerVariant logger = Parser::getLogger(logging_j);    
+    Parser::EngineVariant engine = Parser::getEngine(engine_j, logger, metric);
 
     std::visit(
         [&filename, &block](
-            auto& _operation_pattern,
-            auto& _access_pattern,
-            auto& _block_generator,
-            auto& _backend_engine) {
+            auto& _operation,
+            auto& _access,
+            auto& _generator,
+            auto& _engine) {
             worker(
                 filename,
                 block,
-                _operation_pattern,
-                _access_pattern,
-                _block_generator,
-                _backend_engine
+                _operation,
+                _access,
+                _generator,
+                _engine
             );
         },
-        operation_pattern,
-        access_pattern,
-        block_generator,
-        backend_engine
+        operation,
+        access,
+        generator,
+        engine
     );
 
     // const size_t block_size = 4096;

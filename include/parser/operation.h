@@ -18,7 +18,7 @@ namespace Parser {
     inline static const std::unordered_map<
         std::string,
         std::function<OperationVariant(const json& specialized)>>
-    operation__variant_map = {
+    operation_variant_map = {
         {"constant", [](const json& specialized) {
             auto config = specialized.template get<Operation::ConstantOperationConfig>();
             return Operation::ConstantOperation(config);
@@ -27,15 +27,20 @@ namespace Parser {
             auto config = specialized.template get<Operation::PercentageOperationConfig>();
             return Operation::PercentageOperation(config);
         }},
-        {"mixed", [](const json& specialized) {
+        {"sequence", [](const json& specialized) {
             auto config = specialized.template get<Operation::SequenceOperationConfig>();
             return Operation::SequenceOperation(config);
         }}
     };
 
-    OperationVariant getOperation(const std::string& type, const json& specialized) {
-        auto func = operation__variant_map.at(type);
-        return func(specialized);
+    OperationVariant getOperation(const json& specialized) {
+        std::string type = specialized.at("type").template get<std::string>();
+        auto it = operation_variant_map.find(type);
+        if (it != operation_variant_map.end()) {
+            return it->second(specialized);
+        } else {
+            throw std::invalid_argument("Operation type '" + type + "' not recognized");
+        }
     }
 };
 

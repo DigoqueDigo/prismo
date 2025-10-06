@@ -1,10 +1,10 @@
-#ifndef CONSTANT_BLOCK_GENERATOR_H
-#define CONSTANT_BLOCK_GENERATOR_H
+#ifndef CONSTANT_GENERATOR_H
+#define CONSTANT_GENERATOR_H
 
 #include <generator/block.h>
 
-namespace BlockGenerator {
-    struct ConstantBlockGenerator {
+namespace Generator {
+    struct ConstantGenerator {
         void nextBlock(Block& block) {
             std::memset(block.buffer, 0, block.config.size);
         }

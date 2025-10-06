@@ -17,28 +17,30 @@ namespace Parser {
 
     inline static const std::unordered_map<
         std::string,
-        std::function<AccessVariant(json& specialized, const json& workload)>>
-    access__variant_map = {
-        {"sequential", [](json& specialized, const json& workload) {
-            specialized.merge_patch(workload);
+        std::function<AccessVariant(json& specialized)>>
+    access_variant_map = {
+        {"sequential", [](json& specialized) {
             auto config = specialized.template get<Access::SequentialAccessConfig>();
             return Access::SequentialAccess(config);
         }},
-        {"random", [](json& specialized, const json& workload) {
-            specialized.merge_patch(workload);
+        {"random", [](json& specialized) {
             auto config = specialized.template get<Access::RandomAccessConfig>();
             return Access::RandomAccess(config);
         }},
-        {"zipfian", [](json& specialized, const json& workload) {
-            specialized.merge_patch(workload);
+        {"zipfian", [](json& specialized) {
             auto config = specialized.template get<Access::ZipfianAccessConfig>();
             return Access::ZipfianAccess(config);
         }}
     };
 
-    AccessVariant getAccess(const std::string& type, json& specialized, const json& workload) {
-        auto func = access__variant_map.at(type);
-        return func(specialized, workload);
+    AccessVariant getAccess(json& specialized) {
+        std::string type = specialized.at("type").template get<std::string>();
+        auto it = access_variant_map.find(type);
+        if (it != access_variant_map.end()) {
+            return it->second(specialized);
+        } else {
+            throw std::invalid_argument("Access type '" + type + "' not recognized");
+        }
     }
 }
 

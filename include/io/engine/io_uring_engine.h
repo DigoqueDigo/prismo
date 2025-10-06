@@ -1,5 +1,5 @@
-#ifndef IO_URING_BACKEND_ENGINE_H
-#define IO_URING_BACKEND_ENGINE_H
+#ifndef IO_URING_ENGINE_H
+#define IO_URING_ENGINE_H
 
 #include <memory>
 #include <fcntl.h>
@@ -9,7 +9,7 @@
 #include <liburing.h>
 #include <spdlog/spdlog.h>
 
-namespace BackendEngine {
+namespace Engine {
     struct IOUringConfig {
         size_t batch_size = 1;
         size_t block_size = 4096;

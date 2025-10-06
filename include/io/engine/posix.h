@@ -1,5 +1,5 @@
-#ifndef POSIX_BACKEND_ENGINE_H
-#define POSIX_BACKEND_ENGINE_H
+#ifndef POSIX_ENGINE_H
+#define POSIX_ENGINE_H
 
 #include <memory>
 #include <fcntl.h>
@@ -9,39 +9,33 @@
 #include <stdexcept>
 #include <io/metric.h>
 #include <io/logger.h>
-#include <io/backend/posix/posix_config.h>
 
-namespace BackendEngine {
+namespace Engine {
     template <typename LoggerT, typename MetricT>
     struct PosixEngine {
         private:
-            const PosixConfig config;
             const LoggerT logger;
-
-            uint32_t flush_barrier = 0;
-            uint32_t fsync_barrier = 0;
-            uint32_t fdata_sync_barrier = 0;
 
             inline ssize_t read(int fd, void* buffer, size_t size, off_t offset); 
             inline ssize_t write(int fd, const void* buffer, size_t size, off_t offset);
 
         public:
-            explicit PosixEngine(const PosixConfig& config, const LoggerT& _logger);
+            explicit PosixEngine(const LoggerT& _logger);
 
-            int open(const char* filename, mode_t mode);        
+            int open(const char* filename, int flags, mode_t mode);        
             void close(int fd);
 
-            template<OperationPattern::OperationType OperationT>
+            template<Operation::OperationType OperationT>
             void submit(int fd, void* buffer, size_t size, off_t offset);
     };
 
     template<typename LoggerT, typename MetricT>
-    PosixEngine<LoggerT, MetricT>::PosixEngine(const PosixConfig& _config, const LoggerT& _logger)
-        : config(_config), logger(_logger) {}
+    PosixEngine<LoggerT, MetricT>::PosixEngine(const LoggerT& _logger)
+        : logger(_logger) {}
 
     template<typename LoggerT, typename MetricT>
-    int PosixEngine<LoggerT, MetricT>::open(const char* filename, mode_t mode) {
-        ssize_t fd = ::open(filename, this->config.flags, mode);
+    int PosixEngine<LoggerT, MetricT>::open(const char* filename, int flags, mode_t mode) {
+        ssize_t fd = ::open(filename, flags, mode);
         if (fd < 0) {
             throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
         }
@@ -55,42 +49,20 @@ namespace BackendEngine {
 
     template<typename LoggerT, typename MetricT>
     inline ssize_t PosixEngine<LoggerT, MetricT>::write(int fd, const void* buffer, size_t size, off_t offset) {
-        int result ::pwrite(fd, buffer, size, offset);
-
-        this->flush_barrier += 1;
-        if (this->config.flush_barrier && this->flush_barrier == this->config.flush_barrier) {
-            ::fflush(fd);
-            this->flush_barrier = 0;
-        }
-
-        this->fsync_barrier += 1;        
-        if (this->config.fsync_barrier && this->fsync_barrier == this->config.fsync_barrier) {
-            ::fsync(fd);
-            this->flush_barrier = 0;
-        }
-
-        this->fdata_sync_barrier += 1;
-        if (this->config.fdata_sync_barrier && this->fdata_sync_barrier == this->config.fdata_sync_barrier) {
-            ::fdatasync(fd);
-            this->fdata_sync_barrier= 0;
-        }
+        return ::pwrite(fd, buffer, size, offset);
     }
 
     template<typename LoggerT, typename MetricT>
     void PosixEngine<LoggerT, MetricT>::close(int fd) {
         int return_code = ::close(fd);
-        if (this->config.fsync_close) {
-            ::fsync(fd);
-        }
         if (return_code < 0) {
             throw std::runtime_error("Failed to close fd: " + std::string(strerror(errno)));
         }
     }
 
     template<typename LoggerT, typename MetricT>
-    template<OperationPattern::OperationType OperationT>
+    template<Operation::OperationType OperationT>
     void PosixEngine<LoggerT, MetricT>::submit(int fd, void* buffer, size_t size, off_t offset) {
-
         if constexpr (!std::is_same_v<MetricT, std::monostate>) {
             MetricT metric{};
             ssize_t result = 0;
@@ -100,12 +72,12 @@ namespace BackendEngine {
                     std::chrono::steady_clock::now().time_since_epoch()
                 ).count();
 
-            if constexpr (OperationT == OperationPattern::OperationType::READ) {
+            if constexpr (OperationT == Operation::OperationType::READ) {
                 result = this->read(fd, buffer, size, offset);
-                metric.operation_type = OperationPattern::OperationType::READ;
+                metric.operation_type = Operation::OperationType::READ;
             } else {
                 result = this->write(fd, buffer, size, offset);
-                metric.operation_type = OperationPattern::OperationType::WRITE;
+                metric.operation_type = Operation::OperationType::WRITE;
             }
 
             metric.end_timestamp =
@@ -128,7 +100,7 @@ namespace BackendEngine {
 
             this->logger.info(metric);
         } else {
-            if constexpr (OperationT == OperationPattern::OperationType::READ) {
+            if constexpr (OperationT == Operation::OperationType::READ) {
                 this->read(fd, buffer, size, offset);
             } else {
                 this->write(fd, buffer, size, offset);
