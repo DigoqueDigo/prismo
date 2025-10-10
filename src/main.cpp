@@ -21,7 +21,7 @@ template<
     typename EngineT>
 void worker(
     const std::string filename,
-    Engine::Flags flags,
+    Engine::OpenFlags flags,
     Operation::MultipleBarrier barrier,
     BlockT& block,
     OperationT& operation,
@@ -32,15 +32,15 @@ void worker(
     int fd = engine.open(filename.c_str(), flags, 0666);
     
     for (int i = 0; i < 100000; i++) {
-        generator.nextBlock(block);
         size_t offset = access.nextOffset();
-
+        
         switch (barrier.apply(operation.nextOperation())) {
             case Operation::OperationType::READ:
                 engine.template submit<Operation::OperationType::READ>
                     (fd, block.buffer, block.config.size, static_cast<off_t>(offset));
                 break;
             case Operation::OperationType::WRITE:
+                generator.nextBlock(block);
                 engine.template submit<Operation::OperationType::WRITE>
                     (fd, block.buffer, block.config.size, static_cast<off_t>(offset));
                 break;
@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
 
     const std::string filename = job_j.at("filename").template get<std::string>();
 
-    Engine::Flags flags = engine_j.at("flags").template get<Engine::Flags>();
+    Engine::OpenFlags flags = engine_j.at("openflags").template get<Engine::OpenFlags>();
     Operation::MultipleBarrier barrier = operation_j.at("barrier").template get<Operation::MultipleBarrier>();
 
     Generator::BlockConfig block_config = job_j.template get<Generator::BlockConfig>();

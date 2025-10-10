@@ -1,19 +1,27 @@
-#ifndef POSIX_ENGINE_CONFIG_H
-#define POSIX_ENGINE_CONFIG_H
+#ifndef ENGINE_FLAG_H
+#define ENGINE_FLAG_H
 
 #include <cstdint>
 #include <fcntl.h>
+#include <liburing.h>
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
 
 namespace Engine {
     
-    struct Flags {
+    struct OpenFlags {
         int value;
     };
+
+    struct UringConfig {
+        size_t batch;
+        size_t block_size;
+        uint32_t entries;
+        struct io_uring_params params;
+    };
     
-    void from_json(const json& j, Flags& config) {
+    void from_json(const json& j, OpenFlags& config) {
         static const std::unordered_map<std::string, int> flag_map = {
             {"O_CREAT", O_CREAT},
             {"O_TRUNC", O_TRUNC},
@@ -33,10 +41,36 @@ namespace Engine {
             if (it != flag_map.end()) {
                 config.value |= it->second;
             } else {
-                throw std::invalid_argument("Flag value '" + key + "' is not recognized");
+                throw std::invalid_argument("Open flag value '" + key + "' is not recognized");
             }
         }
     }
+
+    void from_json(const json& j, UringConfig& config) {
+        static const std::unordered_map<std::string, int> params_flag_map = {
+            {"IORING_SETUP_IOPOLL", IORING_SETUP_IOPOLL},
+            {"IORING_SETUP_SQPOLL", IORING_SETUP_SQPOLL},
+            {"IORING_SETUP_SQ_AFF", IORING_SETUP_SQ_AFF},
+            {"IORING_SETUP_CLAMP", IORING_SETUP_CLAMP},
+            {"IORING_SETUP_CQSIZE", IORING_SETUP_CQSIZE},
+            {"IORING_SETUP_SINGLE_ISSUER", IORING_SETUP_SINGLE_ISSUER},
+            {"IORING_SETUP_DEFER_TASKRUN", IORING_SETUP_DEFER_TASKRUN}
+        };
+
+        j.at("batch").get_to(config.batch);
+        j.at("entries").get_to(config.entries);
+        j.at("block_size").get_to(config.block_size);
+
+        for (const auto& value : j) {
+            std::string key = value.template get<std::string>();
+            auto it = params_flag_map.find(key);
+            if (it != params_flag_map.end()) {
+                config.params.flags |= it->second;
+            } else {
+                throw std::invalid_argument("Uring params flag value '" + key + "' is not recognized");
+            }
+        }
+    };
 };
 
 #endif

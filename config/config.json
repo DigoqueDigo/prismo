@@ -5,12 +5,12 @@
     "filename": "testfile",
     "block_size": 4096,
     "limit": 4096000,
-    "metric": "full"
+    "metric": "none"
   },
 
   "operation": {
     "type": "constant",
-    "operation": "write",
+    "operation": "read",
     "read_percentage": 100,
     "operations": [
       "read",
@@ -36,10 +36,9 @@
 
   "engine": {
     "type": "posix",
-    "flags": [
+    "openflags": [
       "O_CREAT",
-      "O_RDWR",
-      "O_DIRECT"
+      "O_RDWR"
     ]
   },
 

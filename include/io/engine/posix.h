@@ -25,7 +25,7 @@ namespace Engine {
         public:
             explicit PosixEngine(const LoggerT& _logger);
 
-            int open(const char* filename, Flags flags, mode_t mode);        
+            int open(const char* filename, OpenFlags flags, mode_t mode);    
             void close(int fd);
 
             template<Operation::OperationType OperationT>
@@ -37,7 +37,7 @@ namespace Engine {
         : logger(_logger) {}
 
     template<typename LoggerT, typename MetricT>
-    int PosixEngine<LoggerT, MetricT>::open(const char* filename, Flags flags, mode_t mode) {
+    int PosixEngine<LoggerT, MetricT>::open(const char* filename, OpenFlags flags, mode_t mode) {
         ssize_t fd = ::open(filename, flags.value, mode);
         if (fd < 0) {
             throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
@@ -67,8 +67,7 @@ namespace Engine {
 
     template<typename LoggerT, typename MetricT>
     void PosixEngine<LoggerT, MetricT>::close(int fd) {
-        int return_code = ::close(fd);
-        if (return_code < 0) {
+        if (::close(fd) < 0) {
             throw std::runtime_error("Failed to close fd: " + std::string(strerror(errno)));
         }
     }
