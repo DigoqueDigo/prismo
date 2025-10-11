@@ -18,7 +18,13 @@ namespace Engine {
         size_t batch;
         size_t block_size;
         uint32_t entries;
-        struct io_uring_params params;
+        struct io_uring_params params{};
+
+        void validate(void) {
+            if (batch > entries) {
+                throw std::invalid_argument("Invalid batch for UringConfig");
+            }
+        }
     };
     
     void from_json(const json& j, OpenFlags& config) {
@@ -61,7 +67,7 @@ namespace Engine {
         j.at("entries").get_to(config.entries);
         j.at("block_size").get_to(config.block_size);
 
-        for (const auto& value : j) {
+        for (const auto& value : j.at("paramsflags")) {
             std::string key = value.template get<std::string>();
             auto it = params_flag_map.find(key);
             if (it != params_flag_map.end()) {
@@ -70,6 +76,8 @@ namespace Engine {
                 throw std::invalid_argument("Uring params flag value '" + key + "' is not recognized");
             }
         }
+
+        config.validate();
     };
 };
 

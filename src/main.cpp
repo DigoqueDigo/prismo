@@ -76,6 +76,7 @@ int main(int argc, char** argv) {
     json logging_j = config_j.at("logging");
 
     access_j.merge_patch(job_j);
+    engine_j.merge_patch(job_j);
 
     const std::string filename = job_j.at("filename").template get<std::string>();
 
@@ -116,10 +117,7 @@ int main(int argc, char** argv) {
         engine
     );
 
-    // const size_t block_size = 4096;
-    // const size_t size_limit = 65536;
-    // const float zipfian_skew = 0.99f;
-    // const int read_percentage = 30;
+
     // const unsigned int batch_size = 4;
     // const unsigned int queue_depth = 256;
     // const unsigned int ring_flags = IORING_SETUP_SQPOLL | IORING_SETUP_SQ_AFF;

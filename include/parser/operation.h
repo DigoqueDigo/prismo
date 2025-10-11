@@ -21,15 +21,15 @@ namespace Parser {
     operation_variant_map = {
         {"constant", [](const json& specialized) {
             auto config = specialized.template get<Operation::ConstantOperationConfig>();
-            return Operation::ConstantOperation(config);
+            return OperationVariant { std::in_place_type<Operation::ConstantOperation>, config };
         }},
         {"percentage", [](const json& specialized) {
             auto config = specialized.template get<Operation::PercentageOperationConfig>();
-            return Operation::PercentageOperation(config);
+            return OperationVariant { std::in_place_type<Operation::PercentageOperation>, config };
         }},
         {"sequence", [](const json& specialized) {
             auto config = specialized.template get<Operation::SequenceOperationConfig>();
-            return Operation::SequenceOperation(config);
+            return OperationVariant { std::in_place_type<Operation::SequenceOperation>, config };
         }}
     };
 

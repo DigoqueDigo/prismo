@@ -10,7 +10,7 @@
 
   "operation": {
     "type": "constant",
-    "operation": "read",
+    "operation": "write",
     "read_percentage": 100,
     "operations": [
       "read",
@@ -35,10 +35,14 @@
   },
 
   "engine": {
-    "type": "posix",
+    "type": "uring",
+    "batch": 256,
+    "entries": 256,
     "openflags": [
       "O_CREAT",
       "O_RDWR"
+    ],
+    "paramsflags": [
     ]
   },
 

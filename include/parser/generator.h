@@ -18,10 +18,10 @@ namespace Parser {
         std::function<GeneratorVariant()>>
     generator_variant_map = {
         {"constant", []() {
-            return Generator::ConstantGenerator();
+            return GeneratorVariant { std::in_place_type<Generator::ConstantGenerator> };
         }},
         {"random", []() {
-            return Generator::RandomGenerator();
+            return GeneratorVariant { std::in_place_type<Generator::RandomGenerator> };
         }},
     };
 

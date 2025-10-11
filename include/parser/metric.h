@@ -19,16 +19,16 @@ namespace Parser {
         std::function<MetricVariant()>>
     metric_variant_map = {
         {"none", []() {
-            return std::monostate{};
+            return MetricVariant { std::in_place_type<std::monostate> };
         }},
         {"base", []() {
-            return Metric::BaseSyncMetric();
+            return MetricVariant { std::in_place_type<Metric::BaseSyncMetric> };
         }},
         {"standard", []() {
-            return Metric::StandardSyncMetric();
+            return MetricVariant { std::in_place_type<Metric::StandardSyncMetric> };
         }},
         {"full", []() {
-            return Metric::FullSyncMetric();
+            return MetricVariant { std::in_place_type<Metric::FullSyncMetric> };
         }},
     };
 
