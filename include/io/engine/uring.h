@@ -47,8 +47,9 @@ namespace Engine {
     UringEngine<LoggerT, MetricT>::UringEngine(const UringConfig& _config, const LoggerT& _logger)
         : logger(_logger), config(_config), iovecs(_config.batch), submitted(0), running(false) {
 
-            if (io_uring_queue_init(config.entries, &ring, 0)) {
-                throw std::runtime_error("Uring initialization failed: " + std::string(strerror(errno)));
+            int return_code = io_uring_queue_init_params(config.entries, &ring, &config.params);
+            if (return_code) {
+                throw std::runtime_error("Uring initialization failed: " + std::string(strerror(return_code)));
             }
 
             for (auto& iv : iovecs) {
@@ -57,7 +58,8 @@ namespace Engine {
                     throw std::bad_alloc();
             }
 
-            if (io_uring_register_buffers(&ring, iovecs.data(), iovecs.size())) {
+            return_code = io_uring_register_buffers(&ring, iovecs.data(), iovecs.size());
+            if (return_code) {
                 io_uring_queue_exit(&ring);
                 throw std::runtime_error("Uring register buffers failed: " + std::string(strerror(errno)));
             }
@@ -117,7 +119,7 @@ namespace Engine {
     void UringEngine<LoggerT, MetricT>::submit(int fd, void* buffer, size_t size, off_t offset) {
 
         io_uring_sqe* sqe = io_uring_get_sqe(&this->ring);
-        std::cout << "submitted: " << this->submitted << std::endl;
+        //std::cout << "submitted: " << this->submitted << std::endl;
 
         while (sqe == nullptr || this->submitted == this->config.batch) {
             io_uring_submit(&ring);
@@ -134,17 +136,15 @@ namespace Engine {
 
     template<typename LoggerT, typename MetricT>
     inline void UringEngine<LoggerT, MetricT>::poll_completion(void) {
-        while (this->submitted > 0) {
+        while (this->submitted == this->config.batch) {
             std::vector<io_uring_cqe*> cqe_batch(this->submitted);
             int count = io_uring_peek_batch_cqe(&ring, cqe_batch.data(), cqe_batch.size());
-            if (count > 0){
-                for (int i = 0; i < count; i++) {
-                    io_uring_cqe* cqe = cqe_batch[i];
-                    io_uring_cqe_seen(&ring, cqe);
-                    std::cout << "Return: " << cqe->res << std::endl;
-                }
+            for (int index = 0; index < count; index++) {
+                io_uring_cqe* cqe = cqe_batch[index];
+                io_uring_cqe_seen(&ring, cqe);
+                //std::cout << "Return: " << cqe->res << std::endl;
             }
-            std::cout << "completed: " << count << std::endl;
+            //std::cout << "completed: " << count << std::endl;
             this->submitted -= count;
         }
     }

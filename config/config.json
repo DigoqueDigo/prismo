@@ -2,7 +2,7 @@
   "job": {
     "name": "job",
     "numjobs": 1,
-    "iterations": 10000000,
+    "iterations": 1000000,
     "filename": "testfile",
     "block_size": 4096,
     "limit": 4096000,
@@ -36,7 +36,7 @@
   },
 
   "engine": {
-    "type": "posix",
+    "type": "uring",
     "batch": 256,
     "entries": 256,
     "openflags": [
@@ -44,8 +44,8 @@
       "O_RDWR"
     ],
     "params": {
-      "sq_thread_cpu": 1,
-      "sq_thread_idle": 10000,
+      "sq_thread_cpu": 0,
+      "sq_thread_idle": 100,
       "flags": [
         "IORING_SETUP_SQPOLL",
         "IORING_SETUP_SQ_AFF"
