@@ -59,6 +59,7 @@ namespace Engine {
             {"IORING_SETUP_SQ_AFF", IORING_SETUP_SQ_AFF},
             {"IORING_SETUP_CLAMP", IORING_SETUP_CLAMP},
             {"IORING_SETUP_CQSIZE", IORING_SETUP_CQSIZE},
+            {"IORING_FEAT_NODROP", IORING_FEAT_NODROP},
             {"IORING_SETUP_SINGLE_ISSUER", IORING_SETUP_SINGLE_ISSUER},
             {"IORING_SETUP_DEFER_TASKRUN", IORING_SETUP_DEFER_TASKRUN}
         };
@@ -67,7 +68,11 @@ namespace Engine {
         j.at("entries").get_to(config.entries);
         j.at("block_size").get_to(config.block_size);
 
-        for (const auto& value : j.at("paramsflags")) {
+        const json params_j = j.at("params");
+        params_j.at("sq_thread_cpu").get_to(config.params.sq_thread_cpu);
+        params_j.at("sq_thread_idle").get_to(config.params.sq_thread_idle);
+
+        for (const auto& value : j.at("params").at("flags")) {
             std::string key = value.template get<std::string>();
             auto it = params_flag_map.find(key);
             if (it != params_flag_map.end()) {

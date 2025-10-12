@@ -20,6 +20,7 @@ template<
     typename GeneratorT,
     typename EngineT>
 void worker(
+    const uint32_t iterations,
     const std::string filename,
     Engine::OpenFlags flags,
     Operation::MultipleBarrier barrier,
@@ -31,7 +32,7 @@ void worker(
 ) {
     int fd = engine.open(filename.c_str(), flags, 0666);
     
-    for (int i = 0; i < 100000; i++) {
+    for (uint32_t i = 0; i < iterations; i++) {
         size_t offset = access.nextOffset();
         
         switch (barrier.apply(operation.nextOperation())) {
@@ -78,6 +79,7 @@ int main(int argc, char** argv) {
     access_j.merge_patch(job_j);
     engine_j.merge_patch(job_j);
 
+    const uint32_t iterations = job_j.at("iterations").template get<uint32_t>();
     const std::string filename = job_j.at("filename").template get<std::string>();
 
     Engine::OpenFlags flags = engine_j.at("openflags").template get<Engine::OpenFlags>();
@@ -95,12 +97,13 @@ int main(int argc, char** argv) {
     Parser::EngineVariant engine = Parser::getEngine(engine_j, logger, metric);
 
     std::visit(
-        [&filename, &flags, &barrier, &block](
+        [&iterations, &filename, &flags, &barrier, &block](
             auto& _operation,
             auto& _access,
             auto& _generator,
             auto& _engine) {
             worker(
+                iterations,
                 filename,
                 flags,
                 barrier,

@@ -100,12 +100,12 @@ namespace Engine {
                     std::chrono::steady_clock::now().time_since_epoch()
                 ).count();
 
-            if constexpr (std::is_base_of_v<Metric::StandardSyncMetric, MetricT>) {
+            if constexpr (std::is_base_of_v<Metric::StandardMetric, MetricT>) {
                 metric.pid = ::getpid();
                 metric.tid = static_cast<uint64_t>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
             }
 
-            if constexpr (std::is_base_of_v<Metric::FullSyncMetric, MetricT>) {
+            if constexpr (std::is_base_of_v<Metric::FullMetric, MetricT>) {
                 metric.requested_bytes = static_cast<uint32_t>(size);
                 metric.processed_bytes = (result > 0) ? static_cast<uint32_t>(result) : 0;
                 metric.offset          = static_cast<uint64_t>(offset);

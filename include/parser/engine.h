@@ -14,13 +14,13 @@
 namespace Parser {
     using EngineVariant = std::variant<
         Engine::PosixEngine<Logger::Spdlog, std::monostate>,
-        Engine::PosixEngine<Logger::Spdlog, Metric::BaseSyncMetric>,
-        Engine::PosixEngine<Logger::Spdlog, Metric::StandardSyncMetric>,
-        Engine::PosixEngine<Logger::Spdlog, Metric::FullSyncMetric>,
+        Engine::PosixEngine<Logger::Spdlog, Metric::BaseMetric>,
+        Engine::PosixEngine<Logger::Spdlog, Metric::StandardMetric>,
+        Engine::PosixEngine<Logger::Spdlog, Metric::FullMetric>,
         Engine::UringEngine<Logger::Spdlog, std::monostate>,
-        Engine::UringEngine<Logger::Spdlog, Metric::BaseSyncMetric>,
-        Engine::UringEngine<Logger::Spdlog, Metric::StandardSyncMetric>,
-        Engine::UringEngine<Logger::Spdlog, Metric::FullSyncMetric>>;
+        Engine::UringEngine<Logger::Spdlog, Metric::BaseMetric>,
+        Engine::UringEngine<Logger::Spdlog, Metric::StandardMetric>,
+        Engine::UringEngine<Logger::Spdlog, Metric::FullMetric>>;
 
 
     inline static const std::unordered_map<

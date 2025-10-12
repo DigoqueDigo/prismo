@@ -19,43 +19,44 @@ namespace Engine {
             LoggerT logger;
             UringConfig config;
 
-            uint32_t submitted;
             struct io_uring ring;
             std::vector<struct iovec> iovecs;
+            
+            uint32_t submitted;
+            std::atomic<bool> running;
 
             // inline int fsync(int fd);
             // inline int fdatasync(int fd);
             inline void read(int fd, size_t size, off_t offset, io_uring_sqe* sqe);
             inline void write(int fd, const void* buffer, size_t size, off_t offset, io_uring_sqe* sqe);
 
-        public:
+            
+            public:
             explicit UringEngine(const UringConfig& _config, const LoggerT& _logger);
             ~UringEngine();
-
+            
             int open(const char* filename, OpenFlags flags, mode_t mode);       
             void close(int fd);
-
+            void poll_completion();
+            
             template<Operation::OperationType OperationT>
             void submit(int fd, void* buffer, size_t size, off_t offset);
     };
 
     template<typename LoggerT, typename MetricT>
     UringEngine<LoggerT, MetricT>::UringEngine(const UringConfig& _config, const LoggerT& _logger)
-        : logger(_logger), config(_config), submitted(0), iovecs(_config.batch) {
+        : logger(_logger), config(_config), iovecs(_config.batch), submitted(0), running(false) {
 
             if (io_uring_queue_init(config.entries, &ring, 0)) {
                 throw std::runtime_error("Uring initialization failed: " + std::string(strerror(errno)));
             }
 
-            for (auto& buffer : iovecs) {
-                buffer.iov_base = std::malloc(config.block_size);
-                buffer.iov_len = config.block_size;
-                if (buffer.iov_base == nullptr) {
-                    io_uring_queue_exit(&ring);
+            for (auto& iv : iovecs) {
+                iv.iov_len = config.block_size;
+                if (posix_memalign(&iv.iov_base, 4096, config.block_size))
                     throw std::bad_alloc();
-                }
             }
- 
+
             if (io_uring_register_buffers(&ring, iovecs.data(), iovecs.size())) {
                 io_uring_queue_exit(&ring);
                 throw std::runtime_error("Uring register buffers failed: " + std::string(strerror(errno)));
@@ -64,10 +65,9 @@ namespace Engine {
 
     template<typename LoggerT, typename MetricT>
     UringEngine<LoggerT, MetricT>::~UringEngine() {
-        for (auto& buffer : iovecs) {
-            std::free(buffer.iov_base);
+        for (auto& iv : iovecs) {
+            std::free(iv.iov_base);
         }
-        std::cout << "olassssss" << std::endl;
         io_uring_queue_exit(&ring);
     }
 
@@ -81,19 +81,21 @@ namespace Engine {
         if (return_code) {
             throw std::runtime_error("Register file failed: " + std::string(strerror(return_code)));
         }
-        return fd;
+        return 0;
     }
 
     template<typename LoggerT, typename MetricT>
-    inline void UringEngine<LoggerT, MetricT>::read(int fd, size_t size, off_t offset, io_uring_sqe* sqe) {
-        io_uring_prep_read_fixed(sqe, fd, this->iovecs[this->submitted].iov_base, size, offset, this->submitted);
+    inline void UringEngine<LoggerT, MetricT>::read(int fd_index, size_t size, off_t offset, io_uring_sqe* sqe) {
+        io_uring_prep_read_fixed(sqe, fd_index, this->iovecs[this->submitted].iov_base, size, offset, this->submitted);
+        sqe->flags |= IOSQE_FIXED_FILE;
         this->submitted++;
     }
 
     template<typename LoggerT, typename MetricT>
-    inline void UringEngine<LoggerT, MetricT>::write(int fd, const void* buffer, size_t size, off_t offset, io_uring_sqe* sqe) {
+    inline void UringEngine<LoggerT, MetricT>::write(int fd_index, const void* buffer, size_t size, off_t offset, io_uring_sqe* sqe) {
         std::memcpy(this->iovecs[this->submitted].iov_base, buffer, this->config.block_size);
-        io_uring_prep_write_fixed(sqe, fd, this->iovecs[this->submitted].iov_base, size, offset, this->submitted);
+        io_uring_prep_write_fixed(sqe, fd_index, this->iovecs[this->submitted].iov_base, size, offset, this->submitted);
+        sqe->flags |= IOSQE_FIXED_FILE;
         this->submitted++;
     }
 
@@ -115,34 +117,35 @@ namespace Engine {
     void UringEngine<LoggerT, MetricT>::submit(int fd, void* buffer, size_t size, off_t offset) {
 
         io_uring_sqe* sqe = io_uring_get_sqe(&this->ring);
+        std::cout << "submitted: " << this->submitted << std::endl;
 
-        if (sqe == NULL) {
-            throw std::runtime_error("Failed to get SQE: " + std::string(strerror(errno)));
+        while (sqe == nullptr || this->submitted == this->config.batch) {
+            io_uring_submit(&ring);
+            this->poll_completion();
+            sqe = io_uring_get_sqe(&this->ring);
         }
-
 
         if constexpr (OperationT == Operation::OperationType::READ) {
             this->read(fd, size, offset, sqe);
         } else if constexpr (OperationT == Operation::OperationType::WRITE) {
             this->write(fd, buffer, size, offset, sqe);
         }
+    }
 
-        if (this->submitted == this->config.batch) {
-            io_uring_submit(&ring);
-
-            while (this->submitted > 0) {
-                std::vector<io_uring_cqe*> cqe_batch(this->submitted);
-                int count = io_uring_peek_batch_cqe(&ring, cqe_batch.data(), cqe_batch.size());
-
-                if (count > 0){
-                    for (int i = 0; i < count; i++) {
-                        io_uring_cqe* cqe = cqe_batch[i];
-                        // std::cout <<  cqe->res << std::endl;
-                        io_uring_cqe_seen(&ring, cqe);
-                        this->submitted--;
-                    }
+    template<typename LoggerT, typename MetricT>
+    inline void UringEngine<LoggerT, MetricT>::poll_completion(void) {
+        while (this->submitted > 0) {
+            std::vector<io_uring_cqe*> cqe_batch(this->submitted);
+            int count = io_uring_peek_batch_cqe(&ring, cqe_batch.data(), cqe_batch.size());
+            if (count > 0){
+                for (int i = 0; i < count; i++) {
+                    io_uring_cqe* cqe = cqe_batch[i];
+                    io_uring_cqe_seen(&ring, cqe);
+                    std::cout << "Return: " << cqe->res << std::endl;
                 }
             }
+            std::cout << "completed: " << count << std::endl;
+            this->submitted -= count;
         }
     }
 };

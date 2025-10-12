@@ -10,9 +10,9 @@
 namespace Parser {
     using MetricVariant = std::variant<
         std::monostate,
-        Metric::BaseSyncMetric,
-        Metric::StandardSyncMetric,
-        Metric::FullSyncMetric>;
+        Metric::BaseMetric,
+        Metric::StandardMetric,
+        Metric::FullMetric>;
 
     inline static const std::unordered_map<
         std::string,
@@ -22,13 +22,13 @@ namespace Parser {
             return MetricVariant { std::in_place_type<std::monostate> };
         }},
         {"base", []() {
-            return MetricVariant { std::in_place_type<Metric::BaseSyncMetric> };
+            return MetricVariant { std::in_place_type<Metric::BaseMetric> };
         }},
         {"standard", []() {
-            return MetricVariant { std::in_place_type<Metric::StandardSyncMetric> };
+            return MetricVariant { std::in_place_type<Metric::StandardMetric> };
         }},
         {"full", []() {
-            return MetricVariant { std::in_place_type<Metric::FullSyncMetric> };
+            return MetricVariant { std::in_place_type<Metric::FullMetric> };
         }},
     };
 

@@ -71,8 +71,8 @@ namespace Logger {
 };
 
 template<>
-struct fmt::formatter<Metric::BaseSyncMetric> : fmt::formatter<std::string> {
-    auto format(const Metric::BaseSyncMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
+struct fmt::formatter<Metric::BaseMetric> : fmt::formatter<std::string> {
+    auto format(const Metric::BaseMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
         return fmt::format_to(
             ctx.out(),
             "[type={} sts={} ets={}]",
@@ -84,8 +84,8 @@ struct fmt::formatter<Metric::BaseSyncMetric> : fmt::formatter<std::string> {
 };
 
 template<>
-struct fmt::formatter<Metric::StandardSyncMetric> : fmt::formatter<std::string> {
-    auto format(const Metric::StandardSyncMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
+struct fmt::formatter<Metric::StandardMetric> : fmt::formatter<std::string> {
+    auto format(const Metric::StandardMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
         return fmt::format_to(
             ctx.out(),
             "[type={} sts={} ets={} pid={} tid={}]",
@@ -99,8 +99,8 @@ struct fmt::formatter<Metric::StandardSyncMetric> : fmt::formatter<std::string> 
 };
 
 template<>
-struct fmt::formatter<Metric::FullSyncMetric> : fmt::formatter<std::string> {
-    auto format(const Metric::FullSyncMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
+struct fmt::formatter<Metric::FullMetric> : fmt::formatter<std::string> {
+    auto format(const Metric::FullMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
         return fmt::format_to(
             ctx.out(),
             "[type={} sts={} ets={} pid={} tid={} req={} proc={} offset={} ret={} errno={}]",
