@@ -27,7 +27,7 @@ namespace Engine {
         }
     };
     
-    void from_json(const json& j, OpenFlags& config) {
+    inline void from_json(const json& j, OpenFlags& config) {
         static const std::unordered_map<std::string, int> flag_map = {
             {"O_CREAT", O_CREAT},
             {"O_TRUNC", O_TRUNC},
@@ -52,7 +52,7 @@ namespace Engine {
         }
     }
 
-    void from_json(const json& j, UringConfig& config) {
+    inline void from_json(const json& j, UringConfig& config) {
         static const std::unordered_map<std::string, int> params_flag_map = {
             {"IORING_SETUP_IOPOLL", IORING_SETUP_IOPOLL},
             {"IORING_SETUP_SQPOLL", IORING_SETUP_SQPOLL},

@@ -1,4 +1,3 @@
-#include <parser/engine.h>
 #include <parser/parser.h>
 
 #include <io/logger.h>
@@ -10,21 +9,23 @@
 #include <fstream>
 
 template<
-    typename BlockT,
     typename OperationT,
     typename AccessT,
     typename GeneratorT,
-    typename EngineT>
+    typename EngineT,
+    typename LoggerT,
+    typename MetricT>
 void worker(
     const uint32_t iterations,
     const std::string filename,
     Engine::OpenFlags flags,
     Operation::MultipleBarrier barrier,
-    BlockT& block,
+    Generator::Block& block,
     OperationT& operation,
     AccessT& access,
     GeneratorT& generator,
-    EngineT& engine
+    EngineT& engine,
+    LoggerT& logger
 ) {
     int fd = engine.open(filename.c_str(), flags, 0666);
     
@@ -33,21 +34,21 @@ void worker(
         
         switch (barrier.apply(operation.nextOperation())) {
             case Operation::OperationType::READ:
-                engine.template submit<Operation::OperationType::READ>
-                    (fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
+                engine.template submit<LoggerT, MetricT, Operation::OperationType::READ>
+                    (logger, fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
                 break;
             case Operation::OperationType::WRITE:
                 generator.nextBlock(block);
-                engine.template submit<Operation::OperationType::WRITE>
-                    (fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
+                engine.template submit<LoggerT, MetricT, Operation::OperationType::WRITE>
+                    (logger, fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
                 break;
             case Operation::OperationType::FSYNC:
-                engine.template submit<Operation::OperationType::FSYNC>
-                    (fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
+                engine.template submit<LoggerT, MetricT, Operation::OperationType::FSYNC>
+                    (logger, fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
                 break;
             case Operation::OperationType::FDATASYNC:
-                engine.template submit<Operation::OperationType::FDATASYNC>
-                    (fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
+                engine.template submit<LoggerT, MetricT, Operation::OperationType::FDATASYNC>
+                    (logger, fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
                 break;
         }
     }
@@ -89,36 +90,43 @@ int main(int argc, char** argv) {
 
     Parser::MetricVariant metric = Parser::getMetricVariant(job_j);
     Parser::LoggerVariant logger = Parser::getLoggerVariant(logging_j);    
-    Parser::EngineVariant engine = Parser::getEngine(engine_j, logger, metric);
+    Parser::EngineVariant engine = Parser::getEngineVariant(engine_j);
 
     std::visit(
         [&iterations, &filename, &flags, &barrier, &block](
-            auto& _operation,
-            auto& _access,
-            auto& _generator,
-            auto& _engine) {
-            worker(
+            auto& actual_operation,
+            auto& actual_access,
+            auto& actual_generator,
+            auto& actual_engine,
+            auto& actual_logger,
+            auto actual_metric) {
+            worker<
+                decltype(actual_operation),
+                decltype(actual_access),
+                decltype(actual_generator),
+                decltype(actual_engine),
+                decltype(actual_logger),
+                decltype(actual_metric)
+            >(
                 iterations,
                 filename,
                 flags,
                 barrier,
                 block,
-                _operation,
-                _access,
-                _generator,
-                _engine
+                actual_operation,
+                actual_access,
+                actual_generator,
+                actual_engine,
+                actual_logger
             );
         },
         operation,
         access,
         generator,
-        engine
+        engine,
+        logger,
+        metric
     );
-
-
-    // const unsigned int batch_size = 4;
-    // const unsigned int queue_depth = 256;
-    // const unsigned int ring_flags = IORING_SETUP_SQPOLL | IORING_SETUP_SQ_AFF;
 
     config_file.close();
 

@@ -2,11 +2,11 @@
   "job": {
     "name": "job",
     "numjobs": 1,
-    "iterations": 100000,
+    "iterations": 20,
     "filename": "testfile",
     "block_size": 4096,
     "limit": 65536,
-    "metric": "none"
+    "metric": "full"
   },
 
   "operation": {

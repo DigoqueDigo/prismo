@@ -10,6 +10,7 @@
 #include <operation/constant.h>
 #include <operation/percentage.h>
 #include <operation/sequence.h>
+#include <io/engine/posix.h>
 #include <io/metric.h>
 #include <io/logger.h>
 #include <nlohmann/json.hpp>
@@ -41,11 +42,15 @@ namespace Parser {
     using LoggerVariant = std::variant<
         Logger::Spdlog>;
 
+    using EngineVariant = std::variant<
+        Engine::PosixEngine>;
+
     AccessVariant getAccessVariant(const json& specialized);
     GeneratorVariant getGeneratorVariant(const json& specialized);
     OperationVariant getOperationVariant(const json& specialized);
     MetricVariant getMetricVariant(const json& specialized);
     LoggerVariant getLoggerVariant(const json& specialized);
+    EngineVariant getEngineVariant(const json& specialized);
 };
 
 #endif

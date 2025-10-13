@@ -24,6 +24,7 @@ src = files(
   'src/operation/percentage.cpp',
   'src/operation/sequence.cpp',
   'src/parser/access.cpp',
+  'src/parser/engine.cpp',
   'src/parser/generator.cpp',
   'src/parser/logger.cpp',
   'src/parser/metric.cpp',

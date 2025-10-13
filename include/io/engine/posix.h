@@ -12,69 +12,59 @@
 #include <io/flag.h>
 
 namespace Engine {
-    template <typename LoggerT, typename MetricT>
-    struct PosixEngine {
-        private:
-            const LoggerT logger;
 
+    struct PosixEngine {
+        private:    
             inline int fsync(int fd);
             inline int fdatasync(int fd);
+
             inline ssize_t read(int fd, void* buffer, size_t size, off_t offset);
-            inline ssize_t write(int fd, const void* buffer, size_t size, off_t offset);
+            inline ssize_t write(int fd, const void* buffer, size_t size, off_t offset);            
 
         public:
-            explicit PosixEngine(const LoggerT& _logger);
+            PosixEngine() = default;
 
-            int open(const char* filename, OpenFlags flags, mode_t mode);    
-            void close(int fd);
+            inline int open(const char* filename, OpenFlags flags, mode_t mode);    
+            inline int close(int fd);
 
-            template<Operation::OperationType OperationT>
-            void submit(int fd, void* buffer, size_t size, off_t offset);
+            template<typename LoggerT, typename MetricT, Operation::OperationType OperationT>
+            inline void submit(LoggerT& logger, int fd, void* buffer, size_t size, off_t offset);
     };
 
-    template<typename LoggerT, typename MetricT>
-    PosixEngine<LoggerT, MetricT>::PosixEngine(const LoggerT& _logger)
-        : logger(_logger) {}
-
-    template<typename LoggerT, typename MetricT>
-    int PosixEngine<LoggerT, MetricT>::open(const char* filename, OpenFlags flags, mode_t mode) {
-        ssize_t fd = ::open(filename, flags.value, mode);
+    inline int PosixEngine::open(const char* filename, OpenFlags flags, mode_t mode) {
+        int fd = ::open(filename, flags.value, mode);
         if (fd < 0) {
             throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
         }
         return fd;
     }
 
-    template<typename LoggerT, typename MetricT>
-    inline int PosixEngine<LoggerT, MetricT>::fsync(int fd) {
+    inline int PosixEngine::close(int fd) {
+        int return_code = ::close(fd); 
+        if (return_code < 0) {
+            throw std::runtime_error("Failed to close fd: " + std::string(strerror(errno)));
+        }
+        return return_code;
+    }
+
+    inline int PosixEngine::fsync(int fd) {
         return ::fsync(fd);
     }
 
-    template<typename LoggerT, typename MetricT>
-    inline int PosixEngine<LoggerT, MetricT>::fdatasync(int fd) {
+    inline int PosixEngine::fdatasync(int fd) {
         return ::fdatasync(fd);
     }
 
-    template<typename LoggerT, typename MetricT>
-    inline ssize_t PosixEngine<LoggerT, MetricT>::read(int fd, void* buffer, size_t size, off_t offset) {
+    inline ssize_t PosixEngine::read(int fd, void* buffer, size_t size, off_t offset) {
         return ::pread(fd, buffer, size, offset);
     }
 
-    template<typename LoggerT, typename MetricT>
-    inline ssize_t PosixEngine<LoggerT, MetricT>::write(int fd, const void* buffer, size_t size, off_t offset) {
+    inline ssize_t PosixEngine::write(int fd, const void* buffer, size_t size, off_t offset) {
         return ::pwrite(fd, buffer, size, offset);
     }
 
-    template<typename LoggerT, typename MetricT>
-    void PosixEngine<LoggerT, MetricT>::close(int fd) {
-        if (::close(fd) < 0) {
-            throw std::runtime_error("Failed to close fd: " + std::string(strerror(errno)));
-        }
-    }
-
-    template<typename LoggerT, typename MetricT>
-    template<Operation::OperationType OperationT>
-    void PosixEngine<LoggerT, MetricT>::submit(int fd, void* buffer, size_t size, off_t offset) {
+    template<typename LoggerT, typename MetricT, Operation::OperationType OperationT>
+    inline void PosixEngine::submit(LoggerT& logger, int fd, void* buffer, size_t size, off_t offset) {
         if constexpr (!std::is_same_v<MetricT, std::monostate>) {
             MetricT metric{};
             ssize_t result = 0;
@@ -86,13 +76,13 @@ namespace Engine {
                 ).count();
 
             if constexpr (OperationT == Operation::OperationType::READ) {
-                result = this->read(fd, buffer, size, offset);
+                result = read(fd, buffer, size, offset);
             } else if constexpr (OperationT == Operation::OperationType::WRITE) {
-                result = this->write(fd, buffer, size, offset);
+                result = write(fd, buffer, size, offset);
             } else if constexpr (OperationT == Operation::OperationType::FSYNC) {
-                result = this->fsync(fd);
+                result = fsync(fd);
             } else if constexpr (OperationT == Operation::OperationType::FDATASYNC) {
-                result = this->fdatasync(fd);
+                result = fdatasync(fd);
             }
 
             metric.end_timestamp =
@@ -113,16 +103,16 @@ namespace Engine {
                 metric.error_no        = errno;
             }
 
-            this->logger.info(metric);
+            logger.info(metric);
         } else {
             if constexpr (OperationT == Operation::OperationType::READ) {
-                this->read(fd, buffer, size, offset);
+                read(fd, buffer, size, offset);
             } else if constexpr (OperationT == Operation::OperationType::WRITE) {
-                this->write(fd, buffer, size, offset);
+                write(fd, buffer, size, offset);
             } else if constexpr (OperationT == Operation::OperationType::FSYNC) {
-                this->fsync(fd);
+                fsync(fd);
             } else if constexpr (OperationT == Operation::OperationType::FDATASYNC) {
-                this->fdatasync(fd);
+                fdatasync(fd);
             }
         }
     }
