@@ -19,6 +19,10 @@ src = files(
   'src/generator/block.cpp',
   'src/generator/constant.cpp',
   'src/generator/random.cpp',
+  'src/operation/barrier.cpp',
+  'src/operation/constant.cpp',
+  'src/operation/percentage.cpp',
+  'src/operation/sequence.cpp',
   'src/main.cpp',
 )
 
