@@ -60,7 +60,7 @@ namespace Logger {
             }
     };
 
-    void from_json(const json& j, SpdlogConfig& config) {
+    inline void from_json(const json& j, SpdlogConfig& config) {
         j.at("name").get_to(config.name);
         j.at("queue_size").get_to(config.queue_size);
         j.at("thread_count").get_to(config.thread_count);

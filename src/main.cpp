@@ -1,9 +1,5 @@
-#include <parser/access.h>
-#include <parser/operation.h>
-#include <parser/generator.h>
-#include <parser/logger.h>
-#include <parser/metric.h>
 #include <parser/engine.h>
+#include <parser/parser.h>
 
 #include <io/logger.h>
 #include <operation/type.h>
@@ -87,12 +83,12 @@ int main(int argc, char** argv) {
     Engine::OpenFlags flags = engine_j.at("openflags").template get<Engine::OpenFlags>();
     Operation::MultipleBarrier barrier = operation_j.at("barrier").template get<Operation::MultipleBarrier>();
     
-    Parser::AccessVariant access = Parser::getAccess(access_j);
-    Parser::OperationVariant operation = Parser::getOperation(operation_j);
-    Parser::GeneratorVariant generator = Parser::getGenerator(generator_j);
+    Parser::AccessVariant access = Parser::getAccessVariant(access_j);
+    Parser::OperationVariant operation = Parser::getOperationVariant(operation_j);
+    Parser::GeneratorVariant generator = Parser::getGeneratorVariant(generator_j);
 
-    Parser::MetricVariant metric = Parser::getMetric(job_j);
-    Parser::LoggerVariant logger = Parser::getLogger(logging_j);    
+    Parser::MetricVariant metric = Parser::getMetricVariant(job_j);
+    Parser::LoggerVariant logger = Parser::getLoggerVariant(logging_j);    
     Parser::EngineVariant engine = Parser::getEngine(engine_j, logger, metric);
 
     std::visit(

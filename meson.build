@@ -23,6 +23,11 @@ src = files(
   'src/operation/constant.cpp',
   'src/operation/percentage.cpp',
   'src/operation/sequence.cpp',
+  'src/parser/access.cpp',
+  'src/parser/generator.cpp',
+  'src/parser/logger.cpp',
+  'src/parser/metric.cpp',
+  'src/parser/operation.cpp',
   'src/main.cpp',
 )
 
