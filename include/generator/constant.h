@@ -4,10 +4,10 @@
 #include <generator/block.h>
 
 namespace Generator {
+
     struct ConstantGenerator {
-        void nextBlock(Block& block) {
-            std::memset(block.buffer, 0, block.config.size);
-        }
+        public:
+            void nextBlock(Block& block);
     };
 };
 

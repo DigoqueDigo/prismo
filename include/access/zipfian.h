@@ -17,9 +17,9 @@ namespace Access {
             float skew;
 
         public:
-            constexpr inline size_t getBlockSize(void) const { return this->block_size; }
-            constexpr inline size_t getLimit(void) const { return this->limit; }
-            constexpr inline float getSkew(void) const { return this->skew; }
+            constexpr inline size_t getBlockSize(void) const { return block_size; }
+            constexpr inline size_t getLimit(void) const { return limit; }
+            constexpr inline float getSkew(void) const { return skew; }
 
             void validate(void) const;
             friend void from_json(const json& j, ZipfianAccessConfig& config);

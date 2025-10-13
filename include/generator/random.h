@@ -3,20 +3,16 @@
 
 #include <generator/block.h>
 #include <lib/shishua/shishua.h>
-#include <lib/distribution/distribution.h>
 
 namespace Generator {
+
     struct RandomGenerator {
-        prng_state generator;
+        private:
+            prng_state generator;
 
-        explicit RandomGenerator() {
-            uint64_t seed[4] = {0, 0, 0, 0}; 
-            prng_init(&generator, seed);
-        };
-
-        void nextBlock(Block& block) {
-            prng_gen(&generator, block.buffer, block.config.size);
-        }
+        public:
+            explicit RandomGenerator();
+            void nextBlock(Block& block);
     };
 };
 

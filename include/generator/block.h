@@ -11,36 +11,36 @@ using json = nlohmann::json;
 #define BLOCK_BASE_SIZE 128
 
 namespace Generator {
-    struct BlockConfig {
-        size_t size;
 
-        void validate(void) const {
-            if (size % BLOCK_BASE_SIZE != 0)
-                throw std::invalid_argument("Invalid block size, must be multiple of " + std::to_string(BLOCK_BASE_SIZE));
-        };
+    struct BlockConfig {
+        private:
+            size_t size;
+
+        public:
+            constexpr inline size_t getSize(void) const { return size; }
+
+            void validate(void) const;
+            friend void from_json(const json& j, BlockConfig& config);
     };
 
     struct Block {
-        const BlockConfig config;
+        private:
+        const size_t size;
         uint8_t* buffer;
 
-        explicit Block(const BlockConfig& _config)
-            : config(_config), buffer(nullptr) {
-                buffer = static_cast<uint8_t*>(std::malloc(_config.size));
-                if (buffer == nullptr) {
-                    throw std::bad_alloc();
-                }
-            }
+        public:
+            explicit Block(const BlockConfig& _config);
+            ~Block();
+        
+            // Prevent copying (to avoid double free)
+            Block(const Block&) = delete;
+            Block& operator=(const Block&) = delete;
 
-        ~Block() {
-            std::free(buffer);
-        }   
+            constexpr inline size_t getSize(void) const { return size; };
+            constexpr inline uint8_t* getBuffer(void) { return buffer; };
     };
 
-    void from_json(const json& j, BlockConfig& config) {
-        j.at("block_size").get_to(config.size);
-        config.validate();
-    }
+    void from_json(const json& j, BlockConfig& config);
 };
 
 #endif

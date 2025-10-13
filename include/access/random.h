@@ -15,8 +15,8 @@ namespace Access {
             size_t limit;
 
         public:
-            constexpr inline size_t getBlockSize(void) const { return this->block_size; }
-            constexpr inline size_t getLimit(void) const { return this->limit; }
+            constexpr inline size_t getBlockSize(void) const { return block_size; }
+            constexpr inline size_t getLimit(void) const { return limit; }
 
             void validate(void) const;
             friend void from_json(const json& j, RandomAccessConfig& config);

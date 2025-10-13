@@ -38,20 +38,20 @@ void worker(
         switch (barrier.apply(operation.nextOperation())) {
             case Operation::OperationType::READ:
                 engine.template submit<Operation::OperationType::READ>
-                    (fd, block.buffer, block.config.size, static_cast<off_t>(offset));
+                    (fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
                 break;
             case Operation::OperationType::WRITE:
                 generator.nextBlock(block);
                 engine.template submit<Operation::OperationType::WRITE>
-                    (fd, block.buffer, block.config.size, static_cast<off_t>(offset));
+                    (fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
                 break;
             case Operation::OperationType::FSYNC:
                 engine.template submit<Operation::OperationType::FSYNC>
-                    (fd, block.buffer, block.config.size, static_cast<off_t>(offset));
+                    (fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
                 break;
             case Operation::OperationType::FDATASYNC:
                 engine.template submit<Operation::OperationType::FDATASYNC>
-                    (fd, block.buffer, block.config.size, static_cast<off_t>(offset));
+                    (fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
                 break;
         }
     }
