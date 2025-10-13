@@ -1,0 +1,26 @@
+#include <access/random.h>
+#include <stdexcept>
+
+namespace Access {
+
+    void RandomAccessConfig::validate(void) const {
+        if (block_size == 0)
+            throw std::invalid_argument("Invalid block_size for RandomAccessConfig");
+        if (block_size > limit)
+            throw std::invalid_argument("Invalid limit for RandomAccessConfig");
+    }
+
+    RandomAccess::RandomAccess(const RandomAccessConfig& _config)
+        : config(_config), distribution(0, _config.getLimit()) {}
+
+    size_t RandomAccess::nextOffset(void) {
+        return distribution.nextValue() * config.getBlockSize();
+    }
+
+    void from_json(const json& j, RandomAccessConfig& config) {
+        j.at("block_size").get_to(config.block_size);
+        j.at("limit").get_to(config.limit);
+        config.validate();
+        config.limit = config.limit / config.block_size - 1;
+    }
+}

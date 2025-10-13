@@ -8,16 +8,18 @@
 using json = nlohmann::json;
 
 namespace Access {
-    struct SequentialAccessConfig {
-        size_t block_size;
-        size_t limit;
 
-        void validate(void) const {
-            if (block_size == 0)
-                throw std::invalid_argument("Invalid block_size for SequentialAccessConfig");
-            if (block_size > limit)
-                throw std::invalid_argument("Invalid limit for SequentialAccessConfig");
-        }
+    struct SequentialAccessConfig {
+        private:
+            size_t block_size;
+            size_t limit;
+
+        public:
+            constexpr inline size_t getBlockSize(void) const { return this->block_size; }
+            constexpr inline size_t getLimit(void) const { return this->limit; }
+
+            void validate(void) const;
+            friend void from_json(const json& j, SequentialAccessConfig& config);
     };
 
     struct SequentialAccess {
@@ -26,22 +28,11 @@ namespace Access {
             size_t current_offset;
 
         public:
-            explicit SequentialAccess(const SequentialAccessConfig& _config)
-                : config(_config), current_offset(0) {}
-
-            size_t nextOffset(void) {
-                const size_t offset = current_offset;
-                current_offset = (current_offset + config.block_size) % config.limit;
-                return offset;
-            }
+            explicit SequentialAccess(const SequentialAccessConfig& _config);
+            size_t nextOffset(void);
     };
 
-    void from_json(const json& j, SequentialAccessConfig& config) {
-        j.at("block_size").get_to(config.block_size);
-        j.at("limit").get_to(config.limit);
-        config.validate();
-        config.limit = config.block_size * (config.limit / config.block_size);
-    }
+    void from_json(const json& j, SequentialAccessConfig& config);
 }
 
 #endif

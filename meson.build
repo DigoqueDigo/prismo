@@ -13,6 +13,9 @@ project(
 # Define include directories and source files
 inc = include_directories('include')
 src = files(
+  'src/access/random.cpp',
+  'src/access/sequential.cpp',
+  'src/access/zipfian.cpp',
   'src/main.cpp',
 )
 

@@ -2,23 +2,24 @@
 #define RANDOM_ACCESS_H
 
 #include <cstddef>
-#include <stdexcept>
 #include <nlohmann/json.hpp>
 #include <lib/distribution/distribution.h>
 
 using json = nlohmann::json;
 
 namespace Access {
-    struct RandomAccessConfig {
-        size_t block_size;
-        size_t limit;
 
-        void validate(void) const {
-            if (block_size == 0)
-                throw std::invalid_argument("Invalid block_size for RandomAccessConfig");
-            if (block_size > limit)
-                throw std::invalid_argument("Invalid limit for RandomAccessConfig");
-        }
+    struct RandomAccessConfig {
+        private:
+            size_t block_size;
+            size_t limit;
+
+        public:
+            constexpr inline size_t getBlockSize(void) const { return this->block_size; }
+            constexpr inline size_t getLimit(void) const { return this->limit; }
+
+            void validate(void) const;
+            friend void from_json(const json& j, RandomAccessConfig& config);
     };
 
     struct RandomAccess {
@@ -27,20 +28,11 @@ namespace Access {
             Distribution::UniformDistribution<size_t> distribution;
 
         public:
-            explicit RandomAccess(const RandomAccessConfig& _config)
-                : config(_config), distribution(0, _config.limit) {}
-
-            size_t nextOffset(void) {
-                return distribution.nextValue() * config.block_size;
-            }
+            explicit RandomAccess(const RandomAccessConfig& _config);
+            size_t nextOffset(void);
     };
 
-    void from_json(const json& j, RandomAccessConfig& config) {
-        j.at("block_size").get_to(config.block_size);
-        j.at("limit").get_to(config.limit);
-        config.validate();
-        config.limit = config.limit / config.block_size - 1;
-    }
+    void from_json(const json& j, RandomAccessConfig& config);
 }
 
 #endif

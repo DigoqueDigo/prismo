@@ -21,8 +21,9 @@ namespace Engine {
 
             struct io_uring ring;
             std::vector<struct iovec> iovecs;
-            
-            uint32_t submitted;
+            std::thread poll_thread;
+
+            std::atomic<uint32_t> submitted;
             std::atomic<bool> running;
 
             // inline int fsync(int fd);
@@ -43,9 +44,9 @@ namespace Engine {
             void submit(int fd, void* buffer, size_t size, off_t offset);
     };
 
-    template<typename LoggerT, typename MetricT>
-    UringEngine<LoggerT, MetricT>::UringEngine(const UringConfig& _config, const LoggerT& _logger)
-        : logger(_logger), config(_config), iovecs(_config.batch), submitted(0), running(false) {
+        template<typename LoggerT, typename MetricT>
+        UringEngine<LoggerT, MetricT>::UringEngine(const UringConfig& _config, const LoggerT& _logger)
+            : logger(_logger), config(_config), iovecs(_config.batch), submitted(0), running(true) {
 
             int return_code = io_uring_queue_init_params(config.entries, &ring, &config.params);
             if (return_code) {
@@ -56,7 +57,6 @@ namespace Engine {
                 iv.iov_len = config.block_size;
                 if (posix_memalign(&iv.iov_base, 4096, config.block_size))
                     throw std::bad_alloc();
-                // TODO :: remover esta merda
                 std::memset(iv.iov_base, 0, config.block_size);
             }
 
@@ -65,15 +65,35 @@ namespace Engine {
                 io_uring_queue_exit(&ring);
                 throw std::runtime_error("Uring register buffers failed: " + std::string(strerror(errno)));
             }
+
+            poll_thread = std::thread([this]() {
+                this->poll_completion();
+            });
+    
+            int CPU_CORE = 1;
+            cpu_set_t cpuset;
+            CPU_ZERO(&cpuset);
+            CPU_SET(CPU_CORE, &cpuset);
+            int s = pthread_setaffinity_np(poll_thread.native_handle(), sizeof(cpu_set_t), &cpuset);
+            if (s != 0) {
+                std::cerr << "Warning: failed to pin poll thread to CPU " << CPU_CORE << std::endl;
+            }
         }
 
-    template<typename LoggerT, typename MetricT>
-    UringEngine<LoggerT, MetricT>::~UringEngine() {
-        for (auto& iv : iovecs) {
-            std::free(iv.iov_base);
+
+        template<typename LoggerT, typename MetricT>
+        UringEngine<LoggerT, MetricT>::~UringEngine() {
+            running = false;
+            if (poll_thread.joinable()) {
+                poll_thread.join();
+            }
+
+            for (auto& iv : iovecs) {
+                std::free(iv.iov_base);
+            }
+            io_uring_queue_exit(&ring);
         }
-        io_uring_queue_exit(&ring);
-    }
+
 
     template<typename LoggerT, typename MetricT>
     int UringEngine<LoggerT, MetricT>::open(const char* filename, OpenFlags flags, mode_t mode) {
@@ -90,7 +110,8 @@ namespace Engine {
 
     template<typename LoggerT, typename MetricT>
     inline void UringEngine<LoggerT, MetricT>::read(int fd_index, size_t size, off_t offset, io_uring_sqe* sqe) {
-        io_uring_prep_read_fixed(sqe, fd_index, this->iovecs[this->submitted].iov_base, size, offset, this->submitted);
+        int index = this->submitted % this->config.batch;
+        io_uring_prep_read_fixed(sqe, fd_index, this->iovecs[index].iov_base, size, offset, index);
         sqe->flags |= IOSQE_FIXED_FILE;
         this->submitted++;
     }
@@ -99,8 +120,9 @@ namespace Engine {
     inline void UringEngine<LoggerT, MetricT>::write(int fd_index, const void* buffer, size_t size, off_t offset, io_uring_sqe* sqe) {
         // TODO :: uncomment deste merda
         // std::memcpy(this->iovecs[this->submitted].iov_base, buffer, this->config.block_size);
-        (void) buffer;
-        io_uring_prep_write_fixed(sqe, fd_index, this->iovecs[this->submitted].iov_base, size, offset, this->submitted);
+        (void)  buffer;
+        int index = this->submitted % this->config.batch;
+        io_uring_prep_write_fixed(sqe, fd_index, this->iovecs[index].iov_base, size, offset, index);
         sqe->flags |= IOSQE_FIXED_FILE;
         this->submitted++;
     }
@@ -123,11 +145,10 @@ namespace Engine {
     void UringEngine<LoggerT, MetricT>::submit(int fd, void* buffer, size_t size, off_t offset) {
 
         io_uring_sqe* sqe = io_uring_get_sqe(&this->ring);
-        //std::cout << "submitted: " << this->submitted << std::endl;
+        // std::cout << "submitted: " << this->submitted << std::endl;
 
-        while (sqe == nullptr || this->submitted == this->config.batch) {
+        while (sqe == nullptr) {
             io_uring_submit(&ring);
-            this->poll_completion();
             sqe = io_uring_get_sqe(&this->ring);
         }
 
@@ -140,16 +161,19 @@ namespace Engine {
 
     template<typename LoggerT, typename MetricT>
     inline void UringEngine<LoggerT, MetricT>::poll_completion(void) {
-        while (this->submitted == this->config.batch) {
-            std::vector<io_uring_cqe*> cqe_batch(this->submitted);
-            int count = io_uring_peek_batch_cqe(&ring, cqe_batch.data(), cqe_batch.size());
+        int count = 0;
+        std::vector<io_uring_cqe*> cqe_batch(this->config.batch);
+        
+        while (this->running) {
+            count = io_uring_peek_batch_cqe(&ring, cqe_batch.data(), cqe_batch.size());
+        
             for (int index = 0; index < count; index++) {
                 io_uring_cqe* cqe = cqe_batch[index];
                 io_uring_cqe_seen(&ring, cqe);
-                //std::cout << "Return: " << cqe->res << std::endl;
+                // std::cout << "Return: " << cqe->res << std::endl;
             }
-            std::cout << "completed: " << count << std::endl;
-            this->submitted -= count;
+            // std::cout << "completed: " << count << std::endl;
+            std::this_thread::yield();
         }
     }
 };
