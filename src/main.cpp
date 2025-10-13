@@ -1,6 +1,5 @@
 #include <parser/parser.h>
 
-#include <io/logger.h>
 #include <operation/type.h>
 #include <operation/barrier.h>
 

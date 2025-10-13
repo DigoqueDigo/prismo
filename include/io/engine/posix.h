@@ -7,9 +7,9 @@
 #include <cstring>
 #include <thread>
 #include <stdexcept>
-#include <io/metric.h>
-#include <io/logger.h>
 #include <io/flag.h>
+#include <io/metric.h>
+#include <operation/type.h>
 
 namespace Engine {
 

@@ -11,8 +11,8 @@
 #include <operation/percentage.h>
 #include <operation/sequence.h>
 #include <io/engine/posix.h>
+#include <io/logger/spdlog.h>
 #include <io/metric.h>
-#include <io/logger.h>
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
