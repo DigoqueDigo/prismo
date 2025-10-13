@@ -8,7 +8,7 @@ namespace Parser {
     logger_variant_map = {
         {"spdlog", [](const json& specialized) {
             auto config = specialized.template get<Logger::SpdlogConfig>();
-            return LoggerVariant { std::in_place_type<Logger::Spdlog>, config};
+            return LoggerVariant { std::in_place_type<Logger::Spdlog>, std::move(config) };
         }}
     };
 

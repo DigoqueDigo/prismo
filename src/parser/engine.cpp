@@ -10,6 +10,10 @@ namespace Parser {
             (void) specialized;
             return EngineVariant { std::in_place_type<Engine::PosixEngine> };
         }},
+        {"uring", [](const json& specialized) {
+            auto config = specialized.template get<Engine::UringConfig>();
+            return EngineVariant { std::in_place_type<Engine::UringEngine>, std::move(config) };
+        }},
     };
 
     EngineVariant getEngineVariant(const json& specialized) {

@@ -1,5 +1,5 @@
-#ifndef ENGINE_FLAG_H
-#define ENGINE_FLAG_H
+#ifndef ENGINE_CONFIG_H
+#define ENGINE_CONFIG_H
 
 #include <cstdint>
 #include <fcntl.h>
