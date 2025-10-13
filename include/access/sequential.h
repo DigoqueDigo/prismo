@@ -9,30 +9,20 @@ using json = nlohmann::json;
 
 namespace Access {
 
-    struct SequentialAccessConfig {
+    struct SequentialAccess {
         private:
             size_t block_size;
             size_t limit;
-
-        public:
-            constexpr inline size_t getBlockSize(void) const { return block_size; }
-            constexpr inline size_t getLimit(void) const { return limit; }
-
-            void validate(void) const;
-            friend void from_json(const json& j, SequentialAccessConfig& config);
-    };
-
-    struct SequentialAccess {
-        private:
-            const SequentialAccessConfig config;
             size_t current_offset;
 
         public:
-            explicit SequentialAccess(const SequentialAccessConfig& _config);
+            SequentialAccess();
             size_t nextOffset(void);
+            void validate(void) const;
+            friend void from_json(const json& j, SequentialAccess& config);
     };
 
-    void from_json(const json& j, SequentialAccessConfig& config);
+    void from_json(const json& j, SequentialAccess& config);
 }
 
 #endif

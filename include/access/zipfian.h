@@ -10,32 +10,21 @@ using json = nlohmann::json;
 
 namespace Access {
 
-    struct ZipfianAccessConfig {
+    struct ZipfianAccess {
         private:
             size_t block_size;
             size_t limit;
             float skew;
-
-        public:
-            constexpr inline size_t getBlockSize(void) const { return block_size; }
-            constexpr inline size_t getLimit(void) const { return limit; }
-            constexpr inline float getSkew(void) const { return skew; }
-
-            void validate(void) const;
-            friend void from_json(const json& j, ZipfianAccessConfig& config);
-    };
-
-    struct ZipfianAccess {
-        private:
-            const ZipfianAccessConfig config;
             Distribution::ZipfianDistribution<size_t> distribution;
 
         public:
-            explicit ZipfianAccess(const ZipfianAccessConfig& _config);
+            ZipfianAccess() = default;
             size_t nextOffset(void);
+            void validate(void) const;
+            friend void from_json(const json& j, ZipfianAccess& config);
     };
 
-    void from_json(const json& j, ZipfianAccessConfig& config);
+    void from_json(const json& j, ZipfianAccess& config);
 }
 
 #endif

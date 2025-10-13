@@ -20,16 +20,16 @@ namespace Parser {
         std::function<AccessVariant(json& specialized)>>
     access_variant_map = {
         {"sequential", [](json& specialized) {
-            auto config = specialized.template get<Access::SequentialAccessConfig>();
-            return AccessVariant { std::in_place_type<Access::SequentialAccess>, config };
+            auto access = specialized.template get<Access::SequentialAccess>();
+            return AccessVariant { std::in_place_type<Access::SequentialAccess>, std::move(access) };
         }},
         {"random", [](json& specialized) {
-            auto config = specialized.template get<Access::RandomAccessConfig>();
-            return AccessVariant { std::in_place_type<Access::RandomAccess>, config };
+            auto access = specialized.template get<Access::RandomAccess>();
+            return AccessVariant { std::in_place_type<Access::RandomAccess>, std::move(access) };
         }},
         {"zipfian", [](json& specialized) {
-            auto config = specialized.template get<Access::ZipfianAccessConfig>();
-            return AccessVariant { std::in_place_type<Access::ZipfianAccess>, config };
+            auto access = specialized.template get<Access::ZipfianAccess>();
+            return AccessVariant { std::in_place_type<Access::ZipfianAccess>, std::move(access) };
         }}
     };
 

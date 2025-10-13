@@ -17,7 +17,7 @@ namespace Distribution {
             : engine(std::random_device{}()), distribution(min, max) {}
 
         void setParams(DistributionTypeT min, DistributionTypeT max) {
-            distribution.param(std::uniform_int_distribution<DistributionTypeT>::param_type(min, max));
+            distribution.param(typename std::uniform_int_distribution<DistributionTypeT>::param_type(min, max));
         }
 
         DistributionTypeT nextValue() {
@@ -37,7 +37,7 @@ namespace Distribution {
             : engine(std::random_device{}()), distribution(lower_bound, upper_bound, skew) {}
 
         void setParams(DistributionTypeT min, DistributionTypeT max, float skew) {
-            distribution.param(zipfian_distribution<DistributionTypeT>::param_type(min, max, skew));
+            distribution.param(typename zipfian_distribution<DistributionTypeT>::param_type(min, max, skew));
         }
 
         DistributionTypeT nextValue() {

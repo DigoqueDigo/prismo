@@ -82,12 +82,11 @@ int main(int argc, char** argv) {
     const uint32_t iterations = job_j.at("iterations").template get<uint32_t>();
     const std::string filename = job_j.at("filename").template get<std::string>();
 
+    Generator::Block block = job_j.template get<Generator::Block>();
+
     Engine::OpenFlags flags = engine_j.at("openflags").template get<Engine::OpenFlags>();
     Operation::MultipleBarrier barrier = operation_j.at("barrier").template get<Operation::MultipleBarrier>();
-
-    Generator::BlockConfig block_config = job_j.template get<Generator::BlockConfig>();
-    Generator::Block block = Generator::Block(block_config);
-
+    
     Parser::AccessVariant access = Parser::getAccess(access_j);
     Parser::OperationVariant operation = Parser::getOperation(operation_j);
     Parser::GeneratorVariant generator = Parser::getGenerator(generator_j);
