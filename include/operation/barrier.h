@@ -31,11 +31,6 @@ namespace Operation {
             OperationType apply(OperationType operation);
     };
 
-    inline const std::unordered_map<std::string, OperationType> barrier_types = {
-        {"fsync", OperationType::FSYNC},
-        {"fdatasync", OperationType::FDATASYNC}
-    };
-
     void from_json(const json& j, MultipleBarrier& barrier);
 };
 

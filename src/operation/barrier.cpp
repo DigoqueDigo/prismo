@@ -24,18 +24,17 @@ namespace Operation {
         return operation;
     }
 
-    void from_json(const json& j, MultipleBarrier& barrier) {
-        for (const auto& element : j.items()) {
-            const std::string& key = element.key();
-            const size_t barrier_value = element.value();
-            if (barrier_value > 0) {
-                auto it = barrier_types.find(key);
-                if (it != barrier_types.end()) {
-                    barrier.addBarrier(it->second, OperationType::WRITE, barrier_value);
-                } else {
-                    throw std::invalid_argument("Barrier type: '" + key + "' is not recognized");
-                }
-            }
+    void from_json(const json& j, MultipleBarrier& config) {
+        for (const auto& barrier : j) {
+            std::string operation = barrier.at("operation").template get<std::string>();
+            std::string trigger = barrier.at("trigger").template get<std::string>();
+            int counter = barrier.at("counter").template get<ssize_t>();
+
+            config.addBarrier(
+                operation_from_str(operation),
+                operation_from_str(trigger),
+                counter
+            );
         }
     }
 };

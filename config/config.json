@@ -10,8 +10,8 @@
   },
 
   "operation": {
-    "type": "percentage",
-    "operation": "read",
+    "type": "constant",
+    "operation": "write",
     "percentages": {
       "read": 20,
       "write": 80
@@ -23,10 +23,18 @@
       "write",
       "read"
     ],
-    "barrier": {
-      "fsync": 0,
-      "fdatasync": 0
-    }
+    "barrier": [
+      {
+        "operation": "read",
+        "trigger": "read",
+        "counter": 5
+      },
+      {
+        "operation": "fdatasync",
+        "trigger": "read",
+        "counter": 2
+      }
+    ]
   },
 
   "access": {

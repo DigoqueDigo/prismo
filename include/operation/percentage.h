@@ -13,7 +13,7 @@ namespace Operation {
 
     struct PercentageOperation {
         private:
-            std::vector<std::pair<OperationType, int>> percentages;
+            std::vector<std::pair<OperationType, uint32_t>> percentages;
             Distribution::UniformDistribution<uint32_t> distribution;
 
         public:
