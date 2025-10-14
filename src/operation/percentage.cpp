@@ -3,22 +3,36 @@
 namespace Operation {
 
     PercentageOperation::PercentageOperation()
-        : read_percentage(0), distribution(0, 100) {}
+        : percentages(), distribution(0, 99) {}
 
     OperationType PercentageOperation::nextOperation(void) {
-        return (distribution.nextValue() < read_percentage)
-            ? OperationType::READ
-            : OperationType::WRITE;
+        int roll = distribution.nextValue();
+        for (auto const& iter : percentages) {
+            if (roll < iter.second) {
+                return iter.first;
+            }
+        }
+        throw std::runtime_error("Can not get nextOperation");
     }
-    
+
     void PercentageOperation::validate(void) const {
-        if (read_percentage > 100) {
-            throw std::invalid_argument("Invalid read_percentage for PercentageOperationConfig");
+        for (auto const& iter : percentages) {
+            if (iter.second < 0 || iter.second > 100) {
+                throw std::invalid_argument("Invalid percentage for operation");
+            }
         }
     }
 
     void from_json(const json& j, PercentageOperation& config) {
-        j.at("read_percentage").get_to(config.read_percentage);
+        int cumulative = 0;
+        for (const auto& item: j.at("percentages").items()) {
+            std::string operation = item.key();
+            cumulative += item.value().template get<int>();
+            config.percentages.emplace_back(operation_from_str(operation), cumulative);
+        }
+        if (cumulative != 100) {
+            throw std::invalid_argument("Cumulative percentage diferent of 100");
+        }
         config.validate();
     }
 }

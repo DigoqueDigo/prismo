@@ -2,7 +2,7 @@
   "job": {
     "name": "job",
     "numjobs": 1,
-    "iterations": 257,
+    "iterations": 20,
     "filename": "testfile",
     "block_size": 4096,
     "limit": 65536,
@@ -10,14 +10,20 @@
   },
 
   "operation": {
-    "type": "constant",
-    "operation": "write",
-    "read_percentage": 50,
+    "type": "percentage",
+    "operation": "read",
+    "percentages": {
+      "read": 10,
+      "write": 30,
+      "fsync": 20,
+      "fdatasync": 30,
+      "nop": 10
+    },
     "operations": [
       "read",
-      "write",
-      "write",
       "read",
+      "write",
+      "write",
       "read"
     ],
     "barrier": {
@@ -36,7 +42,7 @@
   },
 
   "engine": {
-    "type": "uring",
+    "type": "posix",
     "batch": 128,
     "entries": 128,
     "openflags": [

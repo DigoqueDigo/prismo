@@ -19,11 +19,8 @@ namespace Operation {
 
     void from_json(const json& j, SequenceOperation& config) {
         for (auto& item : j.at("operations")) {
-            config.operations.push_back(
-                item.template get<std::string>() == "write" 
-                ? OperationType::WRITE
-                : OperationType::READ
-            );
+            std::string operation = item.template get<std::string>();
+            config.operations.push_back(operation_from_str(operation));
         }
         config.length = config.operations.size();
         config.validate();

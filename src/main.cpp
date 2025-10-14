@@ -49,6 +49,10 @@ void worker(
                 engine.template submit<LoggerT, MetricT, Operation::OperationType::FDATASYNC>
                     (logger, fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
                 break;
+            case Operation::OperationType::NOP:
+                engine.template submit<LoggerT, MetricT, Operation::OperationType::NOP>
+                    (logger, fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
+                break;
         }
     }
 

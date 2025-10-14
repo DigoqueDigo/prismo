@@ -1,6 +1,8 @@
 #ifndef PERCENTAGE_OPERATION_H
 #define PERCENTAGE_OPERATION_H
 
+#include <vector>
+#include <utility>
 #include <operation/type.h>
 #include <nlohmann/json.hpp>
 #include <lib/distribution/distribution.h>
@@ -11,7 +13,7 @@ namespace Operation {
 
     struct PercentageOperation {
         private:
-            uint32_t read_percentage;
+            std::vector<std::pair<OperationType, int>> percentages;
             Distribution::UniformDistribution<uint32_t> distribution;
 
         public:
