@@ -13,11 +13,8 @@
     "type": "percentage",
     "operation": "read",
     "percentages": {
-      "read": 10,
-      "write": 30,
-      "fsync": 20,
-      "fdatasync": 30,
-      "nop": 10
+      "read": 20,
+      "write": 80
     },
     "operations": [
       "read",

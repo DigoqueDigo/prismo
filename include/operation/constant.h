@@ -15,7 +15,6 @@ namespace Operation {
         public:
             ConstantOperation();
             OperationType nextOperation(void);
-            void validate(void) const;
             friend void from_json(const json& j, ConstantOperation& config);
     };
 

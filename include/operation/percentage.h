@@ -19,7 +19,6 @@ namespace Operation {
         public:
             PercentageOperation();
             OperationType nextOperation(void);
-            void validate(void) const;
             friend void from_json(const json& j, PercentageOperation& config);
     };
 
