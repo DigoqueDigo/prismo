@@ -18,7 +18,7 @@ namespace Access {
             Distribution::ZipfianDistribution<size_t> distribution;
 
         public:
-            ZipfianAccess() = default;
+            ZipfianAccess();
             size_t nextOffset(void);
             void validate(void) const;
             friend void from_json(const json& j, ZipfianAccess& config);

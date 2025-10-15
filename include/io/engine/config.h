@@ -53,7 +53,7 @@ namespace Engine {
     }
 
     inline void from_json(const json& j, UringConfig& config) {
-        static const std::unordered_map<std::string, int> params_flag_map = {
+        static const std::unordered_map<std::string, uint32_t> params_flag_map = {
             {"IORING_SETUP_IOPOLL", IORING_SETUP_IOPOLL},
             {"IORING_SETUP_SQPOLL", IORING_SETUP_SQPOLL},
             {"IORING_SETUP_SQ_AFF", IORING_SETUP_SQ_AFF},

@@ -2,7 +2,10 @@
 #include <stdexcept>
 
 namespace Access {
-    
+
+    ZipfianAccess::ZipfianAccess()
+        : block_size(0), limit(0), skew(0), distribution(0, 99, 0.9f) {}
+
     size_t ZipfianAccess::nextOffset(void) {
         return distribution.nextValue() * block_size;
     }
