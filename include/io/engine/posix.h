@@ -96,11 +96,11 @@ namespace Engine {
             }
 
             if constexpr (std::is_base_of_v<Metric::FullMetric, MetricT>) {
-                metric.requested_bytes = static_cast<uint32_t>(size);
-                metric.processed_bytes = (result > 0) ? static_cast<uint32_t>(result) : 0;
-                metric.offset          = static_cast<uint64_t>(offset);
-                metric.return_code     = static_cast<int32_t>(result);
                 metric.error_no        = errno;
+                metric.return_code     = result;
+                metric.requested_bytes = size;
+                metric.offset          = offset;
+                metric.processed_bytes = (result > 0) ? static_cast<uint32_t>(result) : 0;
             }
 
             logger.info(metric);

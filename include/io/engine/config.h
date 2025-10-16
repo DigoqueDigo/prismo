@@ -15,16 +15,9 @@ namespace Engine {
     };
 
     struct UringConfig {
-        size_t batch;
         size_t block_size;
         uint32_t entries;
         struct io_uring_params params{};
-
-        void validate(void) {
-            if (batch > entries) {
-                throw std::invalid_argument("Invalid batch for UringConfig");
-            }
-        }
     };
     
     inline void from_json(const json& j, OpenFlags& config) {
@@ -64,7 +57,6 @@ namespace Engine {
             {"IORING_SETUP_DEFER_TASKRUN", IORING_SETUP_DEFER_TASKRUN}
         };
 
-        j.at("batch").get_to(config.batch);
         j.at("entries").get_to(config.entries);
         j.at("block_size").get_to(config.block_size);
 
@@ -81,8 +73,6 @@ namespace Engine {
                 throw std::invalid_argument("Uring params flag value '" + key + "' is not recognized");
             }
         }
-
-        config.validate();
     };
 };
 

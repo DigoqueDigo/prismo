@@ -1,7 +1,7 @@
 #include <parser/parser.h>
-
 #include <operation/type.h>
 #include <operation/barrier.h>
+#include <io/engine/utils.h>
 
 #include <iostream>
 #include <iomanip>
@@ -56,6 +56,7 @@ void worker(
         }
     }
 
+    maybe_reap_left_completions<EngineT, LoggerT, MetricT>(engine, logger);
     engine.close(fd);
 }
 
