@@ -17,7 +17,7 @@ namespace Engine {
     struct UringConfig {
         size_t block_size;
         uint32_t entries;
-        struct io_uring_params params{};
+        io_uring_params params{};
     };
     
     inline void from_json(const json& j, OpenFlags& config) {

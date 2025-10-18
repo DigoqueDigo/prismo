@@ -5,7 +5,7 @@
 
 template <typename EngineT, typename LoggerT, typename MetricT>
 concept HasTemplatedReapLeftCompletions = requires(EngineT& e, LoggerT& logger) {
-    { e.template reap_left_completions<LoggerT, MetricT>(logger) };
+    { e.template reap_left_completions<LoggerT, MetricT>(logger) } -> std::same_as<void>;
 };
 
 template <typename EngineT, typename LoggerT, typename MetricT>

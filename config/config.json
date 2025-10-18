@@ -2,10 +2,10 @@
   "job": {
     "name": "job",
     "numjobs": 1,
-    "iterations": 129,
+    "iterations": 10000,
     "filename": "testfile",
     "block_size": 4096,
-    "limit": 65536,
+    "limit": 409600000,
     "metric": "full"
   },
 
@@ -25,13 +25,13 @@
     ],
     "barrier": [
       {
-        "operation": "read",
-        "trigger": "read",
+        "operation": "fsync",
+        "trigger": "fsync",
         "counter": 5
       },
       {
         "operation": "fdatasync",
-        "trigger": "read",
+        "trigger": "fsync",
         "counter": 2
       }
     ]
@@ -55,10 +55,8 @@
     ],
     "params": {
       "sq_thread_cpu": 0,
-      "sq_thread_idle": 100,
+      "sq_thread_idle": 0,
       "flags": [
-        "IORING_SETUP_SQPOLL",
-        "IORING_SETUP_SQ_AFF"
       ]
     }
   },
@@ -69,7 +67,7 @@
     "queue_size": 8192,
     "thread_count": 1,
     "truncate": true,
-    "stdout": true,
+    "stdout": false,
     "files": [
       "./log1.log",
       "./log2.log",
