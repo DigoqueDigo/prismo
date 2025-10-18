@@ -9,7 +9,7 @@
 using json = nlohmann::json;
 
 namespace Engine {
-    
+
     struct OpenFlags {
         int value;
     };
@@ -19,7 +19,7 @@ namespace Engine {
         uint32_t entries;
         io_uring_params params{};
     };
-    
+
     inline void from_json(const json& j, OpenFlags& config) {
         static const std::unordered_map<std::string, int> flag_map = {
             {"O_CREAT", O_CREAT},

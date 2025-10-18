@@ -15,7 +15,7 @@ template<
     typename LoggerT,
     typename MetricT>
 void worker(
-    const uint32_t iterations,
+    const uint64_t iterations,
     const std::string filename,
     Engine::OpenFlags flags,
     Operation::MultipleBarrier barrier,
@@ -27,10 +27,10 @@ void worker(
     LoggerT& logger
 ) {
     int fd = engine.open(filename.c_str(), flags, 0666);
-    
-    for (uint32_t i = 0; i < iterations; i++) {
+
+    for (uint64_t i = 0; i < iterations; i++) {
         size_t offset = access.nextOffset();
-        
+
         switch (barrier.apply(operation.nextOperation())) {
             case Operation::OperationType::READ:
                 engine.template submit<LoggerT, MetricT, Operation::OperationType::READ>
@@ -80,20 +80,20 @@ int main(int argc, char** argv) {
     access_j.merge_patch(job_j);
     engine_j.merge_patch(job_j);
 
-    const uint32_t iterations = job_j.at("iterations").template get<uint32_t>();
+    const uint64_t iterations = job_j.at("iterations").template get<uint64_t>();
     const std::string filename = job_j.at("filename").template get<std::string>();
 
     Generator::Block block = job_j.template get<Generator::Block>();
 
     Engine::OpenFlags flags = engine_j.at("openflags").template get<Engine::OpenFlags>();
     Operation::MultipleBarrier barrier = operation_j.at("barrier").template get<Operation::MultipleBarrier>();
-    
+
     Parser::AccessVariant access = Parser::getAccessVariant(access_j);
     Parser::OperationVariant operation = Parser::getOperationVariant(operation_j);
     Parser::GeneratorVariant generator = Parser::getGeneratorVariant(generator_j);
 
     Parser::MetricVariant metric = Parser::getMetricVariant(job_j);
-    Parser::LoggerVariant logger = Parser::getLoggerVariant(logging_j);    
+    Parser::LoggerVariant logger = Parser::getLoggerVariant(logging_j);
     Parser::EngineVariant engine = Parser::getEngineVariant(engine_j);
 
     std::visit(

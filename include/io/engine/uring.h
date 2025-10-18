@@ -28,8 +28,6 @@ namespace Engine {
 
             std::vector<iovec> iovecs;
             std::vector<UserData> user_data;
-
-            uint32_t submitted_ops;
             std::vector<uint32_t> available_indexs;
 
             inline void read(int fd_index, void* buffer, size_t size, off_t offset, io_uring_sqe* sqe, uint32_t free_index);
@@ -53,7 +51,7 @@ namespace Engine {
     };
 
     inline UringEngine::UringEngine(const UringConfig& _config)
-        : config(_config), iovecs(), user_data(), submitted_ops(0), available_indexs() {
+        : config(_config), iovecs(), user_data(), available_indexs() {
 
             int return_code = io_uring_queue_init_params(config.entries, &ring, &config.params);
             if (return_code) {
@@ -161,8 +159,6 @@ namespace Engine {
         } else if constexpr (OperationT == Operation::OperationType::WRITE) {
             write(0, buffer, size, offset, sqe, free_index);
         }
-
-        submitted_ops++;
     }
 
     template<typename LoggerT, typename MetricT>
