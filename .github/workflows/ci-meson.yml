@@ -35,10 +35,7 @@ jobs:
         sudo apt install -y libboost-all-dev libspdlog-dev liburing-dev
 
     - name: Configure Meson
-      run: meson setup builddir --buildtype=${{ matrix.buildtype }} -Dwarning_level=3 -Dcpp_std=c++17
-      env:
-        CFLAGS: ${{ matrix.buildtype == 'release' && '-O2' || '-O0' }}
-        CXXFLAGS: ${{ matrix.buildtype == 'release' && '-O2' || '-O0' }}
+      run: meson setup builddir --buildtype=${{ matrix.buildtype }} --reconfigure
 
     - name: Build
       run: meson compile -C builddir
