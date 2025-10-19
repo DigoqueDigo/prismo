@@ -31,7 +31,7 @@ namespace Engine {
             {"O_SYNC", O_SYNC},
             {"O_DSYNC", O_DSYNC},
             {"O_RSYNC", O_RSYNC},
-            {"O_DIRECT", O_DIRECT}
+            {"O_DIRECT", O_DIRECT},
         };
 
         for (const auto& value : j) {
@@ -54,7 +54,7 @@ namespace Engine {
             {"IORING_SETUP_CQSIZE", IORING_SETUP_CQSIZE},
             {"IORING_FEAT_NODROP", IORING_FEAT_NODROP},
             {"IORING_SETUP_SINGLE_ISSUER", IORING_SETUP_SINGLE_ISSUER},
-            {"IORING_SETUP_DEFER_TASKRUN", IORING_SETUP_DEFER_TASKRUN}
+            {"IORING_SETUP_HYBRID_IOPOLL", IORING_SETUP_HYBRID_IOPOLL},
         };
 
         j.at("entries").get_to(config.entries);

@@ -30,8 +30,15 @@ namespace Engine {
             std::vector<UserData> user_data;
             std::vector<uint32_t> available_indexs;
 
+            inline void nop(int fd_index, io_uring_sqe* sqe, uint32_t free_index);
+            inline void fsync(int fd_index, io_uring_sqe* sqe, uint32_t free_index);
+            inline void fdatasync(int fd_index, io_uring_sqe* sqe, uint32_t free_index);
+
             inline void read(int fd_index, void* buffer, size_t size, off_t offset, io_uring_sqe* sqe, uint32_t free_index);
             inline void write(int fd_index, const void* buffer, size_t size, off_t offset, io_uring_sqe* sqe, uint32_t free_index);
+
+            template<typename LoggerT, typename MetricT>
+            inline uint32_t reap_completion(LoggerT& logger);
 
         public:
             inline explicit UringEngine(const UringConfig& _config);
@@ -39,9 +46,6 @@ namespace Engine {
 
             inline int open(const char* filename, OpenFlags flags, mode_t mode);
             inline void close(int fd);
-
-            template<typename LoggerT, typename MetricT>
-            inline uint32_t reap_completion(LoggerT& logger);
 
             template<typename LoggerT, typename MetricT>
             inline void reap_left_completions(LoggerT& logger);
@@ -109,6 +113,25 @@ namespace Engine {
         }
     }
 
+    inline void UringEngine::nop(int fd_index, io_uring_sqe* sqe, uint32_t free_index) {
+        (void) fd_index;
+        io_uring_prep_nop(sqe);
+        io_uring_sqe_set_data(sqe, &user_data[free_index]);
+        sqe->flags |= IOSQE_FIXED_FILE;
+    }
+
+    inline void UringEngine::fsync(int fd_index, io_uring_sqe* sqe, uint32_t free_index) {
+        io_uring_prep_fsync(sqe, fd_index, 0);
+        io_uring_sqe_set_data(sqe, &user_data[free_index]);
+        sqe->flags |= IOSQE_FIXED_FILE;
+    }
+
+    inline void UringEngine::fdatasync(int fd_index, io_uring_sqe* sqe, uint32_t free_index) {
+        io_uring_prep_fsync(sqe, fd_index, IORING_FSYNC_DATASYNC);
+        io_uring_sqe_set_data(sqe, &user_data[free_index]);
+        sqe->flags |= IOSQE_FIXED_FILE;
+    }
+
     inline void UringEngine::read(int fd_index, void* buffer, size_t size, off_t offset, io_uring_sqe* sqe, uint32_t free_index) {
         (void) buffer;
         io_uring_prep_read_fixed(sqe, fd_index, iovecs[free_index].iov_base, size, offset, free_index);
@@ -158,6 +181,12 @@ namespace Engine {
             read(0, buffer, size, offset, sqe, free_index);
         } else if constexpr (OperationT == Operation::OperationType::WRITE) {
             write(0, buffer, size, offset, sqe, free_index);
+        } else if constexpr (OperationT == Operation::OperationType::FSYNC) {
+            fsync(0, sqe, free_index);
+        } else if constexpr (OperationT == Operation::OperationType::FDATASYNC) {
+            fdatasync(0, sqe, free_index);
+        } else if constexpr (OperationT == Operation::OperationType::NOP) {
+            nop(0, sqe, free_index);
         }
     }
 
@@ -170,31 +199,32 @@ namespace Engine {
             return_code = io_uring_peek_cqe(&ring, &cqe);
         } while (return_code);
 
+        MetricT metric{};
         UserData* user_data = static_cast<UserData*>(io_uring_cqe_get_data(cqe));
 
-        if constexpr (!std::is_same_v<MetricT, std::monostate>) {
-            MetricT metric{};
+        if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
             metric.start_timestamp = user_data->start_timestamp;
             metric.operation_type = user_data->operation_type;
-
             metric.end_timestamp =
                 std::chrono::duration_cast<std::chrono::nanoseconds>(
                     std::chrono::steady_clock::now().time_since_epoch()
                 ).count();
+        }
 
-            if constexpr (std::is_base_of_v<Metric::StandardMetric, MetricT>) {
-                metric.pid = ::getpid();
-                metric.tid = static_cast<uint64_t>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
-            }
+        if constexpr (std::is_base_of_v<Metric::StandardMetric, MetricT>) {
+            metric.pid = ::getpid();
+            metric.tid = static_cast<uint64_t>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
+        }
 
-            if constexpr (std::is_base_of_v<Metric::FullMetric, MetricT>) {
-                metric.error_no        = errno;
-                metric.return_code     = cqe->res;
-                metric.requested_bytes = user_data->size;
-                metric.offset          = user_data->offset;
-                metric.processed_bytes = (cqe->res > 0) ? static_cast<uint32_t>(cqe->res) : 0;
-            }
+        if constexpr (std::is_base_of_v<Metric::FullMetric, MetricT>) {
+            metric.error_no        = errno;
+            metric.return_code     = cqe->res;
+            metric.requested_bytes = user_data->size;
+            metric.offset          = user_data->offset;
+            metric.processed_bytes = (cqe->res > 0) ? static_cast<uint32_t>(cqe->res) : 0;
+        }
 
+        if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
             logger.info(metric);
         }
 
