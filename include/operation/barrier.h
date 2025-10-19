@@ -13,8 +13,8 @@ namespace Operation {
         private:
             OperationType barrierOp;
             OperationType triggerOp;
-            size_t everyN;
-            size_t counter = 0;
+            uint64_t everyN;
+            uint64_t counter = 0;
 
         public:
             BarrierCounter(OperationType _barrierOp, OperationType _triggerOp, size_t _everyN);

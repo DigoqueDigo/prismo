@@ -107,11 +107,11 @@ namespace Engine {
         }
 
         if constexpr (std::is_base_of_v<Metric::FullMetric, MetricT>) {
-            metric.error_no        = errno;
-            metric.return_code     = result;
             metric.requested_bytes = size;
+            metric.processed_bytes = (result > 0) ? static_cast<size_t>(result) : 0;
             metric.offset          = offset;
-            metric.processed_bytes = (result > 0) ? static_cast<uint32_t>(result) : 0;
+            metric.return_code     = static_cast<int32_t>(result);
+            metric.error_no        = static_cast<int32_t>(errno);
         }
 
         if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {

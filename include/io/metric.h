@@ -19,7 +19,7 @@ namespace Metric {
 
     struct FullMetric : StandardMetric {
         size_t requested_bytes;
-        uint32_t processed_bytes;
+        size_t processed_bytes;
         off_t offset;
         int32_t return_code;
         int32_t error_no;

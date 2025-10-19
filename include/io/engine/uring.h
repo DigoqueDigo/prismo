@@ -74,7 +74,7 @@ namespace Engine {
                 }
             }
 
-            return_code = io_uring_register_buffers(&ring, iovecs.data(), iovecs.size());
+            return_code = io_uring_register_buffers(&ring, iovecs.data(), config.params.sq_entries);
             if (return_code) {
                 io_uring_queue_exit(&ring);
                 throw std::runtime_error("Uring register buffers failed: " + std::string(strerror(errno)));
@@ -199,11 +199,11 @@ namespace Engine {
         } while (return_code);
 
         MetricT metric{};
-        UserData* user_data = static_cast<UserData*>(io_uring_cqe_get_data(cqe));
+        UserData* cqe_user_data = static_cast<UserData*>(io_uring_cqe_get_data(cqe));
 
         if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
-            metric.start_timestamp = user_data->start_timestamp;
-            metric.operation_type = user_data->operation_type;
+            metric.start_timestamp = cqe_user_data->start_timestamp;
+            metric.operation_type = cqe_user_data->operation_type;
             metric.end_timestamp =
                 std::chrono::duration_cast<std::chrono::nanoseconds>(
                     std::chrono::steady_clock::now().time_since_epoch()
@@ -216,11 +216,11 @@ namespace Engine {
         }
 
         if constexpr (std::is_base_of_v<Metric::FullMetric, MetricT>) {
-            metric.error_no        = errno;
-            metric.return_code     = cqe->res;
-            metric.requested_bytes = user_data->size;
-            metric.offset          = user_data->offset;
-            metric.processed_bytes = (cqe->res > 0) ? static_cast<uint32_t>(cqe->res) : 0;
+            metric.requested_bytes = cqe_user_data->size;
+            metric.processed_bytes = (cqe->res > 0) ? static_cast<size_t>(cqe->res) : 0;
+            metric.offset          = cqe_user_data->offset;
+            metric.return_code     = static_cast<int32_t>(cqe->res);
+            metric.error_no        = static_cast<int32_t>(errno);
         }
 
         if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
@@ -228,7 +228,7 @@ namespace Engine {
         }
 
         io_uring_cqe_seen(&ring, cqe);
-        return user_data->index;
+        return cqe_user_data->index;
     }
 
     template<typename LoggerT, typename MetricT>

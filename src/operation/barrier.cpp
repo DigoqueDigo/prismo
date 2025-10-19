@@ -2,7 +2,7 @@
 
 namespace Operation {
 
-    BarrierCounter::BarrierCounter(OperationType _barrierOp, OperationType _triggerOp, size_t _everyN)
+    BarrierCounter::BarrierCounter(OperationType _barrierOp, OperationType _triggerOp, uint64_t _everyN)
         : barrierOp(_barrierOp), triggerOp(_triggerOp), everyN(_everyN), counter(0) {}
 
     OperationType BarrierCounter::apply(OperationType operation) {
@@ -13,7 +13,7 @@ namespace Operation {
         return operation;
     }
 
-    void MultipleBarrier::addBarrier(OperationType barrierOp, OperationType triggerOp, size_t everyN) {
+    void MultipleBarrier::addBarrier(OperationType barrierOp, OperationType triggerOp, uint64_t everyN) {
         barriers.emplace_back(barrierOp, triggerOp, everyN);
     }
 
@@ -28,7 +28,7 @@ namespace Operation {
         for (const auto& barrier : j) {
             std::string operation = barrier.at("operation").template get<std::string>();
             std::string trigger = barrier.at("trigger").template get<std::string>();
-            int counter = barrier.at("counter").template get<ssize_t>();
+            uint64_t counter = barrier.at("counter").template get<uint64_t>();
 
             config.addBarrier(
                 operation_from_str(operation),

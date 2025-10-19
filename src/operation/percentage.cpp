@@ -16,7 +16,7 @@ namespace Operation {
     }
 
     void from_json(const json& j, PercentageOperation& config) {
-        int cumulative = 0;
+        uint32_t cumulative = 0;
         for (const auto& item: j.at("percentages").items()) {
             std::string operation = item.key();
             cumulative += item.value().template get<uint32_t>();
