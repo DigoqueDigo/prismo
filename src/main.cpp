@@ -1,7 +1,6 @@
 #include <parser/parser.h>
 #include <operation/type.h>
 #include <operation/barrier.h>
-#include <io/engine/utils.h>
 
 #include <iostream>
 #include <iomanip>
@@ -17,9 +16,9 @@ template<
 void worker(
     const uint64_t iterations,
     const std::string filename,
-    Engine::OpenFlags flags,
-    Engine::OpenMode mode,
-    Operation::MultipleBarrier barrier,
+    Engine::OpenFlags& flags,
+    Engine::OpenMode& mode,
+    Operation::MultipleBarrier& barrier,
     Generator::Block& block,
     OperationT& operation,
     AccessT& access,
@@ -27,37 +26,61 @@ void worker(
     EngineT& engine,
     LoggerT& logger
 ) {
+    std::optional<MetricT> metric;
     int fd = engine.open(filename.c_str(), flags, mode);
 
-    for (uint64_t i = 0; i < iterations; i++) {
-        size_t offset = access.nextOffset();
+    for (uint64_t i = 0; i < iterations; ++i) {
+        const off_t offset = access.nextOffset();
+        const auto op = barrier.apply(operation.nextOperation());
 
-        switch (barrier.apply(operation.nextOperation())) {
+        switch (op) {
             case Operation::OperationType::READ:
-                engine.template submit<LoggerT, MetricT, Operation::OperationType::READ>
-                    (logger, fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
+                metric = engine.template submit<MetricT, Operation::OperationType::READ>(
+                    fd, block.getBuffer(), block.getSize(), offset
+                );
                 break;
+
             case Operation::OperationType::WRITE:
                 generator.nextBlock(block);
-                engine.template submit<LoggerT, MetricT, Operation::OperationType::WRITE>
-                    (logger, fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
+                metric = engine.template submit<MetricT, Operation::OperationType::WRITE>(
+                    fd, block.getBuffer(), block.getSize(), offset
+                );
                 break;
+
             case Operation::OperationType::FSYNC:
-                engine.template submit<LoggerT, MetricT, Operation::OperationType::FSYNC>
-                    (logger, fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
+                metric = engine.template submit<MetricT, Operation::OperationType::FSYNC>(
+                    fd, nullptr, 0, 0
+                );
                 break;
+
             case Operation::OperationType::FDATASYNC:
-                engine.template submit<LoggerT, MetricT, Operation::OperationType::FDATASYNC>
-                    (logger, fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
+                metric = engine.template submit<MetricT, Operation::OperationType::FDATASYNC>(
+                    fd, nullptr, 0, 0
+                );
                 break;
+
             case Operation::OperationType::NOP:
-                engine.template submit<LoggerT, MetricT, Operation::OperationType::NOP>
-                    (logger, fd, block.getBuffer(), block.getSize(), static_cast<off_t>(offset));
+                metric = engine.template submit<MetricT, Operation::OperationType::NOP>(
+                    fd, nullptr, 0, 0
+                );
                 break;
+        }
+
+        if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
+            if (metric) {
+                logger.info(*metric);
+            }
         }
     }
 
-    maybe_reap_left_completions<EngineT, LoggerT, MetricT>(engine, logger);
+    if constexpr (std::is_same_v<EngineT, Engine::UringEngine&>) {
+        for (auto& m : engine.template reap_left_completions<MetricT>()) {
+            if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
+                logger.info(m);
+            }
+        }
+    }
+
     engine.close(fd);
 }
 

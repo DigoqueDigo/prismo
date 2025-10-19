@@ -28,8 +28,8 @@ namespace Engine {
             inline int open(const char* filename, OpenFlags flags, OpenMode mode);
             inline int close(int fd);
 
-            template<typename LoggerT, typename MetricT, Operation::OperationType OperationT>
-            inline void submit(LoggerT& logger, int fd, void* buffer, size_t size, off_t offset);
+            template<typename MetricT, Operation::OperationType OperationT>
+            inline std::optional<MetricT> submit(int fd, void* buffer, size_t size, off_t offset);
     };
 
     inline int PosixEngine::open(const char* filename, OpenFlags flags, OpenMode mode) {
@@ -69,8 +69,8 @@ namespace Engine {
         return ::pwrite(fd, buffer, size, offset);
     }
 
-    template<typename LoggerT, typename MetricT, Operation::OperationType OperationT>
-    inline void PosixEngine::submit(LoggerT& logger, int fd, void* buffer, size_t size, off_t offset) {
+    template<typename MetricT, Operation::OperationType OperationT>
+    inline std::optional<MetricT> PosixEngine::submit(int fd, void* buffer, size_t size, off_t offset) {
         MetricT metric{};
         ssize_t result = 0;
 
@@ -114,9 +114,7 @@ namespace Engine {
             metric.error_no        = static_cast<int32_t>(errno);
         }
 
-        if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
-            logger.info(metric);
-        }
+        return metric;
     }
 };
 

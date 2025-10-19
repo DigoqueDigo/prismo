@@ -36,8 +36,8 @@ namespace Engine {
             inline void read(int fd_index, void* buffer, size_t size, off_t offset, io_uring_sqe* sqe, uint32_t free_index);
             inline void write(int fd_index, const void* buffer, size_t size, off_t offset, io_uring_sqe* sqe, uint32_t free_index);
 
-            template<typename LoggerT, typename MetricT>
-            inline uint32_t reap_completion(LoggerT& logger);
+            template<typename MetricT>
+            inline uint32_t reap_completion(MetricT& metric);
 
         public:
             inline explicit UringEngine(const UringConfig& _config);
@@ -46,11 +46,11 @@ namespace Engine {
             inline int open(const char* filename, OpenFlags flags, OpenMode mode);
             inline void close(int fd);
 
-            template<typename LoggerT, typename MetricT>
-            inline void reap_left_completions(LoggerT& logger);
+            template<typename MetricT>
+            inline std::vector<MetricT> reap_left_completions();
 
-            template<typename LoggerT, typename MetricT, Operation::OperationType OperationT>
-            inline void submit(LoggerT& logger, int fd, void* buffer, size_t size, off_t offset);
+            template<typename MetricT, Operation::OperationType OperationT>
+            inline std::optional<MetricT> submit(int fd, void* buffer, size_t size, off_t offset);
     };
 
     inline UringEngine::UringEngine(const UringConfig& _config)
@@ -145,23 +145,27 @@ namespace Engine {
         sqe->flags |= IOSQE_FIXED_FILE;
     }
 
-    template<typename LoggerT, typename MetricT, Operation::OperationType OperationT>
-    inline void UringEngine::submit(LoggerT& logger, int fd, void* buffer, size_t size, off_t offset) {
+    template<typename MetricT, Operation::OperationType OperationT>
+    inline std::optional<MetricT> UringEngine::submit(int fd, void* buffer, size_t size, off_t offset) {
         (void) fd;
         uint32_t free_index;
+        std::optional<MetricT> op_metric = std::nullopt;
+
         io_uring_sqe* sqe = io_uring_get_sqe(&ring);
 
-        while (sqe == nullptr || available_indexs.empty()) {
-            if (sqe == nullptr) {
-                io_uring_submit(&ring);
-            }
+        if (sqe == nullptr) {
+            io_uring_submit(&ring);
+        }
 
-            free_index = this->template reap_completion<LoggerT, MetricT>(logger);
+        if (available_indexs.empty()) {
+            MetricT metric{};
+            free_index = this->template reap_completion<MetricT>(metric);
             available_indexs.push_back(free_index);
+            op_metric = std::move(metric);
+        }
 
-            if (sqe == nullptr) {
-                sqe = io_uring_get_sqe(&ring);
-            }
+        while (sqe == nullptr) {
+            sqe = io_uring_get_sqe(&ring);
         }
 
         free_index = available_indexs.back();
@@ -187,10 +191,12 @@ namespace Engine {
         } else if constexpr (OperationT == Operation::OperationType::NOP) {
             nop(0, sqe, free_index);
         }
+
+        return op_metric;
     }
 
-    template<typename LoggerT, typename MetricT>
-    inline uint32_t UringEngine::reap_completion(LoggerT& logger) {
+    template<typename MetricT>
+    inline uint32_t UringEngine::reap_completion(MetricT& metric) {
         int return_code;
         io_uring_cqe* cqe = nullptr;
 
@@ -198,7 +204,6 @@ namespace Engine {
             return_code = io_uring_peek_cqe(&ring, &cqe);
         } while (return_code);
 
-        MetricT metric{};
         UserData* cqe_user_data = static_cast<UserData*>(io_uring_cqe_get_data(cqe));
 
         if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
@@ -223,21 +228,23 @@ namespace Engine {
             metric.error_no        = static_cast<int32_t>(errno);
         }
 
-        if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
-            logger.info(metric);
-        }
-
         io_uring_cqe_seen(&ring, cqe);
         return cqe_user_data->index;
     }
 
-    template<typename LoggerT, typename MetricT>
-    inline void UringEngine::reap_left_completions(LoggerT& logger) {
+    template<typename MetricT>
+    inline std::vector<MetricT> UringEngine::reap_left_completions() {
+        MetricT metric;
+        std::vector<MetricT> collected_metrics;
         io_uring_submit(&ring);
+
         while (available_indexs.size() < available_indexs.capacity()) {
-            uint32_t free_index = this->template reap_completion<LoggerT, MetricT>(logger);
+            uint32_t free_index = this->template reap_completion<MetricT>(metric);
             available_indexs.push_back(free_index);
+            collected_metrics.push_back(metric);
         }
+
+        return collected_metrics;
     }
 };
 

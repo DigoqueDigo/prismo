@@ -3,8 +3,8 @@
 
 namespace Access {
 
-    size_t RandomAccess::nextOffset(void) {
-        return distribution.nextValue() * block_size;
+    off_t RandomAccess::nextOffset(void) {
+        return static_cast<off_t>(distribution.nextValue() * block_size);
     }
 
     void RandomAccess::validate(void) const {

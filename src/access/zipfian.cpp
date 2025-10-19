@@ -6,8 +6,8 @@ namespace Access {
     ZipfianAccess::ZipfianAccess()
         : block_size(0), limit(0), skew(0), distribution(0, 99, 0.9f) {}
 
-    size_t ZipfianAccess::nextOffset(void) {
-        return distribution.nextValue() * block_size;
+    off_t ZipfianAccess::nextOffset(void) {
+        return static_cast<off_t>(distribution.nextValue() * block_size);
     }
 
     void ZipfianAccess::validate(void) const {

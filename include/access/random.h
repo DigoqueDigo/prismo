@@ -8,16 +8,16 @@
 using json = nlohmann::json;
 
 namespace Access {
-        
+
     struct RandomAccess {
         private:
             size_t block_size;
             size_t limit;
-            Distribution::UniformDistribution<size_t> distribution;
-        
+            Distribution::UniformDistribution<off_t> distribution;
+
         public:
             RandomAccess() = default;
-            size_t nextOffset(void);
+            off_t nextOffset(void);
             void validate(void) const;
             friend void from_json(const json& j, RandomAccess& config);
     };

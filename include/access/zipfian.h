@@ -15,11 +15,11 @@ namespace Access {
             size_t block_size;
             size_t limit;
             float skew;
-            Distribution::ZipfianDistribution<size_t> distribution;
+            Distribution::ZipfianDistribution<off_t> distribution;
 
         public:
             ZipfianAccess();
-            size_t nextOffset(void);
+            off_t nextOffset(void);
             void validate(void) const;
             friend void from_json(const json& j, ZipfianAccess& config);
     };
