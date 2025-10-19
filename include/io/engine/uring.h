@@ -9,7 +9,6 @@
 #include <stdexcept>
 #include <io/metric.h>
 #include <io/engine/config.h>
-#include <iostream>
 
 namespace Engine {
 
@@ -44,7 +43,7 @@ namespace Engine {
             inline explicit UringEngine(const UringConfig& _config);
             inline ~UringEngine();
 
-            inline int open(const char* filename, OpenFlags flags, mode_t mode);
+            inline int open(const char* filename, OpenFlags flags, OpenMode mode);
             inline void close(int fd);
 
             template<typename LoggerT, typename MetricT>
@@ -89,8 +88,8 @@ namespace Engine {
         io_uring_queue_exit(&ring);
     }
 
-    inline int UringEngine::open(const char* filename, OpenFlags flags, mode_t mode) {
-        int fd = ::open(filename, flags.value, mode);
+    inline int UringEngine::open(const char* filename, OpenFlags flags, OpenMode mode) {
+        int fd = ::open(filename, flags.value, mode.value);
         if (fd < 0) {
             throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
         }

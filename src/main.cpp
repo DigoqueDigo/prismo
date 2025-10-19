@@ -18,6 +18,7 @@ void worker(
     const uint64_t iterations,
     const std::string filename,
     Engine::OpenFlags flags,
+    Engine::OpenMode mode,
     Operation::MultipleBarrier barrier,
     Generator::Block& block,
     OperationT& operation,
@@ -26,7 +27,7 @@ void worker(
     EngineT& engine,
     LoggerT& logger
 ) {
-    int fd = engine.open(filename.c_str(), flags, 0666);
+    int fd = engine.open(filename.c_str(), flags, mode);
 
     for (uint64_t i = 0; i < iterations; i++) {
         size_t offset = access.nextOffset();
@@ -83,9 +84,10 @@ int main(int argc, char** argv) {
     const uint64_t iterations = job_j.at("iterations").template get<uint64_t>();
     const std::string filename = job_j.at("filename").template get<std::string>();
 
-    Generator::Block block = job_j.template get<Generator::Block>();
-
+    Engine::OpenMode mode {.value = 0666};
     Engine::OpenFlags flags = engine_j.at("openflags").template get<Engine::OpenFlags>();
+
+    Generator::Block block = job_j.template get<Generator::Block>();
     Operation::MultipleBarrier barrier = operation_j.at("barrier").template get<Operation::MultipleBarrier>();
 
     Parser::AccessVariant access = Parser::getAccessVariant(access_j);
@@ -97,7 +99,7 @@ int main(int argc, char** argv) {
     Parser::EngineVariant engine = Parser::getEngineVariant(engine_j);
 
     std::visit(
-        [&iterations, &filename, &flags, &barrier, &block](
+        [&iterations, &filename, &flags, &mode, &barrier, &block](
             auto& actual_operation,
             auto& actual_access,
             auto& actual_generator,
@@ -115,6 +117,7 @@ int main(int argc, char** argv) {
                 iterations,
                 filename,
                 flags,
+                mode,
                 barrier,
                 block,
                 actual_operation,

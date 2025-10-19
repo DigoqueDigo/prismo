@@ -25,15 +25,15 @@ namespace Engine {
         public:
             PosixEngine() = default;
 
-            inline int open(const char* filename, OpenFlags flags, mode_t mode);
+            inline int open(const char* filename, OpenFlags flags, OpenMode mode);
             inline int close(int fd);
 
             template<typename LoggerT, typename MetricT, Operation::OperationType OperationT>
             inline void submit(LoggerT& logger, int fd, void* buffer, size_t size, off_t offset);
     };
 
-    inline int PosixEngine::open(const char* filename, OpenFlags flags, mode_t mode) {
-        int fd = ::open(filename, flags.value, mode);
+    inline int PosixEngine::open(const char* filename, OpenFlags flags, OpenMode mode) {
+        int fd = ::open(filename, flags.value, mode.value);
         if (fd < 0) {
             throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
         }

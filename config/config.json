@@ -38,15 +38,17 @@
 
   "engine": {
     "type": "uring",
-    "entries": 128,
     "openflags": [
       "O_CREAT",
       "O_RDWR"
     ],
+    "entries": 128,
     "params": {
+      "cq_entries": 0,
       "sq_thread_cpu": 0,
       "sq_thread_idle": 0,
       "flags": [
+        "IORING_SETUP_SQPOLL"
       ]
     }
   },
