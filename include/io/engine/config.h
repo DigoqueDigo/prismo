@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <fcntl.h>
+#include <libaio.h>
 #include <liburing.h>
 #include <nlohmann/json.hpp>
 
@@ -17,6 +18,11 @@ namespace Engine {
         int value;
     };
 
+    struct AIOConfig {
+        size_t block_size;
+        uint32_t entries;
+    };
+
     struct UringConfig {
         size_t block_size;
         uint32_t entries;
@@ -24,6 +30,7 @@ namespace Engine {
     };
 
     void from_json(const json& j, OpenFlags& config);
+    void from_json(const json& j, AIOConfig& config);
     void from_json(const json& j, UringConfig& config);
 };
 

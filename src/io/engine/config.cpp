@@ -26,6 +26,11 @@ namespace Engine {
         // {"IORING_SETUP_HYBRID_IOPOLL", IORING_SETUP_HYBRID_IOPOLL},
     };
 
+    void from_json(const json& j, AIOConfig& config) {
+        j.at("entries").get_to(config.entries);
+        j.at("block_size").get_to(config.block_size);
+    };
+
     void from_json(const json& j, OpenFlags& config) {
         for (const auto& value : j) {
             auto it = flag_map.find(value);
@@ -35,7 +40,7 @@ namespace Engine {
                 throw std::invalid_argument("Open flag value '" + value.template get<std::string>() + "' is not recognized");
             }
         }
-    }
+    };
 
     void from_json(const json& j, UringConfig& config) {
         const json params_j = j.at("params");

@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <io/metric.h>
 #include <io/engine/config.h>
+#include <iostream>
 
 namespace Engine {
 
@@ -22,9 +23,7 @@ namespace Engine {
 
     struct UringEngine {
         private:
-            UringConfig config;
-            struct io_uring ring;
-
+            io_uring ring;
             std::vector<iovec> iovecs;
             std::vector<UserData> user_data;
             std::vector<uint32_t> available_indexs;
@@ -54,8 +53,9 @@ namespace Engine {
     };
 
     inline UringEngine::UringEngine(const UringConfig& _config)
-        : config(_config), iovecs(), user_data(), available_indexs() {
+        : ring(), iovecs(), user_data(), available_indexs() {
 
+            UringConfig config = _config;
             int return_code = io_uring_queue_init_params(config.entries, &ring, &config.params);
             if (return_code) {
                 throw std::runtime_error("Uring initialization failed: " + std::string(strerror(return_code)));
@@ -82,6 +82,9 @@ namespace Engine {
         }
 
     inline UringEngine::~UringEngine() {
+        if (io_uring_unregister_buffers(&ring)) {
+            std::cerr << "Failed to unregister buffers: " << strerror(errno) << std::endl;
+        }
         for (auto& iv : iovecs) {
             std::free(iv.iov_base);
         }
@@ -106,9 +109,6 @@ namespace Engine {
         }
         if (::close(fd) < 0) {
             throw std::runtime_error("Failed to close fd: " + std::string(strerror(errno)));
-        }
-        if (io_uring_unregister_buffers(&ring)) {
-            throw std::runtime_error("Failed to unregister buffers: " + std::string(strerror(errno)));
         }
     }
 
@@ -154,7 +154,8 @@ namespace Engine {
         io_uring_sqe* sqe = io_uring_get_sqe(&ring);
 
         if (sqe == nullptr) {
-            io_uring_submit(&ring);
+            int submitted = io_uring_submit(&ring);
+            std::cout << "Submitted " << submitted << " entries to uring." << std::endl;
         }
 
         if (available_indexs.empty()) {
@@ -236,7 +237,9 @@ namespace Engine {
     inline std::vector<MetricT> UringEngine::reap_left_completions() {
         MetricT metric;
         std::vector<MetricT> collected_metrics;
-        io_uring_submit(&ring);
+
+        int submitted = io_uring_submit(&ring);
+        std::cout << "Final Submitted " << submitted << " entries to uring." << std::endl;
 
         while (available_indexs.size() < available_indexs.capacity()) {
             uint32_t free_index = this->template reap_completion<MetricT>(metric);
