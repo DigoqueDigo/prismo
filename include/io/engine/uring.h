@@ -29,9 +29,9 @@ namespace Engine {
             std::vector<uint32_t> available_indexs;
             std::vector<io_uring_cqe*> completed_cqes;
 
-            inline void nop(int fd_index, io_uring_sqe* sqe, uint32_t free_index);
-            inline void fsync(int fd_index, io_uring_sqe* sqe, uint32_t free_index);
-            inline void fdatasync(int fd_index, io_uring_sqe* sqe, uint32_t free_index);
+            inline void nop(int fd_index, io_uring_sqe* sqe);
+            inline void fsync(int fd_index, io_uring_sqe* sqe);
+            inline void fdatasync(int fd_index, io_uring_sqe* sqe);
 
             inline void read(int fd_index, void* buffer, size_t size, off_t offset, io_uring_sqe* sqe, uint32_t free_index);
             inline void write(int fd_index, const void* buffer, size_t size, off_t offset, io_uring_sqe* sqe, uint32_t free_index);
@@ -114,16 +114,16 @@ namespace Engine {
         }
     }
 
-    inline void UringEngine::nop(int fd_index, io_uring_sqe* sqe, uint32_t free_index) {
+    inline void UringEngine::nop(int fd_index, io_uring_sqe* sqe) {
         (void) fd_index;
         io_uring_prep_nop(sqe);
     }
 
-    inline void UringEngine::fsync(int fd_index, io_uring_sqe* sqe, uint32_t free_index) {
+    inline void UringEngine::fsync(int fd_index, io_uring_sqe* sqe) {
         io_uring_prep_fsync(sqe, fd_index, 0);
     }
 
-    inline void UringEngine::fdatasync(int fd_index, io_uring_sqe* sqe, uint32_t free_index) {
+    inline void UringEngine::fdatasync(int fd_index, io_uring_sqe* sqe) {
         io_uring_prep_fsync(sqe, fd_index, IORING_FSYNC_DATASYNC);
     }
 
@@ -173,11 +173,11 @@ namespace Engine {
         } else if constexpr (OperationT == Operation::OperationType::WRITE) {
             write(0, buffer, size, offset, sqe, free_index);
         } else if constexpr (OperationT == Operation::OperationType::FSYNC) {
-            fsync(0, sqe, free_index);
+            fsync(0, sqe);
         } else if constexpr (OperationT == Operation::OperationType::FDATASYNC) {
-            fdatasync(0, sqe, free_index);
+            fdatasync(0, sqe);
         } else if constexpr (OperationT == Operation::OperationType::NOP) {
-            nop(0, sqe, free_index);
+            nop(0, sqe);
         }
 
         io_uring_sqe_set_data(sqe, &user_data[free_index]);
