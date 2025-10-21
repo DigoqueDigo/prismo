@@ -26,7 +26,7 @@ namespace Engine {
         // {"IORING_SETUP_HYBRID_IOPOLL", IORING_SETUP_HYBRID_IOPOLL},
     };
 
-    void from_json(const json& j, AIOConfig& config) {
+    void from_json(const json& j, AioConfig& config) {
         j.at("entries").get_to(config.entries);
         j.at("block_size").get_to(config.block_size);
     };

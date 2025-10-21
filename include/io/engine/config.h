@@ -18,7 +18,7 @@ namespace Engine {
         int value;
     };
 
-    struct AIOConfig {
+    struct AioConfig {
         size_t block_size;
         uint32_t entries;
     };
@@ -30,7 +30,7 @@ namespace Engine {
     };
 
     void from_json(const json& j, OpenFlags& config);
-    void from_json(const json& j, AIOConfig& config);
+    void from_json(const json& j, AioConfig& config);
     void from_json(const json& j, UringConfig& config);
 };
 

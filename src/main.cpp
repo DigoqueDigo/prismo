@@ -26,7 +26,9 @@ void worker(
     EngineT& engine,
     LoggerT& logger
 ) {
-    std::optional<MetricT> metric;
+    std::vector<MetricT> metrics{};
+    metrics.reserve(iterations);
+
     int fd = engine.open(filename.c_str(), flags, mode);
 
     for (uint64_t i = 0; i < iterations; ++i) {
@@ -35,49 +37,55 @@ void worker(
 
         switch (op) {
             case Operation::OperationType::READ:
-                metric = engine.template submit<MetricT, Operation::OperationType::READ>(
-                    fd, block.getBuffer(), block.getSize(), offset
+                engine.template submit<MetricT, Operation::OperationType::READ>(
+                    fd, block.getBuffer(), block.getSize(), offset, metrics
                 );
                 break;
 
             case Operation::OperationType::WRITE:
                 generator.nextBlock(block);
-                metric = engine.template submit<MetricT, Operation::OperationType::WRITE>(
-                    fd, block.getBuffer(), block.getSize(), offset
+                engine.template submit<MetricT, Operation::OperationType::WRITE>(
+                    fd, block.getBuffer(), block.getSize(), offset, metrics
                 );
                 break;
 
             case Operation::OperationType::FSYNC:
-                metric = engine.template submit<MetricT, Operation::OperationType::FSYNC>(
-                    fd, nullptr, 0, 0
+                engine.template submit<MetricT, Operation::OperationType::FSYNC>(
+                    fd, nullptr, 0, 0, metrics
                 );
                 break;
 
             case Operation::OperationType::FDATASYNC:
-                metric = engine.template submit<MetricT, Operation::OperationType::FDATASYNC>(
-                    fd, nullptr, 0, 0
+                engine.template submit<MetricT, Operation::OperationType::FDATASYNC>(
+                    fd, nullptr, 0, 0, metrics
                 );
                 break;
 
             case Operation::OperationType::NOP:
-                metric = engine.template submit<MetricT, Operation::OperationType::NOP>(
-                    fd, nullptr, 0, 0
+                engine.template submit<MetricT, Operation::OperationType::NOP>(
+                    fd, nullptr, 0, 0, metrics
                 );
                 break;
         }
 
-        if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
-            if (metric) {
-                logger.info(*metric);
+        // TODO: melhorar isto
+        if constexpr (!std::is_same_v<MetricT, std::monostate>) {
+            if (metrics.size() % 1000 == 0) {
+                for (const auto& metric : metrics) {
+                    logger.info(metric);
+                }
+                metrics.clear();
             }
         }
     }
 
     if constexpr (std::is_same_v<EngineT, Engine::UringEngine&>) {
-        for (auto& m : engine.template reap_left_completions<MetricT>()) {
-            if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
-                logger.info(m);
-            }
+        engine.template reap_left_completions<MetricT>(metrics);
+    }
+
+    if constexpr (!std::is_same_v<MetricT, std::monostate>) {
+        for (const auto& metric : metrics) {
+            logger.info(metric);
         }
     }
 

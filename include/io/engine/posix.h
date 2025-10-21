@@ -29,7 +29,7 @@ namespace Engine {
             inline int close(int fd);
 
             template<typename MetricT, Operation::OperationType OperationT>
-            inline std::optional<MetricT> submit(int fd, void* buffer, size_t size, off_t offset);
+            inline void submit(int fd, void* buffer, size_t size, off_t offset, std::vector<MetricT>& metrics);
     };
 
     inline int PosixEngine::open(const char* filename, OpenFlags flags, OpenMode mode) {
@@ -70,7 +70,7 @@ namespace Engine {
     }
 
     template<typename MetricT, Operation::OperationType OperationT>
-    inline std::optional<MetricT> PosixEngine::submit(int fd, void* buffer, size_t size, off_t offset) {
+    inline void PosixEngine::submit(int fd, void* buffer, size_t size, off_t offset, std::vector<MetricT>& metrics) {
         MetricT metric{};
         ssize_t result = 0;
 
@@ -114,7 +114,9 @@ namespace Engine {
             metric.error_no        = static_cast<int32_t>(errno);
         }
 
-        return metric;
+        if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
+            metrics.push_back(std::move(metric));
+        }
     }
 };
 

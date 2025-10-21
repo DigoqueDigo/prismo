@@ -50,6 +50,9 @@ spdlog_dep = dependency('spdlog', required: true)
 # Find liburing dependency (header-only)
 liburing_dep = dependency('liburing', required: true)
 
+# Find libaio dependency (header-only)
+libaio_dep = cc.find_library('aio', required: true)  # ← fix here
+
 # Find json dependency (nlohmann/json wrap)
 json_dep = dependency('nlohmann_json', required: true)
 
@@ -74,7 +77,7 @@ dedisbench_exe = executable(
   'dedisbench',
   sources: src,
   include_directories : [inc],
-  dependencies: [boost_dep, spdlog_dep, liburing_dep, json_dep],
+  dependencies: [boost_dep, spdlog_dep, liburing_dep, libaio_dep, json_dep],
   install : true,
 )
 
