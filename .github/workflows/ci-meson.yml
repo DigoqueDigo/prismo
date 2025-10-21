@@ -32,7 +32,7 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y build-essential libbz2-dev libz-dev libicu-dev
-        sudo apt install -y libboost-all-dev libspdlog-dev liburing-dev
+        sudo apt install -y libboost-all-dev libspdlog-dev liburing-dev libaio1
 
     - name: Configure Meson
       run: meson setup builddir --buildtype=${{ matrix.buildtype }} --reconfigure
