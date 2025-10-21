@@ -117,34 +117,24 @@ namespace Engine {
     inline void UringEngine::nop(int fd_index, io_uring_sqe* sqe, uint32_t free_index) {
         (void) fd_index;
         io_uring_prep_nop(sqe);
-        io_uring_sqe_set_data(sqe, &user_data[free_index]);
-        sqe->flags |= IOSQE_FIXED_FILE;
     }
 
     inline void UringEngine::fsync(int fd_index, io_uring_sqe* sqe, uint32_t free_index) {
         io_uring_prep_fsync(sqe, fd_index, 0);
-        io_uring_sqe_set_data(sqe, &user_data[free_index]);
-        sqe->flags |= IOSQE_FIXED_FILE;
     }
 
     inline void UringEngine::fdatasync(int fd_index, io_uring_sqe* sqe, uint32_t free_index) {
         io_uring_prep_fsync(sqe, fd_index, IORING_FSYNC_DATASYNC);
-        io_uring_sqe_set_data(sqe, &user_data[free_index]);
-        sqe->flags |= IOSQE_FIXED_FILE;
     }
 
     inline void UringEngine::read(int fd_index, void* buffer, size_t size, off_t offset, io_uring_sqe* sqe, uint32_t free_index) {
         (void) buffer;
         io_uring_prep_read_fixed(sqe, fd_index, iovecs[free_index].iov_base, size, offset, free_index);
-        io_uring_sqe_set_data(sqe, &user_data[free_index]);
-        sqe->flags |= IOSQE_FIXED_FILE;
     }
 
     inline void UringEngine::write(int fd_index, const void* buffer, size_t size, off_t offset, io_uring_sqe* sqe, uint32_t free_index) {
         std::memcpy(iovecs[free_index].iov_base, buffer, size);
         io_uring_prep_write_fixed(sqe, fd_index, iovecs[free_index].iov_base, size, offset, free_index);
-        io_uring_sqe_set_data(sqe, &user_data[free_index]);
-        sqe->flags |= IOSQE_FIXED_FILE;
     }
 
     template<typename MetricT, Operation::OperationType OperationT>
@@ -189,6 +179,9 @@ namespace Engine {
         } else if constexpr (OperationT == Operation::OperationType::NOP) {
             nop(0, sqe, free_index);
         }
+
+        io_uring_sqe_set_data(sqe, &user_data[free_index]);
+        sqe->flags |= IOSQE_FIXED_FILE;
     }
 
     template<typename MetricT>
