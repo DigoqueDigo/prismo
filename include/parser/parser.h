@@ -12,7 +12,7 @@
 #include <operation/sequence.h>
 #include <io/engine/posix.h>
 #include <io/engine/uring.h>
-// #include <io/engine/aio.h>
+#include <io/engine/aio.h>
 #include <io/logger/spdlog.h>
 #include <io/metric.h>
 #include <nlohmann/json.hpp>
@@ -46,14 +46,15 @@ namespace Parser {
 
     using EngineVariant = std::variant<
         Engine::PosixEngine,
-        Engine::UringEngine>;
+        Engine::UringEngine,
+        Engine::AioEngine>;
 
     AccessVariant getAccessVariant(const json& specialized);
-    GeneratorVariant getGeneratorVariant(const json& specialized);
-    OperationVariant getOperationVariant(const json& specialized);
     MetricVariant getMetricVariant(const json& specialized);
     LoggerVariant getLoggerVariant(const json& specialized);
     EngineVariant getEngineVariant(const json& specialized);
+    GeneratorVariant getGeneratorVariant(const json& specialized);
+    OperationVariant getOperationVariant(const json& specialized);
 };
 
 #endif

@@ -37,7 +37,7 @@ namespace Engine {
             inline void write(int fd_index, const void* buffer, size_t size, off_t offset, io_uring_sqe* sqe, uint32_t free_index);
 
             template<typename MetricT>
-            inline void reap_completion(std::vector<MetricT>& metrics);
+            inline void reap_completions(std::vector<MetricT>& metrics);
 
         public:
             inline explicit UringEngine(const UringConfig& _config);
@@ -144,11 +144,11 @@ namespace Engine {
 
         if (sqe == nullptr) {
             int submitted = io_uring_submit(&ring);
-            // std::cout << "Submitted " << submitted << " entries to uring." << std::endl;
+            std::cout << "Submitted " << submitted << " entries to uring." << std::endl;
         }
 
         if (available_indexs.empty()) {
-            this->template reap_completion<MetricT>(metrics);
+            this->template reap_completions<MetricT>(metrics);
         }
 
         while (sqe == nullptr) {
@@ -184,7 +184,7 @@ namespace Engine {
     }
 
     template<typename MetricT>
-    inline void UringEngine::reap_completion(std::vector<MetricT>& metrics) {
+    inline void UringEngine::reap_completions(std::vector<MetricT>& metrics) {
         int completions;
         UserData* cqe_user_data;
 
@@ -194,7 +194,7 @@ namespace Engine {
                 completed_cqes.data(),
                 completed_cqes.capacity()
             );
-        } while (completions <= 0);
+        } while (!completions);
 
         for (int index = 0; index < completions; index++) {
             MetricT metric{};
@@ -235,9 +235,9 @@ namespace Engine {
     template<typename MetricT>
     inline void UringEngine::reap_left_completions(std::vector<MetricT>& metrics) {
         int submitted = io_uring_submit(&ring);
-        // std::cout << "Final Submitted " << submitted << " entries to uring." << std::endl;
+        std::cout << "Final Submitted " << submitted << " entries to uring." << std::endl;
         while (available_indexs.size() < available_indexs.capacity()) {
-            this->template reap_completion<MetricT>(metrics);
+            this->template reap_completions<MetricT>(metrics);
         }
     }
 };

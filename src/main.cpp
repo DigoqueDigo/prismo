@@ -79,7 +79,10 @@ void worker(
         }
     }
 
-    if constexpr (std::is_same_v<EngineT, Engine::UringEngine&>) {
+    if constexpr (
+        std::is_same_v<EngineT, Engine::UringEngine&> ||
+        std::is_same_v<EngineT, Engine::AioEngine&>
+    ) {
         engine.template reap_left_completions<MetricT>(metrics);
     }
 

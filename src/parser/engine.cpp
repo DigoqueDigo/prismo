@@ -14,10 +14,10 @@ namespace Parser {
             auto config = specialized.template get<Engine::UringConfig>();
             return EngineVariant { std::in_place_type<Engine::UringEngine>, std::move(config) };
         }},
-        // {"aio", [](const json& specialized) {
-        //     auto config = specialized.template get<Engine::AioConfig>();
-        //     return EngineVariant { std::in_place_type<Engine::AioEngine>, std::move(config) };
-        // }},
+        {"aio", [](const json& specialized) {
+            auto config = specialized.template get<Engine::AioConfig>();
+            return EngineVariant { std::in_place_type<Engine::AioEngine>, std::move(config) };
+        }},
     };
 
     EngineVariant getEngineVariant(const json& specialized) {
