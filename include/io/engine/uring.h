@@ -29,7 +29,7 @@ namespace Engine {
             std::vector<uint32_t> available_indexs;
             std::vector<io_uring_cqe*> completed_cqes;
 
-            inline void nop(int fd_index, io_uring_sqe* sqe);
+            inline void nop(io_uring_sqe* sqe);
             inline void fsync(int fd_index, io_uring_sqe* sqe);
             inline void fdatasync(int fd_index, io_uring_sqe* sqe);
 
@@ -114,8 +114,7 @@ namespace Engine {
         }
     }
 
-    inline void UringEngine::nop(int fd_index, io_uring_sqe* sqe) {
-        (void) fd_index;
+    inline void UringEngine::nop(io_uring_sqe* sqe) {
         io_uring_prep_nop(sqe);
     }
 
@@ -177,7 +176,7 @@ namespace Engine {
         } else if constexpr (OperationT == Operation::OperationType::FDATASYNC) {
             fdatasync(0, sqe);
         } else if constexpr (OperationT == Operation::OperationType::NOP) {
-            nop(0, sqe);
+            nop(sqe);
         }
 
         io_uring_sqe_set_data(sqe, &user_data[free_index]);

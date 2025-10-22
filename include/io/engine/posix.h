@@ -15,7 +15,7 @@ namespace Engine {
 
     struct PosixEngine {
         private:
-            inline int nop(int fd);
+            inline int nop(void);
             inline int fsync(int fd);
             inline int fdatasync(int fd);
 
@@ -48,8 +48,7 @@ namespace Engine {
         return return_code;
     }
 
-    inline int PosixEngine::nop(int fd) {
-        (void) fd;
+    inline int PosixEngine::nop(void) {
         return 0;
     }
 
@@ -91,7 +90,7 @@ namespace Engine {
         } else if constexpr (OperationT == Operation::OperationType::FDATASYNC) {
             result = fdatasync(fd);
         } else if constexpr (OperationT == Operation::OperationType::NOP) {
-            result = nop(fd);
+            result = nop();
         }
 
         if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
