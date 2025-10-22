@@ -11,7 +11,7 @@
 
   "operation": {
     "type": "sequence",
-    "operation": "write",
+    "operation": "read",
     "percentages": {
       "read": 20,
       "write": 80
@@ -37,12 +37,12 @@
   },
 
   "engine": {
-    "type": "uring",
+    "type": "aio",
     "openflags": [
       "O_CREAT",
       "O_RDWR"
     ],
-    "entries": 128,
+    "entries": 8,
     "params": {
       "cq_entries": 0,
       "sq_thread_cpu": 0,

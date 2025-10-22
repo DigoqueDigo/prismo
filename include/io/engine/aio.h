@@ -106,9 +106,10 @@ namespace Engine {
 
     inline void AioEngine::nop(int fd, uint32_t free_index) {
         (void) fd;
-        memset(&iocbs[free_index], 0, sizeof(iocb));
-        iocbs[free_index].aio_fildes = fd;
-        iocbs[free_index].aio_lio_opcode = io_iocb_cmd::IO_CMD_NOOP;
+        // std::memset(&iocbs[free_index], 0, sizeof(iocb));
+        // iocbs[free_index].aio_fildes = -1;
+        // iocbs[free_index].aio_lio_opcode = io_iocb_cmd::IO_CMD_NOOP;
+        io_prep_pwrite(&iocbs[free_index], fd, nullptr, 0, 0);
     }
 
     inline void AioEngine::fsync(int fd, uint32_t free_index) {
@@ -134,22 +135,19 @@ namespace Engine {
 
         uint32_t free_index;
 
-        // submeter em batch
         if (iocb_ptrs.size() == iocb_ptrs.capacity()) {
             int submit_result = io_submit(io_context, iocb_ptrs.size(), &iocb_ptrs[0]);
-            std::cout << "Submitted: " << submit_result << std::endl;
+            // std::cout << "Submitted: " << submit_result << std::endl;
             if (submit_result != static_cast<int>(iocb_ptrs.size())) {
-                throw std::runtime_error("Invalid submission");
+                throw std::runtime_error("Aio submission failed");
             }
             iocb_ptrs.clear();
         }
 
-        // recolher o maximo de indices sempre que for necessario
         while (available_indexs.empty()) {
             this->template reap_completions(metrics);
         }
 
-        // recolher um indice para fazer uma nova submissão
         free_index = available_indexs.back();
         available_indexs.pop_back();
 
@@ -184,7 +182,7 @@ namespace Engine {
         io_event completed_event;
 
         int events_returned = io_getevents(io_context, 1, io_events.capacity(), io_events.data(), nullptr);
-        std::cout << "Returned events: " << events_returned << std::endl;
+        // std::cout << "Returned events: " << events_returned << std::endl;
 
         if (events_returned < 0) {
             throw std::runtime_error("Aio getevents failed: " + std::string(strerror(-events_returned)));
@@ -195,8 +193,8 @@ namespace Engine {
             completed_event = io_events[event_index];
             completed_task = static_cast<AioTask*>(completed_event.data);
 
-            std::cout << "free index: " << completed_task->index << std::endl;
-            std::cout << "Offset: " << completed_task->offset << " returned: " << completed_event.res << std::endl;
+            // std::cout << "free index: " << completed_task->index << std::endl;
+            // std::cout << "Offset: " << completed_task->offset << " returned: " << completed_event.res << std::endl;
 
             if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
                 metric.start_timestamp = completed_task->start_timestamp;
@@ -231,7 +229,7 @@ namespace Engine {
     template<typename MetricT>
     inline void AioEngine::reap_left_completions(std::vector<MetricT>& metrics) {
         int submit_result = io_submit(io_context, iocb_ptrs.size(), &iocb_ptrs[0]);
-        std::cout << "Flush Submitted: " << submit_result << std::endl;
+        // std::cout << "Flush Submitted: " << submit_result << std::endl;
         if (submit_result != static_cast<int>(iocb_ptrs.size())) {
             throw std::runtime_error("Flush Invalid submission");
         }
