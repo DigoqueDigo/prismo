@@ -5,7 +5,7 @@
 
 namespace Generator {
 
-    struct ConstantGenerator {
+    class ConstantGenerator {
         public:
             void nextBlock(Block& block);
     };

@@ -27,48 +27,34 @@ void worker(
     LoggerT& logger
 ) {
     std::vector<MetricT> metrics{};
-    metrics.reserve(iterations);
+    metrics.reserve(1000);
 
-    int fd = engine.open(filename.c_str(), flags, mode);
+    Protocol::OpenRequest open_request {
+        .filename = filename.c_str(),
+        .flags    = flags.value,
+        .mode     = mode.value
+    };
+
+    int fd = engine.open(open_request);
+
+    Protocol::CommonRequest common_request {
+        .fd     = fd,
+        .size   = block.getSize(),
+        .offset = 0,
+        .buffer = block.getBuffer(),
+        .operation = Operation::OperationType::NOP
+    };
 
     for (uint64_t i = 0; i < iterations; ++i) {
-        const off_t offset = access.nextOffset();
-        const auto op = barrier.apply(operation.nextOperation());
+        common_request.offset = access.nextOffset();
+        common_request.operation = barrier.apply(operation.nextOperation());
 
-        switch (op) {
-            case Operation::OperationType::READ:
-                engine.template submit<MetricT, Operation::OperationType::READ>(
-                    fd, block.getBuffer(), block.getSize(), offset, metrics
-                );
-                break;
-
-            case Operation::OperationType::WRITE:
-                generator.nextBlock(block);
-                engine.template submit<MetricT, Operation::OperationType::WRITE>(
-                    fd, block.getBuffer(), block.getSize(), offset, metrics
-                );
-                break;
-
-            case Operation::OperationType::FSYNC:
-                engine.template submit<MetricT, Operation::OperationType::FSYNC>(
-                    fd, nullptr, 0, 0, metrics
-                );
-                break;
-
-            case Operation::OperationType::FDATASYNC:
-                engine.template submit<MetricT, Operation::OperationType::FDATASYNC>(
-                    fd, nullptr, 0, 0, metrics
-                );
-                break;
-
-            case Operation::OperationType::NOP:
-                engine.template submit<MetricT, Operation::OperationType::NOP>(
-                    fd, nullptr, 0, 0, metrics
-                );
-                break;
+        if (common_request.operation == Operation::OperationType::WRITE) {
+            generator.nextBlock(block);
         }
 
-        // TODO: melhorar isto
+        engine.template submit<MetricT>(common_request, metrics);
+
         if constexpr (!std::is_same_v<MetricT, std::monostate>) {
             if (metrics.size() % 1000 == 0) {
                 for (const auto& metric : metrics) {
@@ -86,13 +72,15 @@ void worker(
         engine.template reap_left_completions<MetricT>(metrics);
     }
 
-    if constexpr (!std::is_same_v<MetricT, std::monostate>) {
-        for (const auto& metric : metrics) {
-            logger.info(metric);
-        }
+    for (const auto& metric : metrics) {
+        Metric::log_metric<MetricT, LoggerT>(logger, metric);
     }
 
-    engine.close(fd);
+    Protocol::CloseRequest close_request {
+        .fd = fd
+    };
+
+    engine.close(close_request);
 }
 
 

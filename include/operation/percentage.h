@@ -11,7 +11,7 @@ using json = nlohmann::json;
 
 namespace Operation {
 
-    struct PercentageOperation {
+    class PercentageOperation {
         private:
             std::vector<std::pair<OperationType, uint32_t>> percentages;
             Distribution::UniformDistribution<uint32_t> distribution;

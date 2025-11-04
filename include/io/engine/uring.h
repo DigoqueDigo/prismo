@@ -8,33 +8,26 @@
 #include <thread>
 #include <stdexcept>
 #include <io/metric.h>
-#include <io/engine/config.h>
+#include <io/protocol.h>
+#include <io/engine/utils.h>
 #include <iostream>
 
 namespace Engine {
 
-    struct UserData {
-        size_t size;
-        off_t offset;
-        uint32_t index;
-        int64_t start_timestamp;
-        Operation::OperationType operation_type;
-    };
-
-    struct UringEngine {
+    class UringEngine {
         private:
             io_uring ring;
             std::vector<iovec> iovecs;
-            std::vector<UserData> user_data;
+            std::vector<UringUserData> user_data;
             std::vector<uint32_t> available_indexs;
             std::vector<io_uring_cqe*> completed_cqes;
 
-            inline void nop(io_uring_sqe* sqe);
-            inline void fsync(int fd_index, io_uring_sqe* sqe);
-            inline void fdatasync(int fd_index, io_uring_sqe* sqe);
+            inline void nop(Protocol::CommonRequest& request, io_uring_sqe* sqe);
+            inline void fsync(Protocol::CommonRequest& request, io_uring_sqe* sqe);
+            inline void fdatasync(Protocol::CommonRequest& request, io_uring_sqe* sqe);
 
-            inline void read(int fd_index, void* buffer, size_t size, off_t offset, io_uring_sqe* sqe, uint32_t free_index);
-            inline void write(int fd_index, const void* buffer, size_t size, off_t offset, io_uring_sqe* sqe, uint32_t free_index);
+            inline void read(Protocol::CommonRequest& request, io_uring_sqe* sqe, uint32_t free_index);
+            inline void write(Protocol::CommonRequest& request, io_uring_sqe* sqe, uint32_t free_index);
 
             template<typename MetricT>
             inline void reap_completions(std::vector<MetricT>& metrics);
@@ -43,14 +36,14 @@ namespace Engine {
             inline explicit UringEngine(const UringConfig& _config);
             inline ~UringEngine();
 
-            inline int open(const char* filename, OpenFlags flags, OpenMode mode);
-            inline void close(int fd);
+            inline int open(Protocol::OpenRequest& request);
+            inline void close(Protocol::CloseRequest& request);
 
             template<typename MetricT>
             inline void reap_left_completions(std::vector<MetricT>& metrics);
 
-            template<typename MetricT, Operation::OperationType OperationT>
-            inline void submit(int fd, void* buffer, size_t size, off_t offset, std::vector<MetricT>& metrics);
+            template<typename MetricT>
+            inline void submit(Protocol::CommonRequest& request, std::vector<MetricT>& metrics);
     };
 
     inline UringEngine::UringEngine(const UringConfig& _config)
@@ -93,8 +86,8 @@ namespace Engine {
         io_uring_queue_exit(&ring);
     }
 
-    inline int UringEngine::open(const char* filename, OpenFlags flags, OpenMode mode) {
-        int fd = ::open(filename, flags.value, mode.value);
+    inline int UringEngine::open(Protocol::OpenRequest& request) {
+        int fd = ::open(request.filename, request.flags, request.mode);
         if (fd < 0) {
             throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
         }
@@ -105,42 +98,42 @@ namespace Engine {
         return fd;
     }
 
-    inline void UringEngine::close(int fd) {
+    inline void UringEngine::close(Protocol::CloseRequest& request) {
         if (io_uring_unregister_files(&ring)) {
             throw std::runtime_error("Uring unregister files failed: " + std::string(strerror(errno)));
         }
-        if (::close(fd) < 0) {
+        if (::close(request.fd) < 0) {
             throw std::runtime_error("Failed to close fd: " + std::string(strerror(errno)));
         }
     }
 
-    inline void UringEngine::nop(io_uring_sqe* sqe) {
+    inline void UringEngine::nop(Protocol::CommonRequest& request, io_uring_sqe* sqe) {
+        (void) request;
         io_uring_prep_nop(sqe);
     }
 
-    inline void UringEngine::fsync(int fd_index, io_uring_sqe* sqe) {
-        io_uring_prep_fsync(sqe, fd_index, 0);
+    inline void UringEngine::fsync(Protocol::CommonRequest& request, io_uring_sqe* sqe) {
+        io_uring_prep_fsync(sqe, request.fd, 0);
     }
 
-    inline void UringEngine::fdatasync(int fd_index, io_uring_sqe* sqe) {
-        io_uring_prep_fsync(sqe, fd_index, IORING_FSYNC_DATASYNC);
+    inline void UringEngine::fdatasync(Protocol::CommonRequest& request, io_uring_sqe* sqe) {
+        io_uring_prep_fsync(sqe, request.fd, IORING_FSYNC_DATASYNC);
     }
 
-    inline void UringEngine::read(int fd_index, void* buffer, size_t size, off_t offset, io_uring_sqe* sqe, uint32_t free_index) {
-        (void) buffer;
-        io_uring_prep_read_fixed(sqe, fd_index, iovecs[free_index].iov_base, size, offset, free_index);
+    inline void UringEngine::read(Protocol::CommonRequest& request, io_uring_sqe* sqe, uint32_t free_index) {
+        io_uring_prep_read_fixed(sqe, request.fd, iovecs[free_index].iov_base, request.size, request.offset, free_index);
     }
 
-    inline void UringEngine::write(int fd_index, const void* buffer, size_t size, off_t offset, io_uring_sqe* sqe, uint32_t free_index) {
-        std::memcpy(iovecs[free_index].iov_base, buffer, size);
-        io_uring_prep_write_fixed(sqe, fd_index, iovecs[free_index].iov_base, size, offset, free_index);
+    inline void UringEngine::write(Protocol::CommonRequest& request, io_uring_sqe* sqe, uint32_t free_index) {
+        std::memcpy(iovecs[free_index].iov_base, request.buffer, request.size);
+        io_uring_prep_write_fixed(sqe, request.fd, iovecs[free_index].iov_base, request.size, request.offset, free_index);
     }
 
-    template<typename MetricT, Operation::OperationType OperationT>
-    inline void UringEngine::submit(int fd, void* buffer, size_t size, off_t offset, std::vector<MetricT>& metrics) {
-        (void) fd;
+    template<typename MetricT>
+    inline void UringEngine::submit(Protocol::CommonRequest& request, std::vector<MetricT>& metrics) {
         uint32_t free_index;
         io_uring_sqe* sqe = io_uring_get_sqe(&ring);
+        request.fd = 0;
 
         if (sqe == nullptr) {
             int submitted = io_uring_submit(&ring);
@@ -158,25 +151,33 @@ namespace Engine {
         free_index = available_indexs.back();
         available_indexs.pop_back();
 
-        user_data[free_index].size = size;
-        user_data[free_index].offset = offset;
         user_data[free_index].index = free_index;
-        user_data[free_index].operation_type = OperationT;
+        user_data[free_index].size = request.size;
+        user_data[free_index].offset = request.offset;
+        user_data[free_index].operation_type = request.operation;
         user_data[free_index].start_timestamp =
             std::chrono::duration_cast<std::chrono::nanoseconds>(
                 std::chrono::steady_clock::now().time_since_epoch()
             ).count();
 
-        if constexpr (OperationT == Operation::OperationType::READ) {
-            read(0, buffer, size, offset, sqe, free_index);
-        } else if constexpr (OperationT == Operation::OperationType::WRITE) {
-            write(0, buffer, size, offset, sqe, free_index);
-        } else if constexpr (OperationT == Operation::OperationType::FSYNC) {
-            fsync(0, sqe);
-        } else if constexpr (OperationT == Operation::OperationType::FDATASYNC) {
-            fdatasync(0, sqe);
-        } else if constexpr (OperationT == Operation::OperationType::NOP) {
-            nop(sqe);
+        switch (request.operation) {
+            case Operation::OperationType::READ:
+                this->read(request, sqe, free_index);
+                break;
+            case Operation::OperationType::WRITE:
+                this->write(request, sqe, free_index);
+                break;
+            case Operation::OperationType::FSYNC:
+                this->fsync(request, sqe);
+                break;
+            case Operation::OperationType::FDATASYNC:
+                this->fdatasync(request, sqe);
+                break;
+            case Operation::OperationType::NOP:
+                this->nop(request, sqe);
+                break;
+            default:
+                throw std::invalid_argument("Unsupported operation type for UringEngine");
         }
 
         io_uring_sqe_set_data(sqe, &user_data[free_index]);
@@ -186,7 +187,6 @@ namespace Engine {
     template<typename MetricT>
     inline void UringEngine::reap_completions(std::vector<MetricT>& metrics) {
         int completions;
-        UserData* cqe_user_data;
 
         do {
             completions = io_uring_peek_batch_cqe(
@@ -199,33 +199,23 @@ namespace Engine {
         for (int index = 0; index < completions; index++) {
             MetricT metric{};
             io_uring_cqe* cqe = completed_cqes[index];
-            cqe_user_data = static_cast<UserData*>(io_uring_cqe_get_data(cqe));
+            UringUserData* cqe_user_data = static_cast<UringUserData*>(io_uring_cqe_get_data(cqe));
 
-            if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
-                metric.start_timestamp = cqe_user_data->start_timestamp;
-                metric.operation_type = cqe_user_data->operation_type;
-                metric.end_timestamp =
-                    std::chrono::duration_cast<std::chrono::nanoseconds>(
-                        std::chrono::steady_clock::now().time_since_epoch()
-                    ).count();
-            }
+            Metric::end_base_metric<MetricT>(
+                metric,
+                cqe_user_data->operation_type,
+                cqe_user_data->start_timestamp
+            );
 
-            if constexpr (std::is_base_of_v<Metric::StandardMetric, MetricT>) {
-                metric.pid = ::getpid();
-                metric.tid = static_cast<uint64_t>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
-            }
+            Metric::fill_standard_metric<MetricT>(metric);
+            Metric::fill_full_metric<MetricT>(
+                metric,
+                cqe->res,
+                cqe_user_data->size,
+                cqe_user_data->offset
+            );
 
-            if constexpr (std::is_base_of_v<Metric::FullMetric, MetricT>) {
-                metric.requested_bytes = cqe_user_data->size;
-                metric.processed_bytes = (cqe->res > 0) ? static_cast<size_t>(cqe->res) : 0;
-                metric.offset          = cqe_user_data->offset;
-                metric.return_code     = static_cast<int32_t>(cqe->res);
-                metric.error_no        = static_cast<int32_t>(errno);
-            }
-
-            if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
-                metrics.push_back(std::move(metric));
-            }
+            Metric::save_on_complete<MetricT>(metrics, metric);
 
             io_uring_cqe_seen(&ring, cqe);
             available_indexs.push_back(cqe_user_data->index);

@@ -5,117 +5,99 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstring>
-#include <thread>
 #include <stdexcept>
 #include <io/metric.h>
+#include <io/protocol.h>
+#include <io/engine/utils.h>
 #include <operation/type.h>
-#include <io/engine/config.h>
 
 namespace Engine {
 
-    struct PosixEngine {
+    class PosixEngine {
         private:
-            inline int nop(void);
-            inline int fsync(int fd);
-            inline int fdatasync(int fd);
+            inline ssize_t read(Protocol::CommonRequest& request);
+            inline ssize_t write(Protocol::CommonRequest& request);
 
-            inline ssize_t read(int fd, void* buffer, size_t size, off_t offset);
-            inline ssize_t write(int fd, const void* buffer, size_t size, off_t offset);
+            inline int nop(Protocol::CommonRequest& request);
+            inline int fsync(Protocol::CommonRequest& request);
+            inline int fdatasync(Protocol::CommonRequest& request);
 
         public:
             PosixEngine() = default;
 
-            inline int open(const char* filename, OpenFlags flags, OpenMode mode);
-            inline int close(int fd);
+            inline int open(Protocol::OpenRequest& request);
+            inline int close(Protocol::CloseRequest& request);
 
-            template<typename MetricT, Operation::OperationType OperationT>
-            inline void submit(int fd, void* buffer, size_t size, off_t offset, std::vector<MetricT>& metrics);
+            template<typename MetricT>
+            inline void submit(Protocol::CommonRequest& request, std::vector<MetricT>& metrics);
     };
 
-    inline int PosixEngine::open(const char* filename, OpenFlags flags, OpenMode mode) {
-        int fd = ::open(filename, flags.value, mode.value);
+    inline int PosixEngine::open(Protocol::OpenRequest& request) {
+        int fd = ::open(request.filename, request.flags, request.mode);
         if (fd < 0) {
             throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
         }
         return fd;
     }
 
-    inline int PosixEngine::close(int fd) {
-        int return_code = ::close(fd);
-        if (return_code < 0) {
+    inline int PosixEngine::close(Protocol::CloseRequest& request) {
+        int rt = ::close(request.fd);
+        if (rt < 0) {
             throw std::runtime_error("Failed to close fd: " + std::string(strerror(errno)));
         }
-        return return_code;
+        return rt;
     }
 
-    inline int PosixEngine::nop(void) {
+    inline int PosixEngine::nop(Protocol::CommonRequest& request) {
+        (void) request;
         return 0;
     }
 
-    inline int PosixEngine::fsync(int fd) {
-        return ::fsync(fd);
+    inline int PosixEngine::fsync(Protocol::CommonRequest& request) {
+        return ::fsync(request.fd);
     }
 
-    inline int PosixEngine::fdatasync(int fd) {
-        return ::fdatasync(fd);
+    inline int PosixEngine::fdatasync(Protocol::CommonRequest& request) {
+        return ::fdatasync(request.fd);
     }
 
-    inline ssize_t PosixEngine::read(int fd, void* buffer, size_t size, off_t offset) {
-        return ::pread(fd, buffer, size, offset);
+    inline ssize_t PosixEngine::read(Protocol::CommonRequest& request) {
+        return ::pread(request.fd, request.buffer, request.size, request.offset);
     }
 
-    inline ssize_t PosixEngine::write(int fd, const void* buffer, size_t size, off_t offset) {
-        return ::pwrite(fd, buffer, size, offset);
+    inline ssize_t PosixEngine::write(Protocol::CommonRequest& request) {
+        return ::pwrite(request.fd, request.buffer, request.size, request.offset);
     }
 
-    template<typename MetricT, Operation::OperationType OperationT>
-    inline void PosixEngine::submit(int fd, void* buffer, size_t size, off_t offset, std::vector<MetricT>& metrics) {
+    template<typename MetricT>
+    inline void PosixEngine::submit(Protocol::CommonRequest& request, std::vector<MetricT>& metrics) {
         MetricT metric{};
         ssize_t result = 0;
+        Metric::start_base_metric<MetricT>(metric, request.operation);
 
-        if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
-            metric.operation_type = OperationT;
-            metric.start_timestamp =
-                std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    std::chrono::steady_clock::now().time_since_epoch()
-                ).count();
+        switch (request.operation) {
+            case Operation::OperationType::READ:
+                result = this->read(request);
+                break;
+            case Operation::OperationType::WRITE:
+                result = this->write(request);
+                break;
+            case Operation::OperationType::FSYNC:
+                result = this->fsync(request);
+                break;
+            case Operation::OperationType::FDATASYNC:
+                result = this->fdatasync(request);
+                break;
+            case Operation::OperationType::NOP:
+                result = this->nop(request);
+                break;
+            default:
+                throw std::invalid_argument("Unsupported operation type");
         }
 
-        if constexpr (OperationT == Operation::OperationType::READ) {
-            result = read(fd, buffer, size, offset);
-        } else if constexpr (OperationT == Operation::OperationType::WRITE) {
-            result = write(fd, buffer, size, offset);
-        } else if constexpr (OperationT == Operation::OperationType::FSYNC) {
-            result = fsync(fd);
-        } else if constexpr (OperationT == Operation::OperationType::FDATASYNC) {
-            result = fdatasync(fd);
-        } else if constexpr (OperationT == Operation::OperationType::NOP) {
-            result = nop();
-        }
-
-        if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
-            metric.end_timestamp =
-                std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    std::chrono::steady_clock::now().time_since_epoch()
-                ).count();
-        }
-
-        if constexpr (std::is_base_of_v<Metric::StandardMetric, MetricT>) {
-            metric.pid = ::getpid();
-            metric.tid = static_cast<uint64_t>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
-        }
-
-        if constexpr (std::is_base_of_v<Metric::FullMetric, MetricT>) {
-            metric.requested_bytes = size;
-            metric.processed_bytes = (result > 0) ? static_cast<size_t>(result) : 0;
-            metric.offset          = offset;
-            metric.return_code     = static_cast<int32_t>(result);
-            metric.error_no        = static_cast<int32_t>(errno);
-        }
-
-        if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
-            metrics.push_back(std::move(metric));
-        }
+        Metric::fill_standard_metric<MetricT>(metric);
+        Metric::fill_full_metric<MetricT>(metric, result, request.size, request.offset);
+        Metric::save_on_complete<MetricT>(metrics, metric);
     }
 };
 

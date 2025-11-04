@@ -9,7 +9,7 @@ using json = nlohmann::json;
 
 namespace Operation {
 
-    struct BarrierCounter {
+    class BarrierCounter {
         private:
             OperationType barrierOp;
             OperationType triggerOp;
@@ -21,7 +21,7 @@ namespace Operation {
             OperationType apply(OperationType operation);
     };
 
-    struct MultipleBarrier {
+    class MultipleBarrier {
         private:
             std::vector<BarrierCounter> barriers;
 

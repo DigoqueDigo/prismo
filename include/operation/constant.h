@@ -8,7 +8,7 @@ using json = nlohmann::json;
 
 namespace Operation {
 
-    struct ConstantOperation {
+    class ConstantOperation {
         private:
             OperationType operation;
 

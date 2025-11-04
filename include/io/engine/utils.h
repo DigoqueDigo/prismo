@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <libaio.h>
 #include <liburing.h>
+#include <operation/type.h>
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
@@ -27,6 +28,23 @@ namespace Engine {
         size_t block_size;
         uint32_t entries;
         io_uring_params params{};
+    };
+
+    struct UringUserData {
+        size_t size;
+        off_t offset;
+        uint32_t index;
+        int64_t start_timestamp;
+        Operation::OperationType operation_type;
+    };
+
+    struct AioTask {
+        void* buffer;
+        size_t size;
+        off_t offset;
+        uint32_t index;
+        int64_t start_timestamp;
+        Operation::OperationType operation_type;
     };
 
     void from_json(const json& j, OpenFlags& config);

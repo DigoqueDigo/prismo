@@ -9,7 +9,7 @@ using json = nlohmann::json;
 
 namespace Access {
 
-    struct RandomAccess {
+    class RandomAccess {
         private:
             size_t block_size;
             size_t limit;

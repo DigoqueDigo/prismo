@@ -9,7 +9,7 @@ using json = nlohmann::json;
 
 namespace Operation {
 
-    struct SequenceOperation {
+    class SequenceOperation {
         private:
             size_t index;
             size_t length;

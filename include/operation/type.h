@@ -22,7 +22,7 @@ namespace Operation {
             return OperationType::FSYNC;
         } else if (operation == "fdatasync") {
             return OperationType::FDATASYNC;
-        } else if (operation == "nop") {         
+        } else if (operation == "nop") {
             return OperationType::NOP;
         } else {
             throw std::invalid_argument("Operation of type '" + operation + "' not recognized");

@@ -6,7 +6,7 @@
 
 namespace Generator {
 
-    struct RandomGenerator {
+    class RandomGenerator {
         private:
             prng_state generator;
 

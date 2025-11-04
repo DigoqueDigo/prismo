@@ -12,7 +12,7 @@ using json = nlohmann::json;
 
 namespace Generator {
 
-    struct Block {
+    class Block {
         private:
             size_t size;
             uint8_t* buffer;

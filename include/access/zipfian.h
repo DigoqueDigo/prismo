@@ -10,7 +10,7 @@ using json = nlohmann::json;
 
 namespace Access {
 
-    struct ZipfianAccess {
+    class ZipfianAccess {
         private:
             size_t block_size;
             size_t limit;
