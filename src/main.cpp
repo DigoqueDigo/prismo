@@ -2,9 +2,13 @@
 #include <operation/type.h>
 #include <operation/barrier.h>
 
+#include <memory>
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+
+#include <boost/pool/singleton_pool.hpp>
+#include <boost/lockfree/stack.hpp>
 
 template<
     typename OperationT,
@@ -19,13 +23,13 @@ void worker(
     Engine::OpenFlags& flags,
     Engine::OpenMode& mode,
     Operation::MultipleBarrier& barrier,
-    Generator::Block& block,
     OperationT& operation,
     AccessT& access,
     GeneratorT& generator,
     EngineT& engine,
     LoggerT& logger
 ) {
+    const size_t my_block_size = 4096;
     std::vector<MetricT> metrics{};
     metrics.reserve(1000);
 
@@ -37,23 +41,31 @@ void worker(
 
     int fd = engine.open(open_request);
 
-    Protocol::CommonRequest common_request {
-        .fd     = fd,
-        .size   = block.getSize(),
-        .offset = 0,
-        .buffer = block.getBuffer(),
-        .operation = Operation::OperationType::NOP
-    };
+
+    using BufferPool = boost::singleton_pool<
+        Protocol::BufferTag,
+        my_block_size,
+        boost::default_user_allocator_new_delete,
+        boost::details::pool::null_mutex,
+        128,
+        0
+    >;
 
     for (uint64_t i = 0; i < iterations; ++i) {
-        common_request.offset = access.nextOffset();
-        common_request.operation = barrier.apply(operation.nextOperation());
 
-        if (common_request.operation == Operation::OperationType::WRITE) {
-            generator.nextBlock(block);
+        Protocol::CommonRequest request {
+            .fd         = fd,
+            .size       = my_block_size,
+            .offset     = access.nextOffset(),
+            .buffer     = static_cast<uint8_t*>(BufferPool::malloc()),
+            .operation  = barrier.apply(operation.nextOperation()),
+        };
+
+        if (request.operation == Operation::OperationType::WRITE) {
+            generator.nextBlock(request.buffer, my_block_size);
         }
 
-        engine.template submit<MetricT>(common_request, metrics);
+        engine.template submit<MetricT>(request, metrics);
 
         if constexpr (!std::is_same_v<MetricT, std::monostate>) {
             if (metrics.size() % 1000 == 0) {
@@ -63,7 +75,11 @@ void worker(
                 metrics.clear();
             }
         }
+
+        BufferPool::free(request.buffer);
     }
+
+    BufferPool::purge_memory();
 
     if constexpr (
         std::is_same_v<EngineT, Engine::UringEngine&> ||
@@ -108,8 +124,6 @@ int main(int argc, char** argv) {
 
     Engine::OpenMode mode {.value = 0666};
     Engine::OpenFlags flags = engine_j.at("openflags").template get<Engine::OpenFlags>();
-
-    Generator::Block block = job_j.template get<Generator::Block>();
     Operation::MultipleBarrier barrier = operation_j.at("barrier").template get<Operation::MultipleBarrier>();
 
     Parser::AccessVariant access = Parser::getAccessVariant(access_j);
@@ -121,7 +135,7 @@ int main(int argc, char** argv) {
     Parser::EngineVariant engine = Parser::getEngineVariant(engine_j);
 
     std::visit(
-        [&iterations, &filename, &flags, &mode, &barrier, &block](
+        [&iterations, &filename, &flags, &mode, &barrier](
             auto& actual_operation,
             auto& actual_access,
             auto& actual_generator,
@@ -141,7 +155,6 @@ int main(int argc, char** argv) {
                 flags,
                 mode,
                 barrier,
-                block,
                 actual_operation,
                 actual_access,
                 actual_generator,

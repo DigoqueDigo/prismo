@@ -25,6 +25,22 @@ namespace Protocol {
         uint8_t* buffer;
         Operation::OperationType operation;
     };
+
+    struct CommonRequestPacket {
+        bool isShutDown;
+        CommonRequest request;
+    };
+
+    struct BufferTag {};
+
+    using BufferPool = boost::singleton_pool<
+        Protocol::BufferTag,
+        4096,
+        boost::default_user_allocator_new_delete,
+        boost::details::pool::null_mutex,
+        128,
+        0
+    >;
 }
 
 #endif

@@ -1,7 +1,6 @@
 #ifndef RANDOM_GENERATOR_H
 #define RANDOM_GENERATOR_H
 
-#include <generator/block.h>
 #include <lib/shishua/shishua.h>
 
 namespace Generator {
@@ -12,7 +11,7 @@ namespace Generator {
 
         public:
             explicit RandomGenerator();
-            void nextBlock(Block& block);
+            void nextBlock(uint8_t* buffer, size_t size);
     };
 };
 

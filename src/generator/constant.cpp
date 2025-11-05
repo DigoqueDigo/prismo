@@ -1,7 +1,7 @@
 #include <generator/constant.h>
 
 namespace Generator {
-    void ConstantGenerator::nextBlock(Block& block) {
-        std::memset(block.getBuffer(), 0, block.getSize());
+    void ConstantGenerator::nextBlock(uint8_t* buffer, size_t size) {
+        std::memset(buffer, 0, size);
     }
 }

@@ -1,13 +1,14 @@
 #ifndef CONSTANT_GENERATOR_H
 #define CONSTANT_GENERATOR_H
 
-#include <generator/block.h>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
 
 namespace Generator {
-
     class ConstantGenerator {
         public:
-            void nextBlock(Block& block);
+            void nextBlock(uint8_t* buffer, size_t size);
     };
 };
 
