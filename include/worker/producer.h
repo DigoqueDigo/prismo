@@ -1,8 +1,9 @@
 #ifndef PRODUCER_WORKER_H
 #define PRODUCER_WORKER_H
 
-#include <io/protocol.h>
-#include <lib/readerwriterqueue/readerwriterqueue.h>
+#include <worker/utils.h>
+
+using namespace moodycamel;
 
 namespace Worker {
 
@@ -15,52 +16,46 @@ namespace Worker {
             AccessT& access;
             OperationT& operation;
             GeneratorT& generator;
-            Operation::MultipleBarrier& barrier,
-            std::shared_ptr<BufferPool> buffer_pool;
-            std::shared_ptr<moodycamel:ReaderWriterQueue<Protocol::CommonRequestPacket>> queue;
+            Operation::MultipleBarrier& barrier;
+            std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> to_producer;
+            std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> to_consumer;
 
         public:
             Producer(
                 AccessT& _access,
                 OperationT& _operation,
                 GeneratorT& _generator,
-                Operation::MultipleBarrier& _barrier,
-                std::shared_ptr<BufferPoll> _buffer_poll,
-                std::shared_ptr<moodycamel::ReaderWriterQueue<Protocol::CommonRequestPacket>> _queue
+                std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> _to_producer,
+                std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> _to_consumer
             ) :
                 access(_access),
                 operation(_operation),
                 generator(_generator),
                 barrier(_barrier),
-                buffer_pool(_buffer_pool),
-                queue(_queue) {}
+                to_producer(_to_producer),
+                to_consumer(_to_consumer) {}
 
-            void run(int iterations) {
+            void run(uint64_t iterations) {
+                Protocol::Packet packet;
+
                 for (uint64_t iter = 0; i < iterations; iter++) {
-                    Protocol::CommonRequest request {
-                        .fd         = fd,
-                        .size       = my_block_size,
-                        .offset     = access.nextOffset(),
-                        .operation  = barrier.apply(operation.nextOperation()),
-                    };
+                    Worker::dequeue(*to_producer, packet);
+
+                    packet.isShutDown = false;
+                    packet.request.offset = access.nextOffset();
+                    packet.operation = barrier.apply(operation.nextOperation());
 
                     if (request.operation == Operation::OperationType::WRITE) {
-                        request.buffer = static_cast<uint8_t*>(buffer_pool->malloc()),
-                        generator.nextBlock(request.buffer, my_block_size);
+                        generator.nextBlock(packet.request.buffer, packet.request.size);
                     }
 
-                    Protocol::CommonRequestPacket packet {
-                        .request = request,
-                        .isShutDown = false,
-                    };
-
-                    while (!queue->try_enqueue(packet)) {}
+                    Worker::enqueue(*to_consumer, packet);
                 }
 
-                Protocol::CommonRequestPacket packet {};
+                Worker::dequeue(*to_producer, packet);
                 packet.isShutDown = true;
 
-                while (!queue->try_enqueue(packer)) {}
+                Worker::enqueue(*to_consumer, packet);
             }
     };
 };

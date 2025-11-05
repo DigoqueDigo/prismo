@@ -1,10 +1,12 @@
-#include <access/sequential.h>
-#include <stdexcept>
+#include <access/synthetic.h>
 
 namespace Access {
 
     SequentialAccess::SequentialAccess()
-        : block_size(0), limit(0), current_offset(0) {}
+        : Access(), current_offset(0) {}
+
+    SequentialAccess::SequentialAccess(size_t _block_size, size_t _limit)
+        : Access(_block_size, _limit), current_offset(0) {}
 
     off_t SequentialAccess::nextOffset(void) {
         const off_t offset = current_offset;
@@ -13,16 +15,12 @@ namespace Access {
     }
 
     void SequentialAccess::validate(void) const {
-        if (block_size == 0)
-            throw std::invalid_argument("Invalid block_size for SequentialAccessConfig");
-        if (block_size > limit)
-            throw std::invalid_argument("Invalid limit for SequentialAccessConfig");
+        Access::validate();
     }
 
-    void from_json(const json& j, SequentialAccess& config) {
-        j.at("block_size").get_to(config.block_size);
-        j.at("limit").get_to(config.limit);
-        config.validate();
-        config.limit = config.block_size * (config.limit / config.block_size);
+    void from_json(const json& j, SequentialAccess& base) {
+        from_json(j, static_cast<Access&>(base));
+        base.validate();
+        base.limit = base.block_size * (base.limit / base.block_size);
     }
 }

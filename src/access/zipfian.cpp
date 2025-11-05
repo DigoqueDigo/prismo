@@ -1,30 +1,29 @@
-#include <access/zipfian.h>
-#include <stdexcept>
+#include <access/synthetic.h>
 
 namespace Access {
 
     ZipfianAccess::ZipfianAccess()
-        : block_size(0), limit(0), skew(0), distribution(0, 99, 0.9f) {}
+        : Access(), skew(0), distribution(0, 99, 0.9f) {}
+
+    ZipfianAccess::ZipfianAccess(size_t _block_size, size_t _limit, float _skew)
+        : Access(_block_size, _limit), skew(_skew), distribution(0, _limit, _skew) {}
+
 
     off_t ZipfianAccess::nextOffset(void) {
         return static_cast<off_t>(distribution.nextValue() * block_size);
     }
 
     void ZipfianAccess::validate(void) const {
-        if (block_size == 0)
-            throw std::invalid_argument("Invalid block_size for ZipfianAccessConfig");
-        if (block_size > limit)
-            throw std::invalid_argument("Invalid limit for ZipfianAccessConfig");
+        Access::validate();
         if (skew <= 0 || skew >= 1)
             throw std::invalid_argument("Invalid skew for ZipfianAccessConfig");
     }
 
-    void from_json(const json& j, ZipfianAccess& config) {
-        j.at("block_size").get_to(config.block_size);
-        j.at("limit").get_to(config.limit);
-        j.at("skew").get_to(config.skew);
-        config.validate();
-        config.limit = config.limit / config.block_size - 1;
-        config.distribution.setParams(0, config.limit, config.skew);
+    void from_json(const json& j, ZipfianAccess& base) {
+        from_json(j, static_cast<Access&>(base));
+        j.at("skew").get_to(base.skew);
+        base.validate();
+        base.limit = base.limit / base.block_size - 1;
+        base.distribution.setParams(0, base.limit, base.skew);
     }
 }

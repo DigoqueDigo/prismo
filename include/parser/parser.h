@@ -2,9 +2,10 @@
 #define PARSER_H
 
 #include <variant>
-#include <access/random.h>
-#include <access/sequential.h>
-#include <access/zipfian.h>
+#include <memory>
+#include <access/synthetic.h>
+
+
 #include <generator/constant.h>
 #include <generator/random.h>
 #include <operation/constant.h>
@@ -20,11 +21,6 @@
 using json = nlohmann::json;
 
 namespace Parser {
-
-    using AccessVariant = std::variant<
-        Access::SequentialAccess,
-        Access::RandomAccess,
-        Access::ZipfianAccess>;
 
     using GeneratorVariant = std::variant<
         Generator::ConstantGenerator,
@@ -49,7 +45,10 @@ namespace Parser {
         Engine::UringEngine,
         Engine::AioEngine>;
 
-    AccessVariant getAccessVariant(const json& specialized);
+    std::unique_ptr<Access::Access> getAccess(const json& specialized);
+
+
+
     MetricVariant getMetricVariant(const json& specialized);
     LoggerVariant getLoggerVariant(const json& specialized);
     EngineVariant getEngineVariant(const json& specialized);

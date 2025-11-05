@@ -21,8 +21,9 @@ inc = include_directories(
 
 # Define source files
 src = files(
-  'src/access/random.cpp',
+  'src/access/access.cpp',
   'src/access/sequential.cpp',
+  'src/access/random.cpp',
   'src/access/zipfian.cpp',
   'src/generator/constant.cpp',
   'src/generator/random.cpp',
@@ -45,7 +46,7 @@ src = files(
 cc = meson.get_compiler('cpp')
 
 # Find Boost.Thread dependency
-boost_dep = dependency('boost', modules: ['pool'], required: true)
+boost_dep = dependency('boost', modules: ['thread'], required: true)
 
 # Find json dependency (nlohmann/json wrap)
 json_dep = dependency('nlohmann_json', required: true)
@@ -60,9 +61,9 @@ liburing_dep = dependency('liburing', required: true)
 libaio_dep = cc.find_library('aio', required: true)
 
 # Find sdpk dependencies (statics libs)
-spdk_nvme_dep = dependency('spdk_nvme', required: true, static: true)
-spdk_env_dpdk_dep = dependency('spdk_env_dpdk', required: true, static: true)
-spdk_syslibs_dep = dependency('spdk_syslibs', required: true, static: true)
+# spdk_nvme_dep = dependency('spdk_nvme', required: true, static: true)
+# spdk_env_dpdk_dep = dependency('spdk_env_dpdk', required: true, static: true)
+# spdk_syslibs_dep = dependency('spdk_syslibs', required: true, static: true)
 
 # Define spdk link arguments
 spdk_link_args = [
