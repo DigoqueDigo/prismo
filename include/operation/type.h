@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 namespace Operation {
+
     enum class OperationType {
         READ,
         WRITE,

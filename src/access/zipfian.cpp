@@ -19,11 +19,11 @@ namespace Access {
             throw std::invalid_argument("Invalid skew for ZipfianAccessConfig");
     }
 
-    void from_json(const json& j, ZipfianAccess& base) {
-        from_json(j, static_cast<Access&>(base));
-        j.at("skew").get_to(base.skew);
-        base.validate();
-        base.limit = base.limit / base.block_size - 1;
-        base.distribution.setParams(0, base.limit, base.skew);
+    void from_json(const json& j, ZipfianAccess& config) {
+        from_json(j, static_cast<Access&>(config));
+        j.at("skew").get_to(config.skew);
+        config.validate();
+        config.limit = config.limit / config.block_size - 1;
+        config.distribution.setParams(0, config.limit, config.skew);
     }
 }

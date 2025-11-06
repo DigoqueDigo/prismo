@@ -4,13 +4,10 @@
 #include <variant>
 #include <memory>
 #include <access/synthetic.h>
+#include <generator/synthetic.h>
+#include <operation/synthetic.h>
 
 
-#include <generator/constant.h>
-#include <generator/random.h>
-#include <operation/constant.h>
-#include <operation/percentage.h>
-#include <operation/sequence.h>
 #include <io/engine/posix.h>
 #include <io/engine/uring.h>
 #include <io/engine/aio.h>
@@ -22,14 +19,6 @@ using json = nlohmann::json;
 
 namespace Parser {
 
-    using GeneratorVariant = std::variant<
-        Generator::ConstantGenerator,
-        Generator::RandomGenerator>;
-
-    using OperationVariant = std::variant<
-        Operation::ConstantOperation,
-        Operation::PercentageOperation,
-        Operation::SequenceOperation>;
 
     using MetricVariant = std::variant<
         std::monostate,
@@ -45,15 +34,15 @@ namespace Parser {
         Engine::UringEngine,
         Engine::AioEngine>;
 
-    std::unique_ptr<Access::Access> getAccess(const json& specialized);
+    std::unique_ptr<Access::Access> getAccess(const json& config);
+    std::unique_ptr<Generator::Generator> getGenerator(const json& config);
+    std::unique_ptr<Operation::Operation> getOperation(const json& config);
 
 
 
-    MetricVariant getMetricVariant(const json& specialized);
-    LoggerVariant getLoggerVariant(const json& specialized);
-    EngineVariant getEngineVariant(const json& specialized);
-    GeneratorVariant getGeneratorVariant(const json& specialized);
-    OperationVariant getOperationVariant(const json& specialized);
+    MetricVariant getMetricVariant(const json& config);
+    LoggerVariant getLoggerVariant(const json& config);
+    EngineVariant getEngineVariant(const json& config);
 };
 
 #endif

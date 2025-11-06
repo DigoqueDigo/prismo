@@ -18,9 +18,9 @@ namespace Access {
         Access::validate();
     }
 
-    void from_json(const json& j, SequentialAccess& base) {
-        from_json(j, static_cast<Access&>(base));
-        base.validate();
-        base.limit = base.block_size * (base.limit / base.block_size);
+    void from_json(const json& j, SequentialAccess& config) {
+        from_json(j, static_cast<Access&>(config));
+        config.validate();
+        config.limit = config.block_size * (config.limit / config.block_size);
     }
 }

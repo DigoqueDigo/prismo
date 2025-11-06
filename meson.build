@@ -25,7 +25,6 @@ src = files(
   'src/access/sequential.cpp',
   'src/access/random.cpp',
   'src/access/zipfian.cpp',
-  'src/generator/constant.cpp',
   'src/generator/random.cpp',
   'src/operation/barrier.cpp',
   'src/operation/constant.cpp',

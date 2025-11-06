@@ -1,9 +1,9 @@
-#include <operation/constant.h>
+#include <operation/synthetic.h>
 
 namespace Operation {
 
     ConstantOperation::ConstantOperation()
-        : operation(OperationType::READ) {}
+        : Operation(), operation(OperationType::READ) {}
 
     OperationType ConstantOperation::nextOperation(void) {
         return operation;

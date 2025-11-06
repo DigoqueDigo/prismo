@@ -1,9 +1,9 @@
-#include <operation/sequence.h>
+#include <operation/synthetic.h>
 
 namespace Operation {
 
     SequenceOperation::SequenceOperation()
-        : index(0), length(0), operations() {}
+        : Operation(), index(0), length(0), operations() {}
 
     OperationType SequenceOperation::nextOperation(void) {
         OperationType operation = operations.at(index);

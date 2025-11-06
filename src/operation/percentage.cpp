@@ -1,9 +1,9 @@
-#include <operation/percentage.h>
+#include <operation/synthetic.h>
 
 namespace Operation {
 
     PercentageOperation::PercentageOperation()
-        : percentages(), distribution(0, 99) {}
+        : Operation(), percentages(), distribution(0, 99) {}
 
     OperationType PercentageOperation::nextOperation(void) {
         uint32_t roll = distribution.nextValue();
