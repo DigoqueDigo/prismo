@@ -2,70 +2,77 @@
 #define CONSUMER_WORKER_H
 
 #include <worker/utils.h>
+#include <parser/parser.h>
 
 #define METRICS_BATCH_SIZE 1000
+
 using namespace moodycamel;
 
 namespace Worker {
 
-    template<
-        typename LoggerT,
-        typename EngineT,
-        typename MetricT>
     class Consumer {
         private:
-            LoggerT& logger;
-            EngineT& engine;
+            Parser::EngineVariant engine;
+            Parser::LoggerVariant logger;
+            Parser::MetricVariant metric;
             std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> to_producer;
             std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> to_consumer;
 
         public:
             Consumer(
-                LoggerT& _logger,
-                EngineT& _engine,
+                Parser::EngineVariant& _engine,
+                Parser::LoggerVariant& _logger,
+                Parser::MetricVariant& _metric,
                 std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> _to_producer,
                 std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> _to_consumer
             ) :
-                logger(_logger),
                 engine(_engine),
+                logger(_logger),
+                metric(_metric),
                 to_producer(_to_producer),
                 to_consumer(_to_consumer) {}
 
             void run() {
                 Protocol::Packet packet;
-                std::vector<MetricT> metrics;
-                metrics.reserve(METRICS_BATCH_SIZE);
 
-                while (true) {
-                    Worker::dequeue(*to_consumer, packet);
+                std::visit([&](auto& engine_concr, auto& logger_concr, auto& metric_concr) {
+                    using EngineT = std::decay_t<decltype(engine_concr)>;
+                    using LoggerT = std::decay_t<decltype(logger_concr)>;
+                    using MetricT = std::decay_t<decltype(metric_concr)>;
 
-                    if (packet.isShutDown) {
-                        break;
-                    }
+                    std::vector<MetricT> metrics;
 
-                    engine.template submit<MetricT>(packet.request, metrics);
-                    Worker::enqueue(*to_producer, packet);
+                    while (true) {
+                        Worker::dequeue(*to_consumer, packet);
 
-                    if constexpr (!std::is_same_v<MetricT, std::monostate>) {
-                        if (metrics.size() >= METRICS_BATCH_SIZE) {
-                            for (const auto& metric : metrics) {
-                                logger.info(metric);
+                        if (packet.isShutDown) {
+                            break;
+                        }
+
+                        engine_concr.submit<MetricT>(packet.request, metrics);
+                        Worker::enqueue(*to_producer, packet);
+
+                        if constexpr (!std::is_same_v<MetricT, std::monostate>) {
+                            if (metrics.size() >= METRICS_BATCH_SIZE) {
+                                for (const auto& metric : metrics) {
+                                    logger_concr.info(metric);
+                                }
+                                metrics.clear();
                             }
-                            metrics.clear();
                         }
                     }
-                }
 
-                if constexpr (
-                    std::is_same_v<EngineT, Engine::UringEngine> ||
-                    std::is_same_v<EngineT, Engine::AioEngine>
-                ) {
-                    engine.template reap_left_completions<MetricT>(metrics);
-                }
+                    if constexpr (
+                        std::is_same_v<EngineT, Engine::UringEngine> ||
+                        std::is_same_v<EngineT, Engine::AioEngine>
+                    ) {
+                        engine_concr.reap_left_completions<MetricT>(metrics);
+                    }
 
-                for (const auto& metric : metrics) {
-                    Metric::log_metric<MetricT, LoggerT>(logger, metric);
-                }
+                    for (const auto& metric : metrics) {
+                        Metric::log_metric<MetricT, LoggerT>(logger_concr, metric);
+                    }
+                }, engine, logger, metric);
             }
     };
 };
