@@ -9,7 +9,7 @@
 namespace Protocol {
 
     struct OpenRequest {
-        const char* filename;
+        std::string filename;
         int flags;
         mode_t mode;
     };

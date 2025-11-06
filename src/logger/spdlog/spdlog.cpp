@@ -1,4 +1,4 @@
-#include <io/logger/spdlog.h>
+#include <logger/spdlog/spdlog.h>
 
 namespace Logger {
 
@@ -25,15 +25,6 @@ namespace Logger {
         );
 
         spdlog::register_logger(logger);
-    }
-
-    void from_json(const json& j, SpdlogConfig& config) {
-        j.at("name").get_to(config.name);
-        j.at("queue_size").get_to(config.queue_size);
-        j.at("thread_count").get_to(config.thread_count);
-        j.at("truncate").get_to(config.truncate);
-        j.at("stdout").get_to(config.to_stdout);
-        j.at("files").get_to(config.files);
     }
 };
 

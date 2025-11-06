@@ -9,7 +9,7 @@
 #include <stdexcept>
 #include <io/metric.h>
 #include <io/protocol.h>
-#include <io/engine/utils.h>
+#include <engine/utils.h>
 #include <iostream>
 
 namespace Engine {
@@ -87,7 +87,7 @@ namespace Engine {
     }
 
     inline int UringEngine::open(Protocol::OpenRequest& request) {
-        int fd = ::open(request.filename, request.flags, request.mode);
+        int fd = ::open(request.filename.c_str(), request.flags, request.mode);
         if (fd < 0) {
             throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
         }

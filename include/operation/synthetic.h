@@ -50,7 +50,7 @@ namespace Operation {
             friend void from_json(const json& j, SequenceOperation& config);
     };
 
-        void from_json(const json& j, ConstantOperation& config);
+    void from_json(const json& j, ConstantOperation& config);
     void from_json(const json& j, PercentageOperation& config);
     void from_json(const json& j, SequenceOperation& config);
 };

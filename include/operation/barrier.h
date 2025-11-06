@@ -1,6 +1,7 @@
 #ifndef OPERATION_BARRIER_H
 #define OPERATION_BARRIER_H
 
+#include <cstdint>
 #include <vector>
 #include <operation/type.h>
 #include <nlohmann/json.hpp>
@@ -26,7 +27,7 @@ namespace Operation {
             std::vector<BarrierCounter> barriers;
 
         public:
-            explicit MultipleBarrier() = default;
+            MultipleBarrier() = default;
             void addBarrier(OperationType barrierOp, OperationType triggerOp, size_t everyN);
             OperationType apply(OperationType operation);
     };

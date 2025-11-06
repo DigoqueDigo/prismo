@@ -2,11 +2,13 @@
 #define METRIC_H
 
 #include <thread>
+#include <variant>
 #include <cstdint>
 #include <sys/types.h>
 #include <operation/type.h>
 
 namespace Metric {
+
     struct BaseMetric {
         int64_t start_timestamp;
         int64_t end_timestamp;

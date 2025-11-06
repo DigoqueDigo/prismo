@@ -1,43 +1,28 @@
 #ifndef SPDLOG_LOGGER_H
 #define SPDLOG_LOGGER_H
 
-#include <string>
-#include <vector>
 #include <io/metric.h>
-#include <operation/type.h>
-#include <nlohmann/json.hpp>
+#include <logger/spdlog/config.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/async.h>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_sinks.h>
 
-using json = nlohmann::json;
-
 namespace Logger {
-    struct SpdlogConfig {
-        std::string name;
-        size_t queue_size;
-        size_t thread_count;
-        bool truncate;
-        bool to_stdout;
-        std::vector<std::string> files;
-    };
 
     struct Spdlog {
         private:
             std::shared_ptr<spdlog::logger> logger;
 
         public:
-            explicit Spdlog(const SpdlogConfig& config);
+            Spdlog(const SpdlogConfig& config);
 
             template<typename... ArgsT>
-            inline void info(ArgsT&&... args) const {
+            inline void info(ArgsT&&... args) const{
                 logger->info(std::forward<ArgsT>(args)...);
             }
     };
-
-    void from_json(const json& j, SpdlogConfig& config);
 };
 
 template<>
@@ -54,6 +39,5 @@ template<>
 struct fmt::formatter<Metric::FullMetric> : fmt::formatter<std::string> {
     auto format(const Metric::FullMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out());
 };
-
 
 #endif
