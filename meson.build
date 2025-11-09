@@ -22,22 +22,17 @@ inc = include_directories(
 # Define source files
 src = files(
   'src/access/access.cpp',
-  'src/access/sequential.cpp',
   'src/access/random.cpp',
+  'src/access/sequential.cpp',
   'src/access/zipfian.cpp',
+  'src/engine/utils.cpp',
   'src/generator/random.cpp',
+  'src/logger/spdlog.cpp',
   'src/operation/barrier.cpp',
   'src/operation/constant.cpp',
   'src/operation/percentage.cpp',
   'src/operation/sequence.cpp',
-  'src/io/engine/utils.cpp',
-  'src/io/logger/spdlog.cpp',
-  'src/parser/access.cpp',
-  'src/parser/engine.cpp',
-  'src/parser/generator.cpp',
-  'src/parser/logger.cpp',
-  'src/parser/metric.cpp',
-  'src/parser/operation.cpp',
+  'src/parser/parser.cpp',
   'src/main.cpp',
 )
 

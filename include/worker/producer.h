@@ -15,7 +15,7 @@ namespace Worker {
             std::unique_ptr<Access::Access> access;
             std::unique_ptr<Operation::Operation> operation;
             std::unique_ptr<Generator::Generator> generator;
-            Operation::MultipleBarrier& barrier;
+            std::unique_ptr<Operation::MultipleBarrier> barrier;
             std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> to_producer;
             std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> to_consumer;
 
@@ -24,26 +24,27 @@ namespace Worker {
                 std::unique_ptr<Access::Access> _access,
                 std::unique_ptr<Operation::Operation> _operation,
                 std::unique_ptr<Generator::Generator> _generator,
-                Operation::MultipleBarrier& _barrier,
+                std::unique_ptr<Operation::MultipleBarrier> _barrier,
                 std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> _to_producer,
                 std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> _to_consumer
             ) :
                 access(std::move(_access)),
                 operation(std::move(_operation)),
                 generator(std::move(_generator)),
-                barrier(_barrier),
+                barrier(std::move(_barrier)),
                 to_producer(_to_producer),
                 to_consumer(_to_consumer) {}
 
-            void run(uint64_t iterations) {
+            void run(uint64_t iterations, int fd) {
                 Protocol::Packet packet;
 
                 for (uint64_t iter = 0; iter < iterations; iter++) {
                     Worker::dequeue(*to_producer, packet);
 
                     packet.isShutDown = false;
+                    packet.request.fd = fd;
                     packet.request.offset = access->nextOffset();
-                    packet.request.operation = barrier.apply(operation->nextOperation());
+                    packet.request.operation = barrier->apply(operation->nextOperation());
 
                     if (packet.request.operation == Operation::OperationType::WRITE) {
                         generator->nextBlock(packet.request.buffer, packet.request.size);

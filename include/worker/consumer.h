@@ -12,34 +12,45 @@ namespace Worker {
 
     class Consumer {
         private:
-            Parser::EngineVariant engine;
-            Parser::LoggerVariant logger;
-            Parser::MetricVariant metric;
+            std::unique_ptr<Parser::EngineVariant> engine;
+            std::unique_ptr<Parser::LoggerVariant> logger;
+            std::unique_ptr<Parser::MetricVariant> metric;
             std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> to_producer;
             std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> to_consumer;
 
         public:
             Consumer(
-                Parser::EngineVariant& _engine,
-                Parser::LoggerVariant& _logger,
-                Parser::MetricVariant& _metric,
+                std::unique_ptr<Parser::EngineVariant> _engine,
+                std::unique_ptr<Parser::LoggerVariant> _logger,
+                std::unique_ptr<Parser::MetricVariant> _metric,
                 std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> _to_producer,
                 std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> _to_consumer
             ) :
-                engine(_engine),
-                logger(_logger),
-                metric(_metric),
+                engine(std::move(_engine)),
+                logger(std::move(_logger)),
+                metric(std::move(_metric)),
                 to_producer(_to_producer),
                 to_consumer(_to_consumer) {}
 
-            void run() {
-                Protocol::Packet packet;
+            int open(Protocol::OpenRequest& request) {
+                return std::visit([&request](auto& engine_concr) {
+                    return engine_concr.open(request);
+                }, *engine);
+            }
 
+            void close(Protocol::CloseRequest& request) {
+                std::visit([&request](auto& engine_concr) {
+                    engine_concr.close(request);
+                }, *engine);
+            }
+
+            void run() {
                 std::visit([&](auto& engine_concr, auto& logger_concr, auto& metric_concr) {
                     using EngineT = std::decay_t<decltype(engine_concr)>;
                     using LoggerT = std::decay_t<decltype(logger_concr)>;
                     using MetricT = std::decay_t<decltype(metric_concr)>;
 
+                    Protocol::Packet packet;
                     std::vector<MetricT> metrics;
 
                     while (true) {
@@ -49,7 +60,7 @@ namespace Worker {
                             break;
                         }
 
-                        engine_concr.submit<MetricT>(packet.request, metrics);
+                        engine_concr.template submit<MetricT>(packet.request, metrics);
                         Worker::enqueue(*to_producer, packet);
 
                         if constexpr (!std::is_same_v<MetricT, std::monostate>) {
@@ -66,13 +77,13 @@ namespace Worker {
                         std::is_same_v<EngineT, Engine::UringEngine> ||
                         std::is_same_v<EngineT, Engine::AioEngine>
                     ) {
-                        engine_concr.reap_left_completions<MetricT>(metrics);
+                        engine_concr.template reap_left_completions<MetricT>(metrics);
                     }
 
                     for (const auto& metric : metrics) {
                         Metric::log_metric<MetricT, LoggerT>(logger_concr, metric);
                     }
-                }, engine, logger, metric);
+                }, *engine, *logger, *metric);
             }
     };
 };

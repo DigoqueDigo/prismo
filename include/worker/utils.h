@@ -9,19 +9,32 @@ using namespace moodycamel;
 
 namespace Worker {
 
+    void enqueue(ReaderWriterQueue<Protocol::Packet>& queue, Protocol::Packet& packet) {
+        while (!queue.try_enqueue(packet)) {}
+    };
+
+    void dequeue(ReaderWriterQueue<Protocol::Packet>& queue, Protocol::Packet& packet) {
+        while (!queue.try_dequeue(packet)) {}
+    };
+
     void init_queue_packet(ReaderWriterQueue<Protocol::Packet>& queue, size_t block_size) {
         for (int index = 0; index < QUEUE_INITIAL_CAPACITY; index++) {
             Protocol::Packet packet {
                 .isShutDown = false,
-                .request{}
+                .request {
+                    .fd = 0,
+                    .size = block_size,
+                    .offset = 0,
+                    .buffer = static_cast<uint8_t*>(std::malloc(block_size)),
+                    .operation = Operation::OperationType::NOP,
+                }
             };
-
-            packet.request.size = block_size;
-            packet.request.buffer = static_cast<uint8_t*>(std::malloc(block_size));
 
             if (!packet.request.buffer) {
                 throw std::bad_alloc();
             }
+
+            enqueue(queue, packet);
         }
     }
 
@@ -32,13 +45,6 @@ namespace Worker {
         }
     }
 
-    void enqueue(ReaderWriterQueue<Protocol::Packet>& queue, Protocol::Packet& packet) {
-        while (!queue.try_enqueue(packet)) {}
-    };
-
-    void dequeue(ReaderWriterQueue<Protocol::Packet>& queue, Protocol::Packet& packet) {
-        while (!queue.try_dequeue(packet)) {}
-    };
 };
 
 #endif

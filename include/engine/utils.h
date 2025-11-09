@@ -11,9 +11,6 @@
 using json = nlohmann::json;
 
 namespace Engine {
-    struct OpenMode {
-        mode_t value;
-    };
 
     struct OpenFlags {
         int value;

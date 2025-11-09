@@ -2,7 +2,7 @@
   "job": {
     "name": "job",
     "numjobs": 1,
-    "iterations": 50000000,
+    "iterations": 20,
     "filename": "testfile",
     "block_size": 4096,
     "limit": 65536,
@@ -11,7 +11,7 @@
 
   "operation": {
     "type": "constant",
-    "operation": "nop",
+    "operation": "write",
     "percentages": {
       "read": 20,
       "write": 80
@@ -59,7 +59,7 @@
     "queue_size": 8192,
     "thread_count": 1,
     "truncate": true,
-    "stdout": true,
+    "to_stdout": true,
     "files": [
       "./log1.log",
       "./log2.log",

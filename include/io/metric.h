@@ -1,6 +1,7 @@
 #ifndef METRIC_H
 #define METRIC_H
 
+#include <vector>
 #include <thread>
 #include <variant>
 #include <cstdint>

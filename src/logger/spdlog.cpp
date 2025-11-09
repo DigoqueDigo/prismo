@@ -1,4 +1,4 @@
-#include <logger/spdlog/spdlog.h>
+#include <logger/spdlog.h>
 
 namespace Logger {
 
@@ -26,8 +26,16 @@ namespace Logger {
 
         spdlog::register_logger(logger);
     }
-};
 
+    void from_json(const json& j, SpdlogConfig& config) {
+        config.name         = j.at("name").get<std::string>();
+        config.queue_size   = j.at("queue_size").get<size_t>();
+        config.thread_count = j.at("thread_count").get<size_t>();
+        config.truncate     = j.at("truncate").get<bool>();
+        config.to_stdout    = j.at("to_stdout").get<bool>();
+        config.files        = j.at("files").get<std::vector<std::string>>();
+    };
+};
 
 auto fmt::formatter<Metric::BaseMetric>::format(const Metric::BaseMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
     return fmt::format_to(

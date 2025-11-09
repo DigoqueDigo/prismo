@@ -2,6 +2,7 @@
 #define SYNTHETIC_ACCESS_H
 
 #include <cstddef>
+#include <iostream>
 #include <stdexcept>
 #include <nlohmann/json.hpp>
 #include <lib/distribution/distribution.h>
@@ -16,11 +17,14 @@ namespace Access {
             size_t limit;
 
         public:
-            Access();
+            Access() = default;
             Access(size_t _block_size, size_t _limit)
                 : block_size(_block_size), limit(_limit) {}
 
-            virtual ~Access() = default;
+            virtual ~Access() {
+                std::cout << "Destroying Access" << std::endl;
+            }
+
             virtual off_t nextOffset(void) = 0;
             virtual void validate(void) const;
             friend void from_json(const json& j, Access& config);
@@ -33,6 +37,10 @@ namespace Access {
         public:
             SequentialAccess();
             SequentialAccess(size_t _block_size, size_t _limit);
+
+            ~SequentialAccess() override {
+                std::cout << "Destroying SequentialAccess" << std::endl;
+            }
 
             off_t nextOffset(void) override;
             void validate(void) const;
@@ -47,6 +55,10 @@ namespace Access {
             RandomAccess();
             RandomAccess(size_t _block_size, size_t _limit);
 
+            ~RandomAccess() override {
+                std::cout << "Destroying RandomAccess" << std::endl;
+            }
+
             off_t nextOffset(void) override;
             void validate(void) const;
             friend void from_json(const json& j, RandomAccess& config);
@@ -59,7 +71,11 @@ namespace Access {
 
         public:
             ZipfianAccess();
-            ZipfianAccess(size_t _block_size, size_t _limit, float skew);
+            ZipfianAccess(size_t _block_size, size_t _limit, float _skew);
+
+            ~ZipfianAccess() override {
+                std::cout << "Destroying ZipfianAccess" << std::endl;
+            }
 
             off_t nextOffset(void) override;
             void validate(void) const;

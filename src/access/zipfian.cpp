@@ -8,7 +8,6 @@ namespace Access {
     ZipfianAccess::ZipfianAccess(size_t _block_size, size_t _limit, float _skew)
         : Access(_block_size, _limit), skew(_skew), distribution(0, _limit, _skew) {}
 
-
     off_t ZipfianAccess::nextOffset(void) {
         return static_cast<off_t>(distribution.nextValue() * block_size);
     }

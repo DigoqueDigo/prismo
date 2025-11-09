@@ -2,12 +2,6 @@
 
 namespace Access {
 
-    Access::Access()
-        : block_size(0), limit(0) {}
-
-    Access::Access(size_t _block_size, size_t _limit)
-        : block_size(_block_size), limit(_limit) {}
-
     void Access::validate(void) const {
         if (block_size == 0)
             throw std::invalid_argument("Invalid block_size for AccessConfig");
