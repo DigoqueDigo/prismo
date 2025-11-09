@@ -39,9 +39,6 @@ src = files(
 # Get the C++ compiler
 cc = meson.get_compiler('cpp')
 
-# Find Boost.Thread dependency
-boost_dep = dependency('boost', modules: ['thread'], required: true)
-
 # Find json dependency (nlohmann/json wrap)
 json_dep = dependency('nlohmann_json', required: true)
 
@@ -92,7 +89,6 @@ dedisbench_exe = executable(
     spdlog_dep,
     liburing_dep,
     libaio_dep,
-    boost_dep,
     #spdk_nvme_dep,
     #spdk_env_dpdk_dep,
     #spdk_syslibs_dep,

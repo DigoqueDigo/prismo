@@ -1,6 +1,7 @@
 #ifndef POSIX_ENGINE_H
 #define POSIX_ENGINE_H
 
+#include <iostream>
 #include <memory>
 #include <fcntl.h>
 #include <unistd.h>
@@ -24,6 +25,9 @@ namespace Engine {
 
         public:
             PosixEngine() = default;
+            ~PosixEngine() {
+                std::cout << "~Destroying PosixEngine" << std::endl;
+            };
 
             inline int open(Protocol::OpenRequest& request);
             inline int close(Protocol::CloseRequest& request);

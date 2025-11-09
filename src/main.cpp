@@ -4,7 +4,6 @@
 #include <worker/utils.h>
 #include <worker/producer.h>
 #include <worker/consumer.h>
-#include <boost/thread.hpp>
 
 #include <memory>
 #include <iostream>
@@ -58,8 +57,8 @@ int main(int argc, char** argv) {
     std::cout << "Antes do logger" << std::endl;
     std::unique_ptr<Parser::LoggerVariant> logger_variant = Parser::getLoggerVariant(logging_j);
 
-    auto to_producer  = std::make_shared<ReaderWriterQueue<Protocol::Packet>>(QUEUE_INITIAL_CAPACITY);
-    auto to_consumer  = std::make_shared<ReaderWriterQueue<Protocol::Packet>>(QUEUE_INITIAL_CAPACITY);
+    auto to_producer = std::make_shared<ReaderWriterQueue<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);
+    auto to_consumer = std::make_shared<ReaderWriterQueue<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);
 
     Worker::init_queue_packet(*to_producer, block_size);
 
@@ -82,6 +81,8 @@ int main(int argc, char** argv) {
         to_consumer
     );
 
+    std::cout << to_producer << std::endl;
+
     Protocol::OpenRequest open_request {
         .filename = filename,
         .flags = open_flags.value,
@@ -90,12 +91,12 @@ int main(int argc, char** argv) {
 
     int fd = consumer.open(open_request);
 
-    std::cout << "antes de passar à thread" << std::endl;
+    std::cout << "Antes de passar à thread" << std::endl;
 
-    boost::thread producer_thread(&Worker::Producer::run, &producer, iterations, fd);
-    boost::thread consumer_thread(&Worker::Consumer::run, &consumer);
+    std::thread producer_thread(&Worker::Producer::run, &producer, iterations, fd);
+    std::thread consumer_thread(&Worker::Consumer::run, &consumer);
 
-    std::cout << "antes do join" << std::endl;
+    std::cout << "Antes do join" << std::endl;
 
     producer_thread.join();
     consumer_thread.join();
@@ -104,8 +105,12 @@ int main(int argc, char** argv) {
         .fd = fd
     };
 
+    std::cout << "A preparar close" << std::endl;
+
     consumer.close(close_request);
+    std::cout << "Antes de destruir" << std::endl;
     Worker::destroy_queue_packet(*to_producer);
+    std::cout << "depois de destruir" << std::endl;
     config_file.close();
 
     std::cout << "Antes do return" << std::endl;

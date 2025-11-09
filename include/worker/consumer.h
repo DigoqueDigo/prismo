@@ -15,16 +15,16 @@ namespace Worker {
             std::unique_ptr<Parser::EngineVariant> engine;
             std::unique_ptr<Parser::LoggerVariant> logger;
             std::unique_ptr<Parser::MetricVariant> metric;
-            std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> to_producer;
-            std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> to_consumer;
+            std::shared_ptr<ReaderWriterQueue<Protocol::Packet*>> to_producer;
+            std::shared_ptr<ReaderWriterQueue<Protocol::Packet*>> to_consumer;
 
         public:
             Consumer(
                 std::unique_ptr<Parser::EngineVariant> _engine,
                 std::unique_ptr<Parser::LoggerVariant> _logger,
                 std::unique_ptr<Parser::MetricVariant> _metric,
-                std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> _to_producer,
-                std::shared_ptr<ReaderWriterQueue<Protocol::Packet>> _to_consumer
+                std::shared_ptr<ReaderWriterQueue<Protocol::Packet*>> _to_producer,
+                std::shared_ptr<ReaderWriterQueue<Protocol::Packet*>> _to_consumer
             ) :
                 engine(std::move(_engine)),
                 logger(std::move(_logger)),
@@ -50,17 +50,17 @@ namespace Worker {
                     using LoggerT = std::decay_t<decltype(logger_concr)>;
                     using MetricT = std::decay_t<decltype(metric_concr)>;
 
-                    Protocol::Packet packet;
                     std::vector<MetricT> metrics;
+                    Protocol::Packet* packet = nullptr;
 
                     while (true) {
                         Worker::dequeue(*to_consumer, packet);
 
-                        if (packet.isShutDown) {
+                        if (packet->isShutDown) {
                             break;
                         }
 
-                        engine_concr.template submit<MetricT>(packet.request, metrics);
+                        engine_concr.template submit<MetricT>(packet->request, metrics);
                         Worker::enqueue(*to_producer, packet);
 
                         if constexpr (!std::is_same_v<MetricT, std::monostate>) {
@@ -72,6 +72,8 @@ namespace Worker {
                             }
                         }
                     }
+
+                    Worker::enqueue(*to_producer, packet);
 
                     if constexpr (
                         std::is_same_v<EngineT, Engine::UringEngine> ||

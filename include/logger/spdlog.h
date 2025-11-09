@@ -8,6 +8,7 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_sinks.h>
 #include <nlohmann/json.hpp>
+#include <iostream>
 
 using json = nlohmann::json;
 
@@ -28,6 +29,9 @@ namespace Logger {
 
         public:
             Spdlog(const SpdlogConfig& config);
+            ~Spdlog() {
+                std::cout << "~Destroying Spdlog" << std::endl;
+            }
 
             template<typename... ArgsT>
             inline void info(ArgsT&&... args) const{
