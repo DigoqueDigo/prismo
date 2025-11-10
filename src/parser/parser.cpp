@@ -45,7 +45,7 @@ namespace Parser {
             return std::make_unique<Operation::PercentageOperation>(
                 config.get<Operation::PercentageOperation>()
             );
-        } else if (type == "sequential") {
+        } else if (type == "sequence") {
             return std::make_unique<Operation::SequenceOperation>(
                 config.get<Operation::SequenceOperation>()
             );

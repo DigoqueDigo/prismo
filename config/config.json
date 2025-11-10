@@ -2,19 +2,19 @@
   "job": {
     "name": "job",
     "numjobs": 1,
-    "iterations": 5000000,
+    "iterations": 1e5,
     "filename": "testfile",
     "block_size": 4096,
     "limit": 65536,
-    "metric": "none"
+    "metric": "full"
   },
 
   "operation": {
     "type": "constant",
-    "operation": "nop",
+    "operation": "write",
     "percentages": {
-      "read": 20,
-      "write": 80
+      "read": 50,
+      "write": 50
     },
     "operations": [
       "read",
@@ -37,12 +37,12 @@
   },
 
   "engine": {
-    "type": "posix",
+    "type": "aio",
     "openflags": [
       "O_CREAT",
       "O_RDWR"
     ],
-    "entries": 8,
+    "entries": 128,
     "params": {
       "cq_entries": 0,
       "sq_thread_cpu": 0,

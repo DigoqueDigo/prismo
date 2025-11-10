@@ -29,8 +29,9 @@ namespace Logger {
 
         public:
             Spdlog(const SpdlogConfig& config);
+
             ~Spdlog() {
-                std::cout << "~Destroying Spdlog" << std::endl;
+                // std::cout << "~Destroying Spdlog" << std::endl;
             }
 
             template<typename... ArgsT>

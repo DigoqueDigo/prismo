@@ -25,8 +25,9 @@ namespace Engine {
 
         public:
             PosixEngine() = default;
+
             ~PosixEngine() {
-                std::cout << "~Destroying PosixEngine" << std::endl;
+                // std::cout << "~Destroying PosixEngine" << std::endl;
             };
 
             inline int open(Protocol::OpenRequest& request);
@@ -77,7 +78,6 @@ namespace Engine {
     inline void PosixEngine::submit(Protocol::CommonRequest& request, std::vector<MetricT>& metrics) {
         MetricT metric{};
         ssize_t result = 0;
-        Metric::start_base_metric<MetricT>(metric, request.operation);
 
         switch (request.operation) {
             case Operation::OperationType::READ:
@@ -99,6 +99,7 @@ namespace Engine {
                 throw std::invalid_argument("Unsupported operation type");
         }
 
+        Metric::fill_base_metric<MetricT>(metric, request.operation, Metric::get_current_time());
         Metric::fill_standard_metric<MetricT>(metric);
         Metric::fill_full_metric<MetricT>(metric, result, request.size, request.offset);
         Metric::save_on_complete<MetricT>(metrics, metric);

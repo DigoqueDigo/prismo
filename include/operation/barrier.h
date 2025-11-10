@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <iostream>
 #include <operation/type.h>
 #include <nlohmann/json.hpp>
 
@@ -28,6 +29,11 @@ namespace Operation {
 
         public:
             MultipleBarrier() = default;
+
+            ~MultipleBarrier() {
+                // std::cout << "~Destroying MultipleBarrier" << std::endl;
+            }
+
             void addBarrier(OperationType barrierOp, OperationType triggerOp, size_t everyN);
             OperationType apply(OperationType operation);
     };

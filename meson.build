@@ -11,12 +11,12 @@ project(
 )
 
 # Define include directories
-spdk_root = '/home/digo/Desktop/spdk'
+# spdk_root = '/home/digo/Desktop/spdk'
 
 inc = include_directories(
   'include',
-  join_paths(spdk_root, 'include'),
-  join_paths(spdk_root, 'build', 'include'),
+  # join_paths(spdk_root, 'include'),
+  # join_paths(spdk_root, 'build', 'include'),
 )
 
 # Define source files
@@ -57,11 +57,11 @@ libaio_dep = cc.find_library('aio', required: true)
 # spdk_syslibs_dep = dependency('spdk_syslibs', required: true, static: true)
 
 # Define spdk link arguments
-spdk_link_args = [
-  '-Wl,--whole-archive',
-  join_paths(spdk_root, 'build', 'lib', 'libspdk_nvme.a'),
-  '-Wl,--no-whole-archive',
-]
+# spdk_link_args = [
+  # '-Wl,--whole-archive',
+  # join_paths(spdk_root, 'build', 'lib', 'libspdk_nvme.a'),
+  # '-Wl,--no-whole-archive',
+# ]
 
 # Common flags for all builds
 common_flags = [

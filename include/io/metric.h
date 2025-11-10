@@ -29,26 +29,18 @@ namespace Metric {
         int32_t error_no;
     };
 
-    template<typename MetricT>
-    inline void start_base_metric(MetricT& metric, Operation::OperationType operation_type) {
-        if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
-            metric.operation_type = operation_type;
-            metric.start_timestamp =
-                std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    std::chrono::steady_clock::now().time_since_epoch()
-                ).count();
-        }
+    inline int64_t get_current_time(void) {
+        return std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()
+        ).count();
     }
 
     template<typename MetricT>
-    inline void end_base_metric(MetricT& metric, Operation::OperationType operation_type, int64_t start_timestamp) {
+    inline void fill_base_metric(MetricT& metric, Operation::OperationType operation_type, int64_t start_timestamp) {
         if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
             metric.operation_type = operation_type;
             metric.start_timestamp = start_timestamp;
-            metric.end_timestamp =
-                std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    std::chrono::steady_clock::now().time_since_epoch()
-                ).count();
+            metric.end_timestamp = Metric::get_current_time();
         }
     };
 
@@ -68,17 +60,6 @@ namespace Metric {
             metric.offset          = offset;
             metric.return_code     = static_cast<int32_t>(result);
             metric.error_no        = static_cast<int32_t>(errno);
-        }
-    };
-
-    template<typename MetricT>
-    inline void initialize_metric(MetricT& metric, Operation::OperationType operation_type) {
-        if constexpr (std::is_base_of_v<Metric::BaseMetric, MetricT>) {
-            metric.operation_type = operation_type;
-            metric.start_timestamp =
-                std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    std::chrono::steady_clock::now().time_since_epoch()
-                ).count();
         }
     };
 

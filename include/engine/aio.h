@@ -71,6 +71,7 @@ namespace Engine {
     }
 
     inline AioEngine::~AioEngine() {
+        // std::cout << "~Destroying AioEngine" << std::endl;
         for (auto& task : tasks) {
             std::free(task.buffer);
         }
@@ -137,10 +138,7 @@ namespace Engine {
         tasks[free_index].size = request.size;
         tasks[free_index].offset = request.offset;
         tasks[free_index].operation_type = request.operation;
-        tasks[free_index].start_timestamp =
-            std::chrono::duration_cast<std::chrono::nanoseconds>(
-                std::chrono::steady_clock::now().time_since_epoch()
-            ).count();
+        tasks[free_index].start_timestamp = Metric::get_current_time();
 
         switch (request.operation) {
             case Operation::OperationType::READ:
@@ -181,7 +179,7 @@ namespace Engine {
             completed_event = io_events[event_index];
             completed_task = static_cast<AioTask*>(completed_event.data);
 
-            Metric::end_base_metric<MetricT>(
+            Metric::fill_base_metric<MetricT>(
                 metric,
                 completed_task->operation_type,
                 completed_task->start_timestamp
@@ -196,7 +194,6 @@ namespace Engine {
             );
 
             Metric::save_on_complete<MetricT>(metrics, metric);
-
             available_indexs.push_back(completed_task->index);
         }
     }

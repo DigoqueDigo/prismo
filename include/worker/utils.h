@@ -5,20 +5,21 @@
 #include <io/protocol.h>
 #include <lib/readerwriterqueue/readerwriterqueue.h>
 
-#define QUEUE_INITIAL_CAPACITY 128
+#define QUEUE_INITIAL_CAPACITY 1024
+
 using namespace moodycamel;
 
 namespace Worker {
 
-    void enqueue(ReaderWriterQueue<Protocol::Packet*>& queue, Protocol::Packet*& packet) {
+    inline void enqueue(ReaderWriterQueue<Protocol::Packet*>& queue, Protocol::Packet*& packet) {
         while (!queue.try_enqueue(packet)) {}
     };
 
-    void dequeue(ReaderWriterQueue<Protocol::Packet*>& queue, Protocol::Packet*& packet) {
+    inline void dequeue(ReaderWriterQueue<Protocol::Packet*>& queue, Protocol::Packet*& packet) {
         while (!queue.try_dequeue(packet)) {}
     };
 
-    void init_queue_packet(ReaderWriterQueue<Protocol::Packet*>& queue, size_t block_size) {
+    inline void init_queue_packet(ReaderWriterQueue<Protocol::Packet*>& queue, size_t block_size) {
         for (int index = 0; index < QUEUE_INITIAL_CAPACITY; index++) {
             Protocol::Packet* packet = static_cast<Protocol::Packet*>(std::malloc(sizeof(Protocol::Packet)));
 
@@ -41,7 +42,7 @@ namespace Worker {
         }
     }
 
-    void destroy_queue_packet(ReaderWriterQueue<Protocol::Packet*>& queue) {
+    inline void destroy_queue_packet(ReaderWriterQueue<Protocol::Packet*>& queue) {
         Protocol::Packet* packet;
         for (int index = 0; index < QUEUE_INITIAL_CAPACITY; index++) {
             Worker::dequeue(queue, packet);

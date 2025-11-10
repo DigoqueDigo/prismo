@@ -77,6 +77,7 @@ namespace Engine {
         }
 
     inline UringEngine::~UringEngine() {
+        // std::cout << "~Destroying UringEngine" << std::endl;
         if (io_uring_unregister_buffers(&ring)) {
             std::cerr << "Uring unregister buffers failed: " << strerror(errno) << std::endl;
         }
@@ -155,10 +156,7 @@ namespace Engine {
         user_data[free_index].size = request.size;
         user_data[free_index].offset = request.offset;
         user_data[free_index].operation_type = request.operation;
-        user_data[free_index].start_timestamp =
-            std::chrono::duration_cast<std::chrono::nanoseconds>(
-                std::chrono::steady_clock::now().time_since_epoch()
-            ).count();
+        user_data[free_index].start_timestamp = Metric::get_current_time();
 
         switch (request.operation) {
             case Operation::OperationType::READ:
@@ -201,7 +199,7 @@ namespace Engine {
             io_uring_cqe* cqe = completed_cqes[index];
             UringUserData* cqe_user_data = static_cast<UringUserData*>(io_uring_cqe_get_data(cqe));
 
-            Metric::end_base_metric<MetricT>(
+            Metric::fill_base_metric<MetricT>(
                 metric,
                 cqe_user_data->operation_type,
                 cqe_user_data->start_timestamp
@@ -216,9 +214,8 @@ namespace Engine {
             );
 
             Metric::save_on_complete<MetricT>(metrics, metric);
-
-            io_uring_cqe_seen(&ring, cqe);
             available_indexs.push_back(cqe_user_data->index);
+            io_uring_cqe_seen(&ring, cqe);
         }
     }
 
