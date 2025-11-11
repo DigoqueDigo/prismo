@@ -15,16 +15,16 @@ namespace Worker {
             std::unique_ptr<Parser::EngineVariant> engine;
             std::unique_ptr<Parser::LoggerVariant> logger;
             std::unique_ptr<Parser::MetricVariant> metric;
-            std::shared_ptr<ReaderWriterQueue<Protocol::Packet*>> to_producer;
-            std::shared_ptr<ReaderWriterQueue<Protocol::Packet*>> to_consumer;
+            std::shared_ptr<BlockingReaderWriterCircularBuffer<Protocol::Packet*>> to_producer;
+            std::shared_ptr<BlockingReaderWriterCircularBuffer<Protocol::Packet*>> to_consumer;
 
         public:
             Consumer(
                 std::unique_ptr<Parser::EngineVariant> _engine,
                 std::unique_ptr<Parser::LoggerVariant> _logger,
                 std::unique_ptr<Parser::MetricVariant> _metric,
-                std::shared_ptr<ReaderWriterQueue<Protocol::Packet*>> _to_producer,
-                std::shared_ptr<ReaderWriterQueue<Protocol::Packet*>> _to_consumer
+                std::shared_ptr<BlockingReaderWriterCircularBuffer<Protocol::Packet*>> _to_producer,
+                std::shared_ptr<BlockingReaderWriterCircularBuffer<Protocol::Packet*>> _to_consumer
             ) :
                 engine(std::move(_engine)),
                 logger(std::move(_logger)),
@@ -57,6 +57,7 @@ namespace Worker {
                         Worker::dequeue(*to_consumer, packet);
 
                         if (packet->isShutDown) {
+                            Worker::enqueue(*to_producer, packet);
                             break;
                         }
 
@@ -72,8 +73,6 @@ namespace Worker {
                             }
                         }
                     }
-
-                    Worker::enqueue(*to_producer, packet);
 
                     if constexpr (
                         std::is_same_v<EngineT, Engine::UringEngine> ||

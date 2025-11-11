@@ -45,8 +45,8 @@ int main(int argc, char** argv) {
     std::unique_ptr<Parser::EngineVariant> engine_variant = Parser::getEngineVariant(engine_j);
     std::unique_ptr<Parser::LoggerVariant> logger_variant = Parser::getLoggerVariant(logging_j);
 
-    auto to_producer = std::make_shared<ReaderWriterQueue<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);
-    auto to_consumer = std::make_shared<ReaderWriterQueue<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);
+    auto to_producer = std::make_shared<BlockingReaderWriterCircularBuffer<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);
+    auto to_consumer = std::make_shared<BlockingReaderWriterCircularBuffer<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);
     Worker::init_queue_packet(*to_producer, block_size);
 
     Worker::Producer producer (

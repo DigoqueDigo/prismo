@@ -15,8 +15,8 @@ namespace Worker {
             std::unique_ptr<Operation::Operation> operation;
             std::unique_ptr<Generator::Generator> generator;
             std::unique_ptr<Operation::MultipleBarrier> barrier;
-            std::shared_ptr<ReaderWriterQueue<Protocol::Packet*>> to_producer;
-            std::shared_ptr<ReaderWriterQueue<Protocol::Packet*>> to_consumer;
+            std::shared_ptr<BlockingReaderWriterCircularBuffer<Protocol::Packet*>> to_producer;
+            std::shared_ptr<BlockingReaderWriterCircularBuffer<Protocol::Packet*>> to_consumer;
 
         public:
             Producer(
@@ -24,8 +24,8 @@ namespace Worker {
                 std::unique_ptr<Operation::Operation> _operation,
                 std::unique_ptr<Generator::Generator> _generator,
                 std::unique_ptr<Operation::MultipleBarrier> _barrier,
-                std::shared_ptr<ReaderWriterQueue<Protocol::Packet*>> _to_producer,
-                std::shared_ptr<ReaderWriterQueue<Protocol::Packet*>> _to_consumer
+                std::shared_ptr<BlockingReaderWriterCircularBuffer<Protocol::Packet*>> _to_producer,
+                std::shared_ptr<BlockingReaderWriterCircularBuffer<Protocol::Packet*>> _to_consumer
             ) :
                 access(std::move(_access)),
                 operation(std::move(_operation)),
