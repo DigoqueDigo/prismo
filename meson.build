@@ -25,6 +25,9 @@ src = files(
   'src/access/random.cpp',
   'src/access/sequential.cpp',
   'src/access/zipfian.cpp',
+  'src/engine/posix.cpp',
+  'src/engine/uring.cpp',
+  'src/engine/aio.cpp',
   'src/engine/utils.cpp',
   'src/generator/random.cpp',
   'src/logger/spdlog.cpp',
@@ -58,9 +61,9 @@ libaio_dep = cc.find_library('aio', required: true)
 
 # Define spdk link arguments
 # spdk_link_args = [
-  # '-Wl,--whole-archive',
-  # join_paths(spdk_root, 'build', 'lib', 'libspdk_nvme.a'),
-  # '-Wl,--no-whole-archive',
+#   '-Wl,--whole-archive',
+#   join_paths(spdk_root, 'build', 'lib', 'libspdk_nvme.a'),
+#   '-Wl,--no-whole-archive',
 # ]
 
 # Common flags for all builds
@@ -89,11 +92,11 @@ dedisbench_exe = executable(
     spdlog_dep,
     liburing_dep,
     libaio_dep,
-    #spdk_nvme_dep,
-    #spdk_env_dpdk_dep,
-    #spdk_syslibs_dep,
+    # spdk_nvme_dep,
+    # spdk_env_dpdk_dep,
+    # spdk_syslibs_dep,
   ],
-  #link_args: spdk_link_args,
+  # link_args: spdk_link_args,
   install : true,
 )
 

@@ -41,9 +41,9 @@ int main(int argc, char** argv) {
     std::unique_ptr<Generator::Generator> generator = Parser::getGenerator(generator_j);
     std::unique_ptr<Operation::MultipleBarrier> barrier = Parser::getMultipleBarrier(barrier_j);
 
-    std::unique_ptr<Parser::MetricVariant> metric_variant = Parser::getMetricVariant(job_j);
-    std::unique_ptr<Parser::EngineVariant> engine_variant = Parser::getEngineVariant(engine_j);
-    std::unique_ptr<Parser::LoggerVariant> logger_variant = Parser::getLoggerVariant(logging_j);
+    Metric::MetricType metric_type = Parser::getMetricType(job_j);
+    std::unique_ptr<Logger::Logger> logger = Parser::getLogger(logging_j);
+    std::unique_ptr<Engine::Engine> engine = Parser::getEngine( engine_j, metric_type, std::move(logger));
 
     auto to_producer = std::make_shared<BlockingReaderWriterCircularBuffer<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);
     auto to_consumer = std::make_shared<BlockingReaderWriterCircularBuffer<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);
@@ -59,9 +59,7 @@ int main(int argc, char** argv) {
     );
 
     Worker::Consumer consumer (
-        std::move(engine_variant),
-        std::move(logger_variant),
-        std::move(metric_variant),
+        std::move(engine),
         to_producer,
         to_consumer
     );

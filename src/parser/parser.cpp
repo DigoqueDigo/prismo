@@ -60,65 +60,61 @@ namespace Parser {
         );
     }
 
-    std::unique_ptr<LoggerVariant> getLoggerVariant(const json& config) {
-        const std::string type = config.at("type").get<std::string>();
-
-        if (type == "spdlog") {
-            auto logger_config = config.get<Logger::SpdlogConfig>();
-            return std::make_unique<LoggerVariant>(
-                std::in_place_type<Logger::Spdlog>,
-                std::move(logger_config)
-            );
-        }
-
-        throw std::invalid_argument("Logger type '" + type + "' not recognized");
-    }
-
-    std::unique_ptr<EngineVariant> getEngineVariant(const json& config) {
-        std::string type = config.at("type").get<std::string>();
-
-        if (type == "posix") {
-            return std::make_unique<EngineVariant>(
-                std::in_place_type<Engine::PosixEngine>
-            );
-        } else if (type == "uring") {
-            auto engine_config = config.get<Engine::UringConfig>();
-            return std::make_unique<EngineVariant>(
-                std::in_place_type<Engine::UringEngine>,
-                std::move(engine_config)
-            );
-        } else if (type == "aio") {
-            auto engine_config = config.get<Engine::AioConfig>();
-            return std::make_unique<EngineVariant>(
-                std::in_place_type<Engine::AioEngine>,
-                std::move(engine_config)
-            );
-        } else {
-            throw std::invalid_argument("Engine type '" + type + "' not recognized");
-        }
-    }
-
-    std::unique_ptr<MetricVariant> getMetricVariant(const json& config) {
+    Metric::MetricType getMetricType(const json& config) {
         std::string type = config.at("metric").get<std::string>();
 
         if (type == "none") {
-            return std::make_unique<MetricVariant>(
-                std::in_place_type<std::monostate>
-            );
+            return Metric::MetricType::None;
         } else if (type == "base") {
-            return std::make_unique<MetricVariant>(
-                std::in_place_type<Metric::BaseMetric>
-            );
+            return Metric::MetricType::Base;
         } else if (type == "standard") {
-            return std::make_unique<MetricVariant>(
-                std::in_place_type<Metric::StandardMetric>
-            );
+             return Metric::MetricType::Standard;
         } else if (type == "full") {
-            return std::make_unique<MetricVariant>(
-                std::in_place_type<Metric::FullMetric>
-            );
+            return Metric::MetricType::Full;
         } else {
             throw std::invalid_argument("Metric type '" + type + "' not recognized");
+        }
+    }
+
+    std::unique_ptr<Logger::Logger> getLoggerVariant(const json& config) {
+        const std::string type = config.at("type").get<std::string>();
+
+        if (type == "spdlog") {
+            return std::make_unique<Logger::Spdlog>(
+                config.get<Logger::SpdlogConfig>()
+            );
+        } else {
+            throw std::invalid_argument("Logger type '" + type + "' not recognized");
+        }
+
+    }
+
+    std::unique_ptr<Engine::Engine> getEngineVariant(
+        const json& config,
+        Metric::MetricType metric_type,
+        std::unique_ptr<Logger::Logger> logger
+    ) {
+        std::string type = config.at("type").get<std::string>();
+
+        if (type == "posix") {
+            return std::make_unique<Engine::PosixEngine>(
+                metric_type,
+                std::move(logger)
+            );
+        } else if (type == "uring") {
+            return std::make_unique<Engine::UringEngine>(
+                metric_type,
+                std::move(logger),
+                config.get<Engine::UringConfig>()
+            );
+        } else if (type == "aio") {
+            return std::make_unique<Engine::AioEngine>(
+                metric_type,
+                std::move(logger),
+                config.get<Engine::AioConfig>()
+            );
+        } else {
+            throw std::invalid_argument("Engine type '" + type + "' not recognized");
         }
     }
 }

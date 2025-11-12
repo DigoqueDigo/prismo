@@ -2,7 +2,7 @@
 
 namespace Logger {
 
-    Spdlog::Spdlog(const SpdlogConfig& config) {
+    Spdlog::Spdlog(const SpdlogConfig& config) : Logger() {
         std::vector<spdlog::sink_ptr> sinks;
         spdlog::init_thread_pool(config.queue_size, config.thread_count);
 
@@ -27,6 +27,19 @@ namespace Logger {
         spdlog::register_logger(logger);
     }
 
+    void Spdlog::info(Metric::NoneMetric& metric) {
+        logger->info(metric);
+    }
+    void Spdlog::info(Metric::BaseMetric& metric) {
+        logger->info(metric);
+    }
+    void Spdlog::info(Metric::StandardMetric& metric) {
+        logger->info(metric);
+    }
+    void Spdlog::info(Metric::FullMetric& metric) {
+        logger->info(metric);
+    }
+
     void from_json(const json& j, SpdlogConfig& config) {
         config.name         = j.at("name").get<std::string>();
         config.queue_size   = j.at("queue_size").get<size_t>();
@@ -36,6 +49,10 @@ namespace Logger {
         config.files        = j.at("files").get<std::vector<std::string>>();
     };
 };
+
+auto fmt::formatter<Metric::NoneMetric>::format(const Metric::NoneMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
+    return ctx.out();
+}
 
 auto fmt::formatter<Metric::BaseMetric>::format(const Metric::BaseMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
     return fmt::format_to(

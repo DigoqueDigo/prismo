@@ -27,10 +27,21 @@ namespace Engine {
         io_uring_params params{};
     };
 
+    struct SpdkConfig {
+        std::string bdev_name;
+    };
+
     struct UringUserData {
         size_t size;
         off_t offset;
         uint32_t index;
+        int64_t start_timestamp;
+        Operation::OperationType operation_type;
+    };
+
+    struct SpdkUserData {
+        size_t size;
+        off_t offset;
         int64_t start_timestamp;
         Operation::OperationType operation_type;
     };
@@ -47,6 +58,7 @@ namespace Engine {
     void from_json(const json& j, OpenFlags& config);
     void from_json(const json& j, AioConfig& config);
     void from_json(const json& j, UringConfig& config);
+    void from_json(const json& j, SpdkConfig& config);
 };
 
 #endif

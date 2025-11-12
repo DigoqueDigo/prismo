@@ -5,7 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/include",
-                "/usr/include/**"
+                "/usr/include/**",
+                "/home/digo/Desktop/spdk/build/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/clang",

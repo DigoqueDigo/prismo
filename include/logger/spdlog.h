@@ -1,14 +1,14 @@
 #ifndef SPDLOG_LOGGER_H
 #define SPDLOG_LOGGER_H
 
-#include <io/metric.h>
+
+#include <logger/logger.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/async.h>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_sinks.h>
 #include <nlohmann/json.hpp>
-#include <iostream>
 
 using json = nlohmann::json;
 
@@ -23,24 +23,28 @@ namespace Logger {
         std::vector<std::string> files;
     };
 
-    struct Spdlog {
+    class Spdlog : public Logger {
         private:
             std::shared_ptr<spdlog::logger> logger;
 
         public:
             Spdlog(const SpdlogConfig& config);
-
-            ~Spdlog() {
-                // std::cout << "~Destroying Spdlog" << std::endl;
+            ~Spdlog() override {
+                std::cout << "~Destroying Spdlog" << std::endl;
             }
 
-            template<typename... ArgsT>
-            inline void info(ArgsT&&... args) const{
-                logger->info(std::forward<ArgsT>(args)...);
-            }
+            void info(Metric::NoneMetric& metric) override;
+            void info(Metric::BaseMetric& metric) override;
+            void info(Metric::StandardMetric& metric) override;
+            void info(Metric::FullMetric& metric) override;
         };
 
     void from_json(const json& j, SpdlogConfig& config);
+};
+
+template<>
+struct fmt::formatter<Metric::NoneMetric> : fmt::formatter<std::string> {
+    auto format(const Metric::NoneMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out());
 };
 
 template<>

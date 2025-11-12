@@ -7,11 +7,11 @@
 namespace Operation {
 
     enum class OperationType {
-        READ,
-        WRITE,
-        FSYNC,
-        FDATASYNC,
-        NOP,
+        READ = 0,
+        WRITE = 1,
+        FSYNC = 2,
+        FDATASYNC = 3,
+        NOP = 4,
     };
 
     inline OperationType operation_from_str(std::string& operation) {

@@ -1,0 +1,153 @@
+#include <engine/aio.h>
+
+namespace Engine {
+
+    AioEngine::AioEngine(
+        Metric::MetricType _metric_type,
+        std::unique_ptr<Logger::Logger> _logger,
+        const AioConfig& _config
+    )
+        : Engine(_metric_type, std::move(_logger)),
+        io_context(0),
+        iocbs(),
+        iocb_ptrs(),
+        io_events(),
+        tasks(),
+        available_indexs()
+    {
+        int ret = io_queue_init(_config.entries, &io_context);
+        if (ret < 0) throw std::runtime_error("Aio queue init failed: " + std::string(strerror(-ret)));
+
+        iocbs.resize(_config.entries);
+        tasks.resize(_config.entries);
+        io_events.resize(_config.entries);
+        iocb_ptrs.reserve(_config.entries);
+        available_indexs.resize(_config.entries);
+
+        for (uint32_t i = 0; i < _config.entries; i++) {
+            available_indexs[i] = _config.entries - i - 1;
+            tasks[i].buffer = std::malloc(_config.block_size);
+            if (!tasks[i].buffer) throw std::bad_alloc();
+        }
+    }
+
+    AioEngine::~AioEngine() {
+        std::cout << "~Destroying AioEngine" << std::endl;
+        for (auto& task : tasks) std::free(task.buffer);
+
+        if (io_queue_release(io_context)) {
+            std::cerr << "Aio destroy failed: " << strerror(errno) << std::endl;
+        }
+    }
+
+    int AioEngine::open(Protocol::OpenRequest& request) {
+        int fd = ::open(request.filename.c_str(), request.flags, request.mode);
+        if (fd < 0) throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
+        return fd;
+    }
+
+    int AioEngine::close(Protocol::CloseRequest& request) {
+        int ret = ::close(request.fd);
+        if (ret < 0) throw std::runtime_error("Failed to close fd: " + std::string(strerror(errno)));
+        return ret;
+    }
+
+    void AioEngine::nop(Protocol::CommonRequest& request, uint32_t free_index) {
+        io_prep_pwrite(&iocbs[free_index], request.fd, nullptr, 0, 0);
+    }
+
+    void AioEngine::fsync(Protocol::CommonRequest& request, uint32_t free_index) {
+        io_prep_fsync(&iocbs[free_index], request.fd);
+    }
+
+    void AioEngine::fdatasync(Protocol::CommonRequest& request, uint32_t free_index) {
+        io_prep_fdsync(&iocbs[free_index], request.fd);
+    }
+
+    void AioEngine::read(Protocol::CommonRequest& request, uint32_t free_index) {
+        io_prep_pread(&iocbs[free_index], request.fd, tasks[free_index].buffer, request.size, request.offset);
+    }
+
+    void AioEngine::write(Protocol::CommonRequest& request, uint32_t free_index) {
+        std::memcpy(tasks[free_index].buffer, request.buffer, request.size);
+        io_prep_pwrite(&iocbs[free_index], request.fd, tasks[free_index].buffer, request.size, request.offset);
+    }
+
+    void AioEngine::submit(Protocol::CommonRequest& request) {
+        if (iocb_ptrs.size() == iocb_ptrs.capacity()) {
+            int submit_result = io_submit(io_context, iocb_ptrs.size(), &iocb_ptrs[0]);
+            if (submit_result != static_cast<int>(iocb_ptrs.size())) throw std::runtime_error("Aio submission failed");
+            iocb_ptrs.clear();
+        }
+
+        while (available_indexs.empty())
+            this->reap_completions();
+
+        uint32_t free_index = available_indexs.back();
+        available_indexs.pop_back();
+
+        AioTask& aio_task = tasks[free_index];
+        aio_task.index = free_index;
+        aio_task.size = request.size;
+        aio_task.offset = request.offset;
+        aio_task.operation_type = request.operation;
+        aio_task.start_timestamp = Metric::get_current_timestamp();
+
+        switch (request.operation) {
+            case Operation::OperationType::READ:
+                this->read(request, free_index);
+                break;
+            case Operation::OperationType::WRITE:
+                this->write(request, free_index);
+                break;
+            case Operation::OperationType::FSYNC:
+                this->fsync(request, free_index);
+                break;
+            case Operation::OperationType::FDATASYNC:
+                this->fdatasync(request, free_index);
+                break;
+            case Operation::OperationType::NOP:
+                this->nop(request, free_index);
+                break;
+            default:
+                throw std::invalid_argument("Unsupported operation type by AioEngine");
+        }
+
+        iocbs[free_index].data = &tasks[free_index];
+        iocb_ptrs.push_back(&iocbs[free_index]);
+    }
+
+    void AioEngine::reap_completions(void) {
+        int events_returned = io_getevents(io_context, 1, io_events.capacity(), io_events.data(), nullptr);
+        if (events_returned < 0)
+            throw std::runtime_error("Aio getevents failed: " + std::string(strerror(-events_returned)));
+
+        for (int i = 0; i < events_returned; i++) {
+            io_event& ev = io_events[i];
+            AioTask* completed_task = static_cast<AioTask*>(ev.data);
+
+            Metric::fill_metric(
+                Engine::metric_type,
+                *Engine::metric,
+                completed_task->operation_type,
+                completed_task->start_timestamp,
+                Metric::get_current_timestamp(),
+                ev.res,
+                completed_task->size,
+                completed_task->offset
+            );
+
+            Engine::logger->info(*Engine::metric);
+            available_indexs.push_back(completed_task->index);
+        }
+    }
+
+    void AioEngine::reap_left_completions(void) {
+        int submit_result = io_submit(io_context, iocb_ptrs.size(), &iocb_ptrs[0]);
+        if (submit_result != static_cast<int>(iocb_ptrs.size()))
+            throw std::runtime_error("Flush Invalid submission");
+        iocb_ptrs.clear();
+        while (available_indexs.size() < available_indexs.capacity())
+            this->reap_completions();
+    }
+}
