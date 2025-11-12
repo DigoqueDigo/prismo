@@ -1,5 +1,5 @@
 project(
-  'dedisbench',
+  'prismo',
   'cpp',
   version: '1.0.0',
   default_options: [
@@ -25,9 +25,9 @@ src = files(
   'src/access/random.cpp',
   'src/access/sequential.cpp',
   'src/access/zipfian.cpp',
+  'src/engine/aio.cpp',
   'src/engine/posix.cpp',
   'src/engine/uring.cpp',
-  'src/engine/aio.cpp',
   'src/engine/utils.cpp',
   'src/generator/random.cpp',
   'src/logger/spdlog.cpp',
@@ -83,8 +83,8 @@ endif
 
 # add_project_arguments(common_flags + extra_flags, language: 'cpp')
 
-dedisbench_exe = executable(
-  'dedisbench',
+prismo_exe = executable(
+  'prismo',
   sources: src,
   include_directories : [inc],
   dependencies: [
@@ -100,9 +100,9 @@ dedisbench_exe = executable(
   install : true,
 )
 
-# Define a test to run the dedisbench executable
+# Define a test to run the prismo executable
 test(
-  'dedisbench_basic',
-  dedisbench_exe,
+  'prismo_basic_test',
+  prismo_exe,
   args : ['../config/config.json']
 )

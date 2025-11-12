@@ -55,7 +55,7 @@
 
   "logging": {
     "type": "spdlog",
-    "name": "dedisbench",
+    "name": "prismo",
     "queue_size": 8192,
     "thread_count": 1,
     "truncate": true,

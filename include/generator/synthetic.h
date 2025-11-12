@@ -14,7 +14,7 @@ namespace Generator {
             Generator() = default;
 
             virtual ~Generator() {
-                // std::cout << "~Destroying Generator" << std::endl;
+                std::cout << "~Destroying Generator" << std::endl;
             }
 
             virtual void nextBlock(uint8_t* buffer, size_t size) = 0;
@@ -25,7 +25,7 @@ namespace Generator {
             ConstantGenerator() = default;
 
             ~ConstantGenerator() override {
-                // std::cout << "~Destroying ConstantGenerator" << std::endl;
+                std::cout << "~Destroying ConstantGenerator" << std::endl;
             }
 
             void nextBlock(uint8_t* buffer, size_t size) override {
@@ -41,7 +41,7 @@ namespace Generator {
             RandomGenerator();
 
             ~RandomGenerator() override {
-                // std::cout << "~Destroying RandomGenerator" << std::endl;
+                std::cout << "~Destroying RandomGenerator" << std::endl;
             }
 
             void nextBlock(uint8_t* buffer, size_t size) override;
