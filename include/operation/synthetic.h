@@ -16,7 +16,7 @@ namespace Operation {
             Operation() = default;
 
             virtual ~Operation() {
-                std::cout << "~Destroying Operation" << std::endl;
+                // std::cout << "~Destroying Operation" << std::endl;
             }
 
             virtual OperationType nextOperation(void) = 0;
@@ -30,7 +30,7 @@ namespace Operation {
             ConstantOperation();
 
             ~ConstantOperation() override {
-                std::cout << "~Destroying ConstantOperation" << std::endl;
+                // std::cout << "~Destroying ConstantOperation" << std::endl;
             }
 
             OperationType nextOperation(void);
@@ -46,7 +46,7 @@ namespace Operation {
             PercentageOperation();
 
             ~PercentageOperation() override {
-                std::cout << "~Destroying PercentageOperation" << std::endl;
+                // std::cout << "~Destroying PercentageOperation" << std::endl;
             }
 
             OperationType nextOperation(void);
@@ -63,7 +63,7 @@ namespace Operation {
             SequenceOperation();
 
             ~SequenceOperation() override {
-                std::cout << "~Destroying SequenceOperation" << std::endl;
+                // std::cout << "~Destroying SequenceOperation" << std::endl;
             }
 
             OperationType nextOperation(void);

@@ -30,21 +30,13 @@ namespace Logger {
         public:
             Spdlog(const SpdlogConfig& config);
             ~Spdlog() override {
-                std::cout << "~Destroying Spdlog" << std::endl;
+                // std::cout << "~Destroying Spdlog" << std::endl;
             }
 
-            void info(Metric::NoneMetric& metric) override;
-            void info(Metric::BaseMetric& metric) override;
-            void info(Metric::StandardMetric& metric) override;
-            void info(Metric::FullMetric& metric) override;
+            void info(Metric::MetricType type, Metric::NoneMetric& metric) override;
         };
 
     void from_json(const json& j, SpdlogConfig& config);
-};
-
-template<>
-struct fmt::formatter<Metric::NoneMetric> : fmt::formatter<std::string> {
-    auto format(const Metric::NoneMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out());
 };
 
 template<>

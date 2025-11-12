@@ -76,7 +76,7 @@ namespace Parser {
         }
     }
 
-    std::unique_ptr<Logger::Logger> getLoggerVariant(const json& config) {
+    std::unique_ptr<Logger::Logger> getLogger(const json& config) {
         const std::string type = config.at("type").get<std::string>();
 
         if (type == "spdlog") {
@@ -89,7 +89,7 @@ namespace Parser {
 
     }
 
-    std::unique_ptr<Engine::Engine> getEngineVariant(
+    std::unique_ptr<Engine::Engine> getEngine(
         const json& config,
         Metric::MetricType metric_type,
         std::unique_ptr<Logger::Logger> logger

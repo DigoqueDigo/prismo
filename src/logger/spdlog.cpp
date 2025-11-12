@@ -27,17 +27,20 @@ namespace Logger {
         spdlog::register_logger(logger);
     }
 
-    void Spdlog::info(Metric::NoneMetric& metric) {
-        logger->info(metric);
-    }
-    void Spdlog::info(Metric::BaseMetric& metric) {
-        logger->info(metric);
-    }
-    void Spdlog::info(Metric::StandardMetric& metric) {
-        logger->info(metric);
-    }
-    void Spdlog::info(Metric::FullMetric& metric) {
-        logger->info(metric);
+    void Spdlog::info(Metric::MetricType type, Metric::NoneMetric& metric) {
+        switch (type) {
+            case Metric::MetricType::None:
+                break;
+            case Metric::MetricType::Base:
+                logger->info(static_cast<Metric::BaseMetric&>(metric));
+                break;
+            case Metric::MetricType::Standard:
+                logger->info(static_cast<Metric::StandardMetric&>(metric));
+                break;
+            case Metric::MetricType::Full:
+                logger->info(static_cast<Metric::FullMetric&>(metric));
+                break;
+        }
     }
 
     void from_json(const json& j, SpdlogConfig& config) {
@@ -49,10 +52,6 @@ namespace Logger {
         config.files        = j.at("files").get<std::vector<std::string>>();
     };
 };
-
-auto fmt::formatter<Metric::NoneMetric>::format(const Metric::NoneMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
-    return ctx.out();
-}
 
 auto fmt::formatter<Metric::BaseMetric>::format(const Metric::BaseMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
     return fmt::format_to(

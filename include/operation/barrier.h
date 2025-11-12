@@ -31,7 +31,7 @@ namespace Operation {
             MultipleBarrier() = default;
 
             ~MultipleBarrier() {
-                std::cout << "~Destroying MultipleBarrier" << std::endl;
+                // std::cout << "~Destroying MultipleBarrier" << std::endl;
             }
 
             void addBarrier(OperationType barrierOp, OperationType triggerOp, size_t everyN);

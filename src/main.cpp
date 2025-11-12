@@ -36,13 +36,25 @@ int main(int argc, char** argv) {
 
     Engine::OpenFlags open_flags = engine_j.at("openflags").get<Engine::OpenFlags>();
 
+    // std::cout << "Parse Access" << std::endl;
     std::unique_ptr<Access::Access> access = Parser::getAccess(access_j);
+
+    // std::cout << "Parse Operation" << std::endl;
     std::unique_ptr<Operation::Operation> operation = Parser::getOperation(operation_j);
+
+    // std::cout << "Parse Generator" << std::endl;
     std::unique_ptr<Generator::Generator> generator = Parser::getGenerator(generator_j);
+
+    // std::cout << "Parse MultipleBarrier" << std::endl;
     std::unique_ptr<Operation::MultipleBarrier> barrier = Parser::getMultipleBarrier(barrier_j);
 
+    // std::cout << "Parse Metric" << std::endl;
     Metric::MetricType metric_type = Parser::getMetricType(job_j);
+
+    // std::cout << "Parse Logger" << std::endl;
     std::unique_ptr<Logger::Logger> logger = Parser::getLogger(logging_j);
+
+    // std::cout << "Parse Engine" << std::endl;
     std::unique_ptr<Engine::Engine> engine = Parser::getEngine( engine_j, metric_type, std::move(logger));
 
     auto to_producer = std::make_shared<BlockingReaderWriterCircularBuffer<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);
@@ -72,8 +84,14 @@ int main(int argc, char** argv) {
 
     int fd = consumer.open(open_request);
 
+    // std::cout << "Parse Start Producer" << std::endl;
     std::thread producer_thread(&Worker::Producer::run, &producer, iterations, fd);
+
+    // std::cout << "Parse Start Consumer" << std::endl;
     std::thread consumer_thread(&Worker::Consumer::run, &consumer);
+
+    Worker::pin_thread(producer_thread, 0);
+    Worker::pin_thread(consumer_thread, 1);
 
     producer_thread.join();
     consumer_thread.join();
@@ -86,5 +104,6 @@ int main(int argc, char** argv) {
     Worker::destroy_queue_packet(*to_producer);
     config_file.close();
 
+    // std::cout << "End" << std::endl;
     return 0;
 }

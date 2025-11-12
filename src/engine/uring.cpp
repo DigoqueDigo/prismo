@@ -38,7 +38,7 @@ namespace Engine {
     }
 
     UringEngine::~UringEngine() {
-        std::cout << "~Destroying UringEngine" << std::endl;
+        // std::cout << "~Destroying UringEngine" << std::endl;
         if (io_uring_unregister_buffers(&ring))
             std::cerr << "Uring unregister buffers failed: " << strerror(errno) << std::endl;
         for (auto& iv : iovecs)
@@ -93,7 +93,7 @@ namespace Engine {
 
         if (!sqe) {
             int submitted = io_uring_submit(&ring);
-            std::cout << "Submitted " << submitted << " entries to uring." << std::endl;
+            // std::cout << "Submitted " << submitted << " entries to uring." << std::endl;
         }
 
         if (available_indexs.empty())
@@ -132,7 +132,7 @@ namespace Engine {
                 throw std::invalid_argument("Unsupported operation type by UringEngine");
         }
 
-        io_uring_sqe_set_data(sqe, &user_data[free_index]);
+        io_uring_sqe_set_data(sqe, &uring_user_data);
         sqe->flags |= IOSQE_FIXED_FILE;
     }
 
@@ -159,7 +159,11 @@ namespace Engine {
                 ud->offset
             );
 
-            Engine::logger->info(*Engine::metric);
+            Engine::logger->info(
+                Engine::metric_type,
+                *Engine::metric
+            );
+
             available_indexs.push_back(ud->index);
             io_uring_cqe_seen(&ring, cqe);
         }
@@ -167,7 +171,7 @@ namespace Engine {
 
     void UringEngine::reap_left_completions(void) {
         int submitted = io_uring_submit(&ring);
-        std::cout << "Final Submitted " << submitted << " entries to uring." << std::endl;
+        // std::cout << "Final Submitted " << submitted << " entries to uring." << std::endl;
         while (available_indexs.size() < available_indexs.capacity()) {
             this->reap_completions();
         }

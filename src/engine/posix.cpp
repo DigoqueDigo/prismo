@@ -6,7 +6,7 @@ namespace Engine {
         : Engine(_metric_type, std::move(_logger)) {}
 
     PosixEngine::~PosixEngine() {
-        std::cout << "~Destroying PosixEngine" << std::endl;
+        // std::cout << "~Destroying PosixEngine" << std::endl;
     }
 
     int PosixEngine::open(Protocol::OpenRequest& request) {
@@ -81,6 +81,9 @@ namespace Engine {
             request.offset
         );
 
-        Engine::logger->info(*Engine::metric);
+        Engine::logger->info(
+            Engine::metric_type,
+            *Engine::metric
+        );
     }
 }

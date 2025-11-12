@@ -22,7 +22,9 @@ namespace Engine {
                 logger(std::move(_logger))
             {
                 metric_type = _metric_type;
-                if (metric_type == Metric::MetricType::Base) {
+                if (metric_type == Metric::MetricType::None) {
+                    metric = std::make_unique<Metric::NoneMetric>();
+                } else if (metric_type == Metric::MetricType::Base) {
                     metric = std::make_unique<Metric::BaseMetric>();
                 } else if (metric_type == Metric::MetricType::Standard) {
                     metric = std::make_unique<Metric::StandardMetric>();
@@ -34,7 +36,7 @@ namespace Engine {
             }
 
             virtual ~Engine() {
-                std::cout << "~Destroying Engine" << std::endl;
+                // std::cout << "~Destroying Engine" << std::endl;
             }
 
             virtual int open(Protocol::OpenRequest& request) = 0;

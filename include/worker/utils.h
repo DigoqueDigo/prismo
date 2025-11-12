@@ -50,6 +50,23 @@ namespace Worker {
             std::free(packet);
         }
     }
+
+    inline void pin_thread(std::thread &t, int cpu_id) {
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+        CPU_SET(cpu_id, &cpuset);
+
+        int rc = pthread_setaffinity_np(t.native_handle(), sizeof(cpu_set_t), &cpuset);
+        if (rc != 0)
+            throw std::runtime_error("Error setting thread affinity: " + std::to_string(rc));
+
+        rc = pthread_getaffinity_np(t.native_handle(), sizeof(cpuset), &cpuset);
+        if (rc)
+            throw std::runtime_error("Error getting thread affinity: " + std::to_string(rc));
+
+        if (!CPU_ISSET(cpu_id, &cpuset))
+            throw std::runtime_error("Thread not pinned to CPU " + std::to_string(cpu_id));
+    }
 };
 
 #endif

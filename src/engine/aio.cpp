@@ -32,7 +32,7 @@ namespace Engine {
     }
 
     AioEngine::~AioEngine() {
-        std::cout << "~Destroying AioEngine" << std::endl;
+        // std::cout << "~Destroying AioEngine" << std::endl;
         for (auto& task : tasks) std::free(task.buffer);
 
         if (io_queue_release(io_context)) {
@@ -113,7 +113,7 @@ namespace Engine {
                 throw std::invalid_argument("Unsupported operation type by AioEngine");
         }
 
-        iocbs[free_index].data = &tasks[free_index];
+        iocbs[free_index].data = &aio_task;
         iocb_ptrs.push_back(&iocbs[free_index]);
     }
 
@@ -137,7 +137,11 @@ namespace Engine {
                 completed_task->offset
             );
 
-            Engine::logger->info(*Engine::metric);
+            Engine::logger->info(
+                Engine::metric_type,
+                *Engine::metric
+            );
+
             available_indexs.push_back(completed_task->index);
         }
     }

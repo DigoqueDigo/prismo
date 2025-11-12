@@ -22,7 +22,7 @@ namespace Access {
                 : block_size(_block_size), limit(_limit) {}
 
             virtual ~Access() {
-                std::cout << "~Destroying Access" << std::endl;
+                // std::cout << "~Destroying Access" << std::endl;
             }
 
             virtual off_t nextOffset(void) = 0;
@@ -39,7 +39,7 @@ namespace Access {
             SequentialAccess(size_t _block_size, size_t _limit);
 
             ~SequentialAccess() override {
-                std::cout << "~Destroying SequentialAccess" << std::endl;
+                // std::cout << "~Destroying SequentialAccess" << std::endl;
             }
 
             off_t nextOffset(void) override;
@@ -56,7 +56,7 @@ namespace Access {
             RandomAccess(size_t _block_size, size_t _limit);
 
             ~RandomAccess() override {
-                std::cout << "~Destroying RandomAccess" << std::endl;
+                // std::cout << "~Destroying RandomAccess" << std::endl;
             }
 
             off_t nextOffset(void) override;
@@ -74,7 +74,7 @@ namespace Access {
             ZipfianAccess(size_t _block_size, size_t _limit, float _skew);
 
             ~ZipfianAccess() override {
-                std::cout << "~Destroying ZipfianAccess" << std::endl;
+                // std::cout << "~Destroying ZipfianAccess" << std::endl;
             }
 
             off_t nextOffset(void) override;
