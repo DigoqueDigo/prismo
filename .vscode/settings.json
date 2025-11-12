@@ -100,7 +100,7 @@
         "valarray": "cpp",
         "posix.h": "c"
     },
-    "C_Cpp.default.compileCommands": "/home/digo/Desktop/dedisbench/builddir/compile_commands.json",
+    "C_Cpp.default.compileCommands": "/home/digo/Desktop/prismo/builddir/compile_commands.json",
     "C_Cpp.default.configurationProvider": "mesonbuild.mesonbuild",
     "files.trimTrailingWhitespace": true
 }
