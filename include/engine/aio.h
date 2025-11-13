@@ -40,7 +40,7 @@ namespace Engine {
                 const AioConfig& _config
             );
 
-            ~AioEngine();
+            ~AioEngine() override;
 
             int open(Protocol::OpenRequest& request) override;
             int close(Protocol::CloseRequest& request) override;

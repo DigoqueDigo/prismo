@@ -10,6 +10,7 @@
 #include <engine/aio.h>
 #include <engine/posix.h>
 #include <engine/uring.h>
+#include <engine/spdk.h>
 #include <logger/logger.h>
 #include <logger/spdlog.h>
 

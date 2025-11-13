@@ -5,8 +5,8 @@ namespace Engine {
     UringEngine::UringEngine(
         Metric::MetricType _metric_type,
         std::unique_ptr<Logger::Logger> _logger,
-        const UringConfig& _config)
-    :
+        const UringConfig& _config
+    ) :
         Engine(_metric_type, std::move(_logger)),
         ring(),
         iovecs(),
@@ -64,8 +64,7 @@ namespace Engine {
         return 0;
     }
 
-    void UringEngine::nop(Protocol::CommonRequest& request, io_uring_sqe* sqe) {
-        (void) request;
+    void UringEngine::nop(io_uring_sqe* sqe) {
         io_uring_prep_nop(sqe);
     }
 
@@ -126,7 +125,7 @@ namespace Engine {
                 this->fdatasync(request, sqe);
                 break;
             case Operation::OperationType::NOP:
-                this->nop(request, sqe);
+                this->nop(sqe);
                 break;
             default:
                 throw std::invalid_argument("Unsupported operation type by UringEngine");

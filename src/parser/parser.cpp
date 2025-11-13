@@ -113,6 +113,12 @@ namespace Parser {
                 std::move(logger),
                 config.get<Engine::AioConfig>()
             );
+        } else if (type == "spdk") {
+            return std::make_unique<Engine::SpdkEngine>(
+                metric_type,
+                std::move(logger),
+                config.get<Engine::SpdkConfig>()
+            );
         } else {
             throw std::invalid_argument("Engine type '" + type + "' not recognized");
         }

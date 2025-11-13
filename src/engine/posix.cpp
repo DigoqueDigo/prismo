@@ -25,8 +25,7 @@ namespace Engine {
         return rt;
     }
 
-    int PosixEngine::nop(Protocol::CommonRequest& request) {
-        (void) request;
+    int PosixEngine::nop(void) {
         return 0;
     }
 
@@ -64,7 +63,7 @@ namespace Engine {
                 result = this->fdatasync(request);
                 break;
             case Operation::OperationType::NOP:
-                result = this->nop(request);
+                result = this->nop();
                 break;
             default:
                 throw std::invalid_argument("Unsupported operation type by PosixEngine");

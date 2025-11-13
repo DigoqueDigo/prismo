@@ -57,7 +57,7 @@ namespace Worker {
         CPU_SET(cpu_id, &cpuset);
 
         int rc = pthread_setaffinity_np(t.native_handle(), sizeof(cpu_set_t), &cpuset);
-        if (rc != 0)
+        if (rc)
             throw std::runtime_error("Error setting thread affinity: " + std::to_string(rc));
 
         rc = pthread_getaffinity_np(t.native_handle(), sizeof(cpuset), &cpuset);

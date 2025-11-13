@@ -27,6 +27,10 @@ namespace Logger {
         spdlog::register_logger(logger);
     }
 
+    Spdlog::~Spdlog() {
+        // std::cout << "~Destroying Spdlog" << std::endl;
+    }
+
     void Spdlog::info(Metric::MetricType type, Metric::NoneMetric& metric) {
         switch (type) {
             case Metric::MetricType::None:

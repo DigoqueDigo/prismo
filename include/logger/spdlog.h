@@ -29,9 +29,7 @@ namespace Logger {
 
         public:
             Spdlog(const SpdlogConfig& config);
-            ~Spdlog() override {
-                // std::cout << "~Destroying Spdlog" << std::endl;
-            }
+            ~Spdlog() override;
 
             void info(Metric::MetricType type, Metric::NoneMetric& metric) override;
         };

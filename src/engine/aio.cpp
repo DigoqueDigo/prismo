@@ -6,8 +6,8 @@ namespace Engine {
         Metric::MetricType _metric_type,
         std::unique_ptr<Logger::Logger> _logger,
         const AioConfig& _config
-    )
-        : Engine(_metric_type, std::move(_logger)),
+    ) :
+        Engine(_metric_type, std::move(_logger)),
         io_context(0),
         iocbs(),
         iocb_ptrs(),

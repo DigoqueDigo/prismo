@@ -39,13 +39,6 @@ namespace Engine {
         Operation::OperationType operation_type;
     };
 
-    struct SpdkUserData {
-        size_t size;
-        off_t offset;
-        int64_t start_timestamp;
-        Operation::OperationType operation_type;
-    };
-
     struct AioTask {
         void* buffer;
         size_t size;
@@ -53,6 +46,14 @@ namespace Engine {
         uint32_t index;
         int64_t start_timestamp;
         Operation::OperationType operation_type;
+    };
+
+    struct SpdkUserData {
+        size_t size;
+        off_t offset;
+        int64_t start_timestamp;
+        Operation::OperationType operation_type;
+        void* engine;
     };
 
     void from_json(const json& j, OpenFlags& config);

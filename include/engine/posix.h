@@ -15,7 +15,7 @@ namespace Engine {
 
     class PosixEngine : public Engine {
         private:
-            int nop(Protocol::CommonRequest& request);
+            int nop(void);
             int fsync(Protocol::CommonRequest& request);
             int fdatasync(Protocol::CommonRequest& request);
 
@@ -28,7 +28,7 @@ namespace Engine {
                 std::unique_ptr<Logger::Logger> _logger
             );
 
-            ~PosixEngine();
+            ~PosixEngine() override;
 
             int open(Protocol::OpenRequest& request) override;
             int close(Protocol::CloseRequest& request) override;

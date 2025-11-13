@@ -10,14 +10,20 @@ project(
   ]
 )
 
-# Define include directories
-# spdk_root = '/home/digo/Desktop/spdk'
+# Your project includes (keep warnings enabled)
+project_inc = include_directories('include')
 
-inc = include_directories(
-  'include',
-  # join_paths(spdk_root, 'include'),
-  # join_paths(spdk_root, 'build', 'include'),
+# SPDK includes (mark as system to suppress their warnings)
+spdk_root = '/home/digo/Desktop/spdk'
+
+spdk_inc = include_directories(
+  join_paths(spdk_root, 'include'),
+  join_paths(spdk_root, 'build', 'include'),
+  is_system: true,
 )
+
+# Combine them when building
+inc = [project_inc, spdk_inc]
 
 # Define source files
 src = files(
@@ -27,6 +33,7 @@ src = files(
   'src/access/zipfian.cpp',
   'src/engine/aio.cpp',
   'src/engine/posix.cpp',
+  'src/engine/spdk.cpp',
   'src/engine/uring.cpp',
   'src/engine/utils.cpp',
   'src/generator/random.cpp',
@@ -55,16 +62,9 @@ liburing_dep = dependency('liburing', required: true)
 libaio_dep = cc.find_library('aio', required: true)
 
 # Find sdpk dependencies (statics libs)
-# spdk_nvme_dep = dependency('spdk_nvme', required: true, static: true)
-# spdk_env_dpdk_dep = dependency('spdk_env_dpdk', required: true, static: true)
-# spdk_syslibs_dep = dependency('spdk_syslibs', required: true, static: true)
-
-# Define spdk link arguments
-# spdk_link_args = [
-#   '-Wl,--whole-archive',
-#   join_paths(spdk_root, 'build', 'lib', 'libspdk_nvme.a'),
-#   '-Wl,--no-whole-archive',
-# ]
+spdk_bdev_dep = dependency('spdk_bdev', required: true, static: true)
+spdk_env_dpdk_dep = dependency('spdk_env_dpdk', required: true, static: true)
+spdk_syslibs_dep = dependency('spdk_syslibs', required: true, static: true)
 
 # Common flags for all builds
 common_flags = [
@@ -86,17 +86,16 @@ endif
 prismo_exe = executable(
   'prismo',
   sources: src,
-  include_directories : [inc],
+  include_directories : inc,
   dependencies: [
     json_dep,
     spdlog_dep,
     liburing_dep,
     libaio_dep,
-    # spdk_nvme_dep,
-    # spdk_env_dpdk_dep,
-    # spdk_syslibs_dep,
+    spdk_bdev_dep,
+    spdk_env_dpdk_dep,
+    spdk_syslibs_dep,
   ],
-  # link_args: spdk_link_args,
   install : true,
 )
 

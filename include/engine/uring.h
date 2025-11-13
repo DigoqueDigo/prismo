@@ -23,7 +23,7 @@ namespace Engine {
             std::vector<uint32_t> available_indexs;
             std::vector<io_uring_cqe*> completed_cqes;
 
-            void nop(Protocol::CommonRequest& request, io_uring_sqe* sqe);
+            void nop(io_uring_sqe* sqe);
             void fsync(Protocol::CommonRequest& request, io_uring_sqe* sqe);
             void fdatasync(Protocol::CommonRequest& request, io_uring_sqe* sqe);
 
@@ -39,7 +39,7 @@ namespace Engine {
                 const UringConfig& _config
             );
 
-            ~UringEngine();
+            ~UringEngine() override;
 
             int open(Protocol::OpenRequest& request) override;
             int close(Protocol::CloseRequest& request) override;
