@@ -13,6 +13,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         buildtype: [release]
+        dpkg_config_path: [/home/digo/Desktop/spdk/build/lib/pkgconfig/]
 
     steps:
     - name: Checkout code
@@ -35,7 +36,7 @@ jobs:
         sudo apt install -y libspdlog-dev liburing-dev libaio-dev
 
     - name: Configure Meson
-      run: meson setup builddir --buildtype=${{ matrix.buildtype }} --reconfigure
+      run: meson setup builddir --buildtype=${{ matrix.buildtype }} -Dpkg_config_path=${{ matrix.dpkg_config_path }} --reconfigure
 
     - name: Build
       run: meson compile -C builddir
