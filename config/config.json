@@ -37,7 +37,7 @@
   },
 
   "engine": {
-    "type": "posix",
+    "type": "spdk",
     "openflags": [
       "O_CREAT",
       "O_RDWR"
@@ -50,7 +50,8 @@
       "flags": [
         "IORING_SETUP_SQPOLL"
       ]
-    }
+    },
+    "bdev_name": "Malloc0"
   },
 
   "logging": {

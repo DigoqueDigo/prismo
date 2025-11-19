@@ -29,6 +29,8 @@ namespace Engine {
 
     struct SpdkConfig {
         std::string bdev_name;
+        std::string reactor_mask;
+        std::string json_config_file;
     };
 
     struct UringUserData {

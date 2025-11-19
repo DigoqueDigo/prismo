@@ -7,29 +7,34 @@
 #include <spdk/event.h>
 #include <engine/engine.h>
 #include <engine/utils.h>
+#include <lib/readerwriterqueue/readerwritercircularbuffer.h>
+
+using namespace moodycamel;
 
 namespace Engine {
 
+    struct spdk_context_t {
+        spdk_bdev* bdev;
+        spdk_bdev_desc* bdev_desc;
+        spdk_io_channel* bdev_io_channel;
+    };
+
     class SpdkEngine : public Engine {
         private:
-            spdk_env_opts env_opts;
-            spdk_bdev_desc* desc;
+            BlockingReaderWriterCircularBuffer<Protocol::Packet*> internal_queue;
+            std::thread spdk_main_thread;
 
-            std::vector<spdk_io_channel*> io_channels;
-            std::vector<spdk_thread*> spdk_polling_threads;
-            std::vector<std::thread> os_polling_threads;
+            static void run(void* arg);
 
-            std::atomic<bool> running{true};
-            std::atomic<size_t> outstanding_io{0};
+            static int nop(SpdkUserData* spdk_user_data);
+            static int fsync(Protocol::CommonRequest& request, SpdkUserData* spdk_user_data);
+            static int fdatasync(Protocol::CommonRequest& request, SpdkUserData* spdk_user_data);
 
-            int nop(SpdkUserData* spdk_user_data);
-            int fsync(Protocol::CommonRequest& request, SpdkUserData* spdk_user_data);
-            int fdatasync(Protocol::CommonRequest& request, SpdkUserData* spdk_user_data);
-
-            int read(Protocol::CommonRequest& request, SpdkUserData* spdk_user_data);
-            int write(Protocol::CommonRequest& request, SpdkUserData* spdk_user_data);
+            static int read(Protocol::CommonRequest& request, SpdkUserData* spdk_user_data);
+            static int write(Protocol::CommonRequest& request, SpdkUserData* spdk_user_data);
 
             static void io_complete(spdk_bdev_io* bdev_io, bool success, void* cb_arg);
+            static void hello_bdev_event_cb(enum spdk_bdev_event_type type, struct spdk_bdev *bdev, void *event_ctx);
 
         public:
             explicit SpdkEngine(
