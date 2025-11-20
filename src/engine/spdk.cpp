@@ -8,25 +8,27 @@ namespace Engine {
         const SpdkConfig& config
     ) :
         Engine(_metric_type, std::move(_logger)),
-        request(nullptr)
+        request_trigger(nullptr)
     {
         spdk_main_thread = std::thread([this, config]() {
-            start_spdk_app(config, this->request);
+            start_spdk_app(this, config, &(this->request_trigger));
         });
     }
 
     int SpdkEngine::start_spdk_app(
+        void* spdk_engine,
         const SpdkConfig& config,
-        std::atomic<Protocol::CommonRequest*>& request
+        std::atomic<spdk_context_request*>* request_trigger
     ) {
         spdk_app_opts opts = {};
         spdk_context context = {
-            .request = request
+            .request_trigger = request_trigger,
+            .spdk_engine = spdk_engine,
         };
 
         spdk_app_opts_init(&opts, sizeof(opts));
         opts.name = "spdk_engine_bdev";
-        opts.rpc_addr = NULL;
+        opts.rpc_addr = nullptr;
         opts.reactor_mask = config.reactor_mask.c_str();
         opts.json_config_file = config.json_config_file.c_str();
 
@@ -38,6 +40,7 @@ namespace Engine {
         }
 
         free(context.bdev_name);
+        spdk_dma_free(context.dma_buffer);
         spdk_app_fini();
         return rc;
     }
@@ -66,55 +69,127 @@ namespace Engine {
 
         context->bdev = spdk_bdev_desc_get_bdev(context->bdev_desc);
 
-        SPDK_NOTICELOG("Creating spdk thread\n");
-        struct spdk_thread* t1 = spdk_thread_create("spdk_thread_0", nullptr);
+        std::atomic<bool> submitted;
+        std::mutex metrics_mutex;
 
-        if (!t1) {
-            SPDK_ERRLOG("Error while creating spdk thread\n");
-            return;
-        }
+        std::vector<uint8_t*> dma_zones;
+        std::vector<spdk_thread*> spdk_threads;
+        std::vector<spdk_context_t> spdk_context_ts;
+        std::vector<spdk_context_t_cb> spdk_context_t_cbs;
+
+        int zones = static_cast<int>(context->buffer_size / context->buffer_size);
+        BlockingReaderWriterCircularBuffer<int> available_indexes(zones);
 
         spdk_thread* main_thread = spdk_get_thread();
-        spdk_set_thread(t1);
 
-        SPDK_NOTICELOG("Opening io channel\n");
-        spdk_context_t context_t = {};
-        context_t.bdev = context->bdev;
-        context_t.bdev_desc = context->bdev_desc;
-        context_t.bdev_io_channel = spdk_bdev_get_io_channel(context->bdev_desc);
+        for (int index = 0; index < 2; index++) {
+            SPDK_NOTICELOG("Creating spdk thread\n");
+            std::string thread_name = "spdk_thread_" + std::to_string(index);
+            spdk_thread* thread = spdk_thread_create(thread_name.c_str(), nullptr);
 
-        spdk_set_thread(main_thread);
+            if (!thread) {
+                SPDK_ERRLOG("Error while creating spdk thread\n");
+                return;
+            }
 
-        if (!context_t.bdev_io_channel) {
-            SPDK_ERRLOG("Could not create bdev I/O channel\n");
-            spdk_bdev_close(context->bdev_desc);
-            spdk_app_stop(-1);
-            return;
+            spdk_set_thread(thread);
+
+            SPDK_NOTICELOG("Opening io channel\n");
+            spdk_context_t context_t = {
+                .bdev               = context->bdev,
+                .bdev_desc          = context->bdev_desc,
+                .spdk_engine        = context->spdk_engine,
+                .bdev_io_channel    = spdk_bdev_get_io_channel(context->bdev_desc),
+                .submitted          = &submitted,
+                .metrics_mutex      = &metrics_mutex,
+                .free_index         = 0,
+                .available_indexes  = &available_indexes,
+            };
+
+            spdk_set_thread(main_thread);
+
+            if (!context_t.bdev_io_channel) {
+                SPDK_ERRLOG("Could not create bdev I/O channel\n");
+                spdk_bdev_close(context->bdev_desc);
+                spdk_app_stop(-1);
+                return;
+            }
+
+            spdk_context_ts.push_back(context_t);
         }
 
         size_t buf_align = spdk_bdev_get_buf_align(context->bdev);
-        context->buffer = (char*) spdk_dma_zmalloc(context->buffer_size, buf_align, nullptr);
+        context->dma_buffer = (uint8_t*) spdk_dma_zmalloc(context->buffer_size, buf_align, nullptr);
 
-        if (!context->buffer) {
+        if (!context->dma_buffer) {
             SPDK_ERRLOG("Failed to allocate buffer\n");
-            spdk_put_io_channel(context_t.bdev_io_channel);
+            for (auto& ctx : spdk_context_ts){
+                spdk_put_io_channel(ctx.bdev_io_channel);
+            }
             spdk_bdev_close(context->bdev_desc);
             spdk_app_stop(-1);
             return;
         }
 
-        if (spdk_bdev_is_zoned(context->bdev)) {
-            // hello_reset_zone(hello_context);
-            /* If bdev is zoned, the callback, reset_zone_complete, will call hello_write() */
-            return;
+        for (int index = 0; index < zones; index++) {
+            dma_zones.push_back(context->dma_buffer + index);
+            available_indexes.wait_enqueue(index);
+            spdk_context_t_cbs.push_back({
+                .spdk_engine        = context->spdk_engine,
+                .metrics_mutex      = &metrics_mutex,
+                .free_index         = 0,
+                .available_indexes  = &available_indexes,
+            });
         }
 
-        while (true) {
-            context->request.wait(nullptr);
-            context_t.request = context->request.load();
-            spdk_thread_send_msg(t1, thread_fn, &context_t);
+        for (int thread_index = 0; true; thread_index = (thread_index + 1) % 2) {
+            context->request_trigger->wait(nullptr);
+
+            if (context->request_trigger->load()->isShutdown) {
+                break;
+            }
+
+            int free_index = 0;
+            available_indexes.wait_dequeue(free_index);
+
+            spdk_context_t& ctx = spdk_context_ts[thread_index];
+            ctx.free_index = free_index;
+            ctx.ctx_t_cb = &spdk_context_t_cbs[free_index];
+
+            if (ctx.request->operation == Operation::OperationType::WRITE) {
+                std::memcpy(dma_zones[free_index], ctx.request->buffer, ctx.request->size);
+            }
+
+            ctx.request->buffer = dma_zones[free_index];
+            submitted.store(false, std::memory_order_release);
+            spdk_thread_send_msg(spdk_threads[thread_index], thread_fn, &ctx);
+            submitted.wait(false);
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     void SpdkEngine::bdev_event_cb(
         enum spdk_bdev_event_type type,
@@ -132,7 +207,7 @@ namespace Engine {
             .offset = context_t->request->offset,
             .start_timestamp = Metric::get_current_timestamp(),
             .operation_type = context_t->request->operation,
-            .spdk_engine = nullptr
+            .spdk_engine = context_t->spdk_engine,
         };
 
         switch (context_t_cb.operation_type) {
@@ -146,10 +221,10 @@ namespace Engine {
                 rc = thread_fsync(context_t, &context_t_cb);
                 break;
             case Operation::OperationType::FDATASYNC:
-                SpdkEngine::thread_fdatasync(context_t, &context_t_cb);
+                rc = thread_fdatasync(context_t, &context_t_cb);
                 break;
             case Operation::OperationType::NOP:
-                thread_nop(context_t, &context_t_cb);
+                rc = thread_nop(context_t, &context_t_cb);
                 break;
         }
 

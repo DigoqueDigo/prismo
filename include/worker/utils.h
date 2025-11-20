@@ -19,15 +19,6 @@ namespace Worker {
         queue.wait_dequeue(packet);
     };
 
-    inline void enqueue(BlockingReaderWriterCircularBuffer<Protocol::CommonRequest*>& queue, Protocol::CommonRequest*& request) {
-        queue.wait_enqueue(request);
-    };
-
-    inline void dequeue(BlockingReaderWriterCircularBuffer<Protocol::CommonRequest*>& queue, Protocol::CommonRequest*& request) {
-        queue.wait_dequeue(request);
-    };
-
-
     inline void init_queue_packet(BlockingReaderWriterCircularBuffer<Protocol::Packet*>& queue, size_t block_size) {
         for (int index = 0; index < QUEUE_INITIAL_CAPACITY; index++) {
             Protocol::Packet* packet = static_cast<Protocol::Packet*>(std::malloc(sizeof(Protocol::Packet)));

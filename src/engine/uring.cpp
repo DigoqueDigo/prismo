@@ -11,7 +11,7 @@ namespace Engine {
         ring(),
         iovecs(),
         user_data(),
-        available_indexs(),
+        available_indexes(),
         completed_cqes()
     {
         UringConfig config = _config;
@@ -20,11 +20,11 @@ namespace Engine {
 
         iovecs.resize(config.params.sq_entries);
         user_data.resize(config.params.sq_entries);
-        available_indexs.resize(config.params.sq_entries);
+        available_indexes.resize(config.params.sq_entries);
         completed_cqes.resize(config.params.cq_entries);
 
         for (uint32_t index = 0; index < config.params.sq_entries; index++) {
-            available_indexs[index] = config.params.sq_entries - index - 1;
+            available_indexes[index] = config.params.sq_entries - index - 1;
             iovecs[index].iov_len = config.block_size;
             iovecs[index].iov_base = std::malloc(config.block_size);
             if (!iovecs[index].iov_base) throw std::bad_alloc();
@@ -95,16 +95,16 @@ namespace Engine {
             // std::cout << "Submitted " << submitted << " entries to uring." << std::endl;
         }
 
-        if (available_indexs.empty())
+        if (available_indexes.empty())
             this->reap_completions();
 
         while (!sqe)
             sqe = io_uring_get_sqe(&ring);
 
-        free_index = available_indexs.back();
-        available_indexs.pop_back();
+        free_index = available_indexes.back();
+        available_indexes.pop_back();
 
-        UringUserData uring_user_data = user_data[free_index];
+        UringUserData& uring_user_data = user_data[free_index];
         uring_user_data.index = free_index;
         uring_user_data.size = request.size;
         uring_user_data.offset = request.offset;
@@ -163,7 +163,7 @@ namespace Engine {
                 *Engine::metric
             );
 
-            available_indexs.push_back(ud->index);
+            available_indexes.push_back(ud->index);
             io_uring_cqe_seen(&ring, cqe);
         }
     }
@@ -171,7 +171,7 @@ namespace Engine {
     void UringEngine::reap_left_completions(void) {
         int submitted = io_uring_submit(&ring);
         // std::cout << "Final Submitted " << submitted << " entries to uring." << std::endl;
-        while (available_indexs.size() < available_indexs.capacity()) {
+        while (available_indexes.size() < available_indexes.capacity()) {
             this->reap_completions();
         }
     }

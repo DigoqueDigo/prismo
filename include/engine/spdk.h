@@ -1,6 +1,8 @@
 #ifndef SPDK_ENGINE_H
 #define SPDK_ENGINE_H
 
+#include <vector>
+#include <mutex>
 #include <spdk/env.h>
 #include <spdk/bdev.h>
 #include <spdk/thread.h>
@@ -10,15 +12,24 @@
 #include <engine/engine.h>
 #include <worker/utils.h>
 
+using namespace moodycamel;
+
 namespace Engine {
+
+    struct spdk_context_request {
+        Protocol::CommonRequest* request;
+        bool isShutdown;
+    };
 
     struct spdk_context {
         spdk_bdev* bdev;
         spdk_bdev_desc* bdev_desc;
         char* bdev_name;
-        char* buffer;
+        uint8_t* dma_buffer;
         size_t buffer_size;
-        std::atomic<Protocol::CommonRequest*>& request;
+        size_t block_size;
+        void* spdk_engine;
+        std::atomic<spdk_context_request*>* request_trigger;
     };
 
     struct spdk_context_t {
@@ -27,6 +38,15 @@ namespace Engine {
         spdk_io_channel* bdev_io_channel;
         spdk_bdev_io_wait_entry bdev_io_wait;
         Protocol::CommonRequest* request;
+        void* spdk_engine;
+
+        std::atomic<bool>* submitted;
+        std::mutex* metrics_mutex;
+
+        int free_index;
+        BlockingReaderWriterCircularBuffer<int>* available_indexes;
+
+        spdk_context_t_cb* ctx_t_cb;
     };
 
     struct spdk_context_t_cb {
@@ -35,16 +55,22 @@ namespace Engine {
         int64_t start_timestamp;
         Operation::OperationType operation_type;
         void* spdk_engine;
+
+        std::mutex* metrics_mutex;
+
+        int free_index;
+        BlockingReaderWriterCircularBuffer<int>* available_indexes;
     };
 
     class SpdkEngine : public Engine {
         private:
             std::thread spdk_main_thread;
-            std::atomic<Protocol::CommonRequest*> request;
+            std::atomic<spdk_context_request*> request_trigger;
 
             static int start_spdk_app(
+                void* spdk_engine,
                 const SpdkConfig& config,
-                std::atomic<Protocol::CommonRequest*>& request
+                std::atomic<spdk_context_request*>* request_trigger
             );
 
             static void start(void* ctx);

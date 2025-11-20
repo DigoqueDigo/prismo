@@ -22,7 +22,7 @@ namespace Engine {
             std::vector<io_event> io_events;
 
             std::vector<AioTask> tasks;
-            std::vector<uint32_t> available_indexs;
+            std::vector<uint32_t> available_indexes;
 
             void nop(Protocol::CommonRequest& request, uint32_t free_index);
             void fsync(Protocol::CommonRequest& request, uint32_t free_index);

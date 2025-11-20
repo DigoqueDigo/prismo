@@ -20,7 +20,7 @@ namespace Engine {
             io_uring ring;
             std::vector<iovec> iovecs;
             std::vector<UringUserData> user_data;
-            std::vector<uint32_t> available_indexs;
+            std::vector<uint32_t> available_indexes;
             std::vector<io_uring_cqe*> completed_cqes;
 
             void nop(io_uring_sqe* sqe);

@@ -13,7 +13,7 @@ namespace Engine {
         iocb_ptrs(),
         io_events(),
         tasks(),
-        available_indexs()
+        available_indexes()
     {
         int ret = io_queue_init(_config.entries, &io_context);
         if (ret < 0) throw std::runtime_error("Aio queue init failed: " + std::string(strerror(-ret)));
@@ -22,10 +22,10 @@ namespace Engine {
         tasks.resize(_config.entries);
         io_events.resize(_config.entries);
         iocb_ptrs.reserve(_config.entries);
-        available_indexs.resize(_config.entries);
+        available_indexes.resize(_config.entries);
 
         for (uint32_t i = 0; i < _config.entries; i++) {
-            available_indexs[i] = _config.entries - i - 1;
+            available_indexes[i] = _config.entries - i - 1;
             tasks[i].buffer = std::malloc(_config.block_size);
             if (!tasks[i].buffer) throw std::bad_alloc();
         }
@@ -80,11 +80,11 @@ namespace Engine {
             iocb_ptrs.clear();
         }
 
-        while (available_indexs.empty())
+        while (available_indexes.empty())
             this->reap_completions();
 
-        uint32_t free_index = available_indexs.back();
-        available_indexs.pop_back();
+        uint32_t free_index = available_indexes.back();
+        available_indexes.pop_back();
 
         AioTask& aio_task = tasks[free_index];
         aio_task.index = free_index;
@@ -142,7 +142,7 @@ namespace Engine {
                 *Engine::metric
             );
 
-            available_indexs.push_back(completed_task->index);
+            available_indexes.push_back(completed_task->index);
         }
     }
 
@@ -151,7 +151,7 @@ namespace Engine {
         if (submit_result != static_cast<int>(iocb_ptrs.size()))
             throw std::runtime_error("Flush Invalid submission");
         iocb_ptrs.clear();
-        while (available_indexs.size() < available_indexs.capacity())
+        while (available_indexes.size() < available_indexes.capacity())
             this->reap_completions();
     }
 }
