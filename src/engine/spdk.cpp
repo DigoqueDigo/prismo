@@ -8,175 +8,260 @@ namespace Engine {
         const SpdkConfig& config
     ) :
         Engine(_metric_type, std::move(_logger)),
-        internal_queue(128)
+        request(nullptr)
     {
-        spdk_main_thread = 
-
-        spdk_app_opts opts = {};
-        spdk_context_t context = {};
-
-        spdk_app_opts_init(&opts, sizeof(opts));
-        opts.rpc_addr = nullptr;
-        opts.reactor_mask = config.reactor_mask.c_str();
-        opts.json_config_file = config.bdev_name.c_str();
-
-        if (spdk_app_start(&opts, run, &context)) {
-            throw std::runtime_error("error starting spdk application");
-	    }
-
-        spdk_app_fini();
+        spdk_main_thread = std::thread([this, config]() {
+            start_spdk_app(config, this->request);
+        });
     }
 
-    // SpdkEngine::~SpdkEngine() {
-    //     running.store(false);
+    int SpdkEngine::start_spdk_app(
+        const SpdkConfig& config,
+        std::atomic<Protocol::CommonRequest*>& request
+    ) {
+        spdk_app_opts opts = {};
+        spdk_context context = {
+            .request = request
+        };
 
-    //     for (auto& t : os_polling_threads)
-    //         if (t.joinable()) t.join();
+        spdk_app_opts_init(&opts, sizeof(opts));
+        opts.name = "spdk_engine_bdev";
+        opts.rpc_addr = NULL;
+        opts.reactor_mask = config.reactor_mask.c_str();
+        opts.json_config_file = config.json_config_file.c_str();
 
-    //     for (auto& ch : io_channels)
-    //         if (ch) spdk_put_io_channel(ch);
+        context.bdev_name = strdup(config.bdev_name.c_str());
 
-    //     if (desc)
-    //         spdk_bdev_close(desc);
+        int rc = spdk_app_start(&opts, start, &context);
+        if (rc) {
+            SPDK_ERRLOG("Error starting application\n");
+        }
 
-    //     for (auto& t : spdk_polling_threads) {
-    //         if (t) {
-    //             spdk_thread_exit(t);
-    //             spdk_thread_destroy(t);
-    //         }
-    //     }
+        free(context.bdev_name);
+        spdk_app_fini();
+        return rc;
+    }
 
-    //     spdk_env_fini();
-    // }
+    void SpdkEngine::start(void* ctx) {
+        spdk_context* context = static_cast<spdk_context*>(ctx);
+        context->bdev = nullptr;
+        context->bdev_desc = nullptr;
 
-    // int SpdkEngine::nop(SpdkUserData* spdk_user_data) {
-    //     return spdk_bdev_read(
-    //         desc,
-    //         io_channels[0],
-    //         nullptr,
-    //         0,
-    //         0,
-    //         io_complete,
-    //         spdk_user_data
-    //     );
-    // }
+        SPDK_NOTICELOG("Successfully started the application\n");
+        SPDK_NOTICELOG("Opening the bdev %s\n", context->bdev_name);
 
-    // int SpdkEngine::fsync(Protocol::CommonRequest& request, SpdkUserData* spdk_user_data) {
-    //     return spdk_bdev_flush(
-    //         desc,
-    //         io_channels[0],
-    //         request.offset,
-    //         request.size,
-    //         io_complete,
-    //         spdk_user_data
-    //     );
-    // }
+        int rc = spdk_bdev_open_ext(
+            context->bdev_name,
+            true,
+            bdev_event_cb,
+            nullptr,
+            &context->bdev_desc
+        );
 
-    // int SpdkEngine::fdatasync(Protocol::CommonRequest& request, SpdkUserData* spdk_user_data) {
-    //     return spdk_bdev_flush_blocks(
-    //         desc,
-    //         io_channels[0],
-    //         request.offset,
-    //         1,
-    //         io_complete,
-    //         spdk_user_data
-    //     );
-    // }
+        if (rc) {
+            SPDK_ERRLOG("Could not open bdev: %s\n", context->bdev_name);
+            spdk_app_stop(-1);
+            return;
+        }
 
-    // int SpdkEngine::read(Protocol::CommonRequest& request, SpdkUserData* spdk_user_data) {
-    //     return spdk_bdev_read(
-    //         desc,
-    //         io_channels[0],
-    //         request.buffer,
-    //         request.offset,
-    //         request.size,
-    //         io_complete,
-    //         spdk_user_data
-    //     );
-    // }
+        context->bdev = spdk_bdev_desc_get_bdev(context->bdev_desc);
 
-    // int SpdkEngine::write(Protocol::CommonRequest& request, SpdkUserData* spdk_user_data) {
-    //     return spdk_bdev_write(
-    //         desc,
-    //         io_channels[0],
-    //         request.buffer,
-    //         request.offset,
-    //         request.size,
-    //         io_complete,
-    //         spdk_user_data
-    //     );
-    // }
+        SPDK_NOTICELOG("Creating spdk thread\n");
+        struct spdk_thread* t1 = spdk_thread_create("spdk_thread_0", nullptr);
 
-    // void SpdkEngine::hello_bdev_event_cb(enum spdk_bdev_event_type type, struct spdk_bdev *bdev, void *event_ctx) {
-    // 	SPDK_NOTICELOG("Unsupported bdev event: type %d\n", type);
-    // }
+        if (!t1) {
+            SPDK_ERRLOG("Error while creating spdk thread\n");
+            return;
+        }
 
-    // void SpdkEngine::io_complete(spdk_bdev_io* bdev_io, bool success, void* cb_arg) {
-    //     auto* spdk_user_data = static_cast<SpdkUserData*>(cb_arg);
-    //     auto* engine = static_cast<SpdkEngine*>(spdk_user_data->engine);
+        spdk_thread* main_thread = spdk_get_thread();
+        spdk_set_thread(t1);
 
-    //     Metric::fill_metric(
-    //         engine->metric_type,
-    //         *engine->metric,
-    //         spdk_user_data->operation_type,
-    //         spdk_user_data->start_timestamp,
-    //         Metric::get_current_timestamp(),
-    //         success ? spdk_user_data->size : 0,
-    //         spdk_user_data->size,
-    //         spdk_user_data->offset
-    //     );
+        SPDK_NOTICELOG("Opening io channel\n");
+        spdk_context_t context_t = {};
+        context_t.bdev = context->bdev;
+        context_t.bdev_desc = context->bdev_desc;
+        context_t.bdev_io_channel = spdk_bdev_get_io_channel(context->bdev_desc);
 
-    //     engine->logger->info(
-    //         engine->metric_type,
-    //         *engine->metric
-    //     );
+        spdk_set_thread(main_thread);
 
-    //     delete spdk_user_data;
-    //     spdk_bdev_free_io(bdev_io);
-    //     engine->outstanding_io.fetch_sub(1, std::memory_order_relaxed);
-    // }
+        if (!context_t.bdev_io_channel) {
+            SPDK_ERRLOG("Could not create bdev I/O channel\n");
+            spdk_bdev_close(context->bdev_desc);
+            spdk_app_stop(-1);
+            return;
+        }
 
-    // void SpdkEngine::submit(Protocol::CommonRequest& request) {
-    //     int rc = 0;
-    //     outstanding_io.fetch_add(1, std::memory_order_relaxed);
+        size_t buf_align = spdk_bdev_get_buf_align(context->bdev);
+        context->buffer = (char*) spdk_dma_zmalloc(context->buffer_size, buf_align, nullptr);
 
-    //     auto* spdk_user_data = new SpdkUserData{
-    //         .size = request.size,
-    //         .offset = request.offset,
-    //         .start_timestamp = Metric::get_current_timestamp(),
-    //         .operation_type = request.operation,
-    //         .engine = this
-    //     };
+        if (!context->buffer) {
+            SPDK_ERRLOG("Failed to allocate buffer\n");
+            spdk_put_io_channel(context_t.bdev_io_channel);
+            spdk_bdev_close(context->bdev_desc);
+            spdk_app_stop(-1);
+            return;
+        }
 
-    //     switch (request.operation) {
-    //         case Operation::OperationType::READ:
-    //             rc = this->read(request, spdk_user_data);
-    //             break;
-    //         case Operation::OperationType::WRITE:
-    //             rc = this->write(request, spdk_user_data);
-    //             break;
-    //         case Operation::OperationType::FSYNC:
-    //             rc = this->fsync(request, spdk_user_data);
-    //             break;
-    //         case Operation::OperationType::FDATASYNC:
-    //             rc = this->fdatasync(request, spdk_user_data);
-    //             break;
-    //         case Operation::OperationType::NOP:
-    //             rc = this->nop(spdk_user_data);
-    //             break;
-    //         default:
-    //             throw std::invalid_argument("Unsupported operation type by SpdkEngine");
-    //     }
+        if (spdk_bdev_is_zoned(context->bdev)) {
+            // hello_reset_zone(hello_context);
+            /* If bdev is zoned, the callback, reset_zone_complete, will call hello_write() */
+            return;
+        }
 
-    //     if (rc) {
-    //         delete spdk_user_data;
-    //         throw std::runtime_error("spdk_bdev failed: " + std::to_string(rc));
-    //     }
-    // }
+        while (true) {
+            context->request.wait(nullptr);
+            context_t.request = context->request.load();
+            spdk_thread_send_msg(t1, thread_fn, &context_t);
+        }
+    }
 
-    // void SpdkEngine::reap_left_completions(void) {
-    //     while (outstanding_io.load(std::memory_order_relaxed) > 0) {
-    //         std::this_thread::sleep_for(std::chrono::microseconds(50));
-    //     }
-    // }
+    void SpdkEngine::bdev_event_cb(
+        enum spdk_bdev_event_type type,
+        struct spdk_bdev* bdev,
+        void *event_ctx
+    ) {
+        SPDK_NOTICELOG("Unsupported bdev event: type %d\n", type);
+    }
+
+    void SpdkEngine::thread_fn(void *ctx_t) {
+        int rc = 0;
+        spdk_context_t* context_t = static_cast<spdk_context_t*>(ctx_t);
+        spdk_context_t_cb context_t_cb = {
+            .size = context_t->request->size,
+            .offset = context_t->request->offset,
+            .start_timestamp = Metric::get_current_timestamp(),
+            .operation_type = context_t->request->operation,
+            .spdk_engine = nullptr
+        };
+
+        switch (context_t_cb.operation_type) {
+            case Operation::OperationType::READ:
+                rc = thread_read(context_t, &context_t_cb);
+                break;
+            case Operation::OperationType::WRITE:
+                rc = thread_write(context_t, &context_t_cb);
+                break;
+            case Operation::OperationType::FSYNC:
+                rc = thread_fsync(context_t, &context_t_cb);
+                break;
+            case Operation::OperationType::FDATASYNC:
+                SpdkEngine::thread_fdatasync(context_t, &context_t_cb);
+                break;
+            case Operation::OperationType::NOP:
+                thread_nop(context_t, &context_t_cb);
+                break;
+        }
+
+        if (rc == -ENOMEM) {
+            SPDK_NOTICELOG("Queueing io\n");
+            /* In case we cannot perform I/O now, queue I/O */
+            context_t->bdev_io_wait.bdev = context_t->bdev;
+            context_t->bdev_io_wait.cb_fn = thread_fn;
+            context_t->bdev_io_wait.cb_arg = context_t;
+            spdk_bdev_queue_io_wait(
+                context_t->bdev,
+                context_t->bdev_io_channel,
+                &context_t->bdev_io_wait
+            );
+        }
+    }
+
+    int SpdkEngine::thread_read(
+        spdk_context_t* ctx_t,
+        spdk_context_t_cb* ctx_t_cb
+    ) {
+        SPDK_NOTICELOG("Reading to the bdev\n");
+        int rc = spdk_bdev_read(
+            ctx_t->bdev_desc,
+            ctx_t->bdev_io_channel,
+            ctx_t->request->buffer,
+            ctx_t->request->offset,
+            ctx_t->request->size,
+            io_complete,
+            ctx_t_cb
+        );
+    }
+
+    int SpdkEngine::thread_write(
+        spdk_context_t* ctx_t,
+        spdk_context_t_cb* ctx_t_cb
+    ) {
+        SPDK_NOTICELOG("Writing to the bdev\n");
+        int rc = spdk_bdev_write(
+            ctx_t->bdev_desc,
+            ctx_t->bdev_io_channel,
+            ctx_t->request->buffer,
+            ctx_t->request->offset,
+            ctx_t->request->size,
+            io_complete,
+            ctx_t_cb
+        );
+    }
+
+    int SpdkEngine::thread_fsync(
+        spdk_context_t* ctx_t,
+        spdk_context_t_cb* ctx_t_cb
+    ) {
+        SPDK_NOTICELOG("Flushing to the bdev\n");
+        return spdk_bdev_flush(
+            ctx_t->bdev_desc,
+            ctx_t->bdev_io_channel,
+            ctx_t->request->offset,
+            ctx_t->request->size,
+            io_complete,
+            ctx_t_cb
+        );
+    }
+
+    int SpdkEngine::thread_fdatasync(
+        spdk_context_t* ctx_t,
+        spdk_context_t_cb* ctx_t_cb
+    ) {
+        return thread_fsync(ctx_t, ctx_t_cb);
+    }
+
+    int SpdkEngine::thread_nop(
+        spdk_context_t* ctx_t,
+        spdk_context_t_cb* ctx_t_cb)
+    {
+        (void) ctx_t;
+        io_complete(nullptr, true, ctx_t_cb);
+        return 0;
+    }
+
+    void SpdkEngine::io_complete(
+        struct spdk_bdev_io* bdev_io,
+        bool success,
+        void* ctx_t_cb
+    ) {
+        spdk_context_t_cb* context_t_cb = static_cast<spdk_context_t_cb*>(ctx_t_cb);
+        SpdkEngine* spdk_engine = static_cast<SpdkEngine*>(context_t_cb->spdk_engine);
+
+        if (bdev_io) {
+            spdk_bdev_free_io(bdev_io);
+        }
+
+        if (success) {
+            SPDK_NOTICELOG("bdev io completed successfully\n");
+        } else {
+            SPDK_ERRLOG("bdev io error: %d\n", EIO);
+        }
+
+        Metric::fill_metric(
+            spdk_engine->metric_type,
+            *spdk_engine->metric,
+            context_t_cb->operation_type,
+            context_t_cb->start_timestamp,
+            Metric::get_current_timestamp(),
+            success ? context_t_cb->size : 0,
+            context_t_cb->size,
+            context_t_cb->offset
+        );
+
+        spdk_engine->logger->info(
+            spdk_engine->metric_type,
+            *spdk_engine->metric
+        );
+    }
 };

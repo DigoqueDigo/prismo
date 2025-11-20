@@ -5,38 +5,67 @@
 #include <spdk/bdev.h>
 #include <spdk/thread.h>
 #include <spdk/event.h>
-#include <engine/engine.h>
+#include <io/metric.h>
 #include <engine/utils.h>
-#include <lib/readerwriterqueue/readerwritercircularbuffer.h>
-
-using namespace moodycamel;
+#include <engine/engine.h>
+#include <worker/utils.h>
 
 namespace Engine {
+
+    struct spdk_context {
+        spdk_bdev* bdev;
+        spdk_bdev_desc* bdev_desc;
+        char* bdev_name;
+        char* buffer;
+        size_t buffer_size;
+        std::atomic<Protocol::CommonRequest*>& request;
+    };
 
     struct spdk_context_t {
         spdk_bdev* bdev;
         spdk_bdev_desc* bdev_desc;
         spdk_io_channel* bdev_io_channel;
+        spdk_bdev_io_wait_entry bdev_io_wait;
+        Protocol::CommonRequest* request;
+    };
+
+    struct spdk_context_t_cb {
+        size_t size;
+        off_t offset;
+        int64_t start_timestamp;
+        Operation::OperationType operation_type;
+        void* spdk_engine;
     };
 
     class SpdkEngine : public Engine {
         private:
-            BlockingReaderWriterCircularBuffer<Protocol::Packet*> internal_queue;
             std::thread spdk_main_thread;
+            std::atomic<Protocol::CommonRequest*> request;
 
-            static void run(void* arg);
+            static int start_spdk_app(
+                const SpdkConfig& config,
+                std::atomic<Protocol::CommonRequest*>& request
+            );
 
-            static int nop(SpdkUserData* spdk_user_data);
-            static int fsync(Protocol::CommonRequest& request, SpdkUserData* spdk_user_data);
-            static int fdatasync(Protocol::CommonRequest& request, SpdkUserData* spdk_user_data);
+            static void start(void* ctx);
 
-            static int read(Protocol::CommonRequest& request, SpdkUserData* spdk_user_data);
-            static int write(Protocol::CommonRequest& request, SpdkUserData* spdk_user_data);
+            static void bdev_event_cb(
+                enum spdk_bdev_event_type type,
+                struct spdk_bdev* bdev,
+                void *event_ctx
+            );
 
-            static void io_complete(spdk_bdev_io* bdev_io, bool success, void* cb_arg);
-            static void hello_bdev_event_cb(enum spdk_bdev_event_type type, struct spdk_bdev *bdev, void *event_ctx);
+            static void thread_fn(void* ctx_t);
 
-        public:
+            static int thread_read(spdk_context_t* ctx_t, spdk_context_t_cb* ctx_t_cb);
+            static int thread_write(spdk_context_t* ctx_t, spdk_context_t_cb* ctx_t_cb);
+            static int thread_fsync(spdk_context_t* ctx_t, spdk_context_t_cb* ctx_t_cb);
+            static int thread_fdatasync(spdk_context_t* ctx_t, spdk_context_t_cb* ctx_t_cb);
+            static int thread_nop(spdk_context_t* ctx_t, spdk_context_t_cb* ctx_t_cb);
+
+            static void io_complete(struct spdk_bdev_io *bdev_io, bool success, void *cb_arg);
+
+            public:
             explicit SpdkEngine(
                 Metric::MetricType _metric_type,
                 std::unique_ptr<Logger::Logger> _loggger,
@@ -50,6 +79,6 @@ namespace Engine {
             void submit(Protocol::CommonRequest& request) override;
             void reap_left_completions(void) override;
         };
-}
+    }
 
 #endif
