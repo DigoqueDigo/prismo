@@ -10,7 +10,7 @@
 #include <engine/aio.h>
 #include <engine/posix.h>
 #include <engine/uring.h>
-#include <engine/spdk.h>
+// #include <engine/spdk.h>
 #include <logger/logger.h>
 #include <logger/spdlog.h>
 
@@ -21,11 +21,11 @@ namespace Parser {
     std::unique_ptr<Operation::Operation> getOperation(const json& config);
     std::unique_ptr<Operation::MultipleBarrier> getMultipleBarrier(const json& config);
 
-    Metric::MetricType getMetricType(const json& config);
+    std::unique_ptr<Metric::Metric> getMetric(const json& config);
     std::unique_ptr<Logger::Logger> getLogger(const json& config);
     std::unique_ptr<Engine::Engine> getEngine(
         const json& config,
-        Metric::MetricType metric_type,
+        std::unique_ptr<Metric::Metric> metric,
         std::unique_ptr<Logger::Logger> logger
     );
 };

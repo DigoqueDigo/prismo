@@ -9,31 +9,16 @@ namespace Engine {
 
     class Engine {
         protected:
-            Metric::MetricType metric_type;
-            std::unique_ptr<Metric::NoneMetric> metric;
+            std::unique_ptr<Metric::Metric> metric;
             std::unique_ptr<Logger::Logger> logger;
 
         public:
             Engine(
-                Metric::MetricType _metric_type,
+                std::unique_ptr<Metric::Metric> _metric,
                 std::unique_ptr<Logger::Logger> _logger
             ) :
-                metric_type(_metric_type),
-                logger(std::move(_logger))
-            {
-                metric_type = _metric_type;
-                if (metric_type == Metric::MetricType::None) {
-                    metric = std::make_unique<Metric::NoneMetric>();
-                } else if (metric_type == Metric::MetricType::Base) {
-                    metric = std::make_unique<Metric::BaseMetric>();
-                } else if (metric_type == Metric::MetricType::Standard) {
-                    metric = std::make_unique<Metric::StandardMetric>();
-                } else if (metric_type == Metric::MetricType::Full) {
-                    metric = std::make_unique<Metric::FullMetric>();
-                } else {
-                    throw std::runtime_error("Invalid metric type");
-                }
-            }
+                metric(std::move(_metric)),
+                logger(std::move(_logger)) {}
 
             virtual ~Engine() {
                 // std::cout << "~Destroying Engine" << std::endl;

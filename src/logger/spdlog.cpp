@@ -57,7 +57,7 @@ namespace Logger {
     };
 };
 
-auto fmt::formatter<Metric::BaseMetric>::format(const Metric::BaseMetric metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
+auto fmt::formatter<Metric::BaseMetric>::format(const Metric::BaseMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
     return fmt::format_to(
         ctx.out(),
         "[type={} sts={} ets={}]",
@@ -67,7 +67,7 @@ auto fmt::formatter<Metric::BaseMetric>::format(const Metric::BaseMetric metric,
     );
 }
 
-auto fmt::formatter<Metric::StandardMetric>::format(const Metric::StandardMetric metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
+auto fmt::formatter<Metric::StandardMetric>::format(const Metric::StandardMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
     return fmt::format_to(
         ctx.out(),
         "[type={} sts={} ets={} pid={} tid={}]",
@@ -79,7 +79,7 @@ auto fmt::formatter<Metric::StandardMetric>::format(const Metric::StandardMetric
     );
 }
 
-auto fmt::formatter<Metric::FullMetric>::format(const Metric::FullMetric metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
+auto fmt::formatter<Metric::FullMetric>::format(const Metric::FullMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out()) {
     return fmt::format_to(
         ctx.out(),
         "[type={} sts={} ets={} pid={} tid={} req={} proc={} offset={} ret={} errno={}]",

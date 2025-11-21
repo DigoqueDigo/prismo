@@ -1,12 +1,9 @@
 #ifndef METRIC_H
 #define METRIC_H
 
-#include <vector>
-#include <thread>
-#include <variant>
+#include <chrono>
 #include <cstdint>
-#include <unistd.h>
-#include <sys/types.h>
+#include <thread>
 #include <operation/type.h>
 
 namespace Metric {
@@ -18,36 +15,61 @@ namespace Metric {
         Full = 3,
     };
 
-    struct NoneMetric {};
+    struct Metric {
+        MetricType type;
 
-    struct BaseMetric : NoneMetric {
-        int64_t start_timestamp;
-        int64_t end_timestamp;
-        Operation::OperationType operation_type;
+        explicit Metric(MetricType t) : type(t) {}
+        virtual ~Metric() = default;
+
+        Metric(const Metric&) = delete;
+        Metric& operator=(const Metric&) = delete;
+        Metric(Metric&&) = default;
+        Metric& operator=(Metric&&) = default;
+    };
+
+    struct NoneMetric : Metric {
+        NoneMetric() : Metric(MetricType::None) {}
+    };
+
+    struct BaseMetric : Metric {
+        int64_t start_timestamp{};
+        int64_t end_timestamp{};
+        Operation::OperationType operation_type{};
+
+        BaseMetric() : Metric(MetricType::Base) {}
     };
 
     struct StandardMetric : BaseMetric {
-        pid_t pid;
-        uint64_t tid;
+        pid_t pid{};
+        uint64_t tid{};
+
+        StandardMetric() : BaseMetric() {
+            this->type = MetricType::Standard;
+            pid = ::getpid();
+            tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
+        }
     };
 
     struct FullMetric : StandardMetric {
-        size_t requested_bytes;
-        size_t processed_bytes;
-        off_t offset;
-        int32_t return_code;
-        int32_t error_no;
+        size_t requested_bytes{};
+        size_t processed_bytes{};
+        off_t offset{};
+        int32_t return_code{};
+        int32_t error_no{};
+
+        FullMetric() : StandardMetric() {
+            this->type = MetricType::Full;
+        }
     };
 
-    inline int64_t get_current_timestamp(void) {
+    inline int64_t get_current_timestamp() noexcept {
         return std::chrono::duration_cast<std::chrono::nanoseconds>(
             std::chrono::steady_clock::now().time_since_epoch()
         ).count();
     }
 
     inline void fill_metric(
-        MetricType type,
-        NoneMetric& metric,
+        Metric& metric,
         Operation::OperationType op,
         int64_t start_ts,
         int64_t end_ts,
@@ -55,33 +77,29 @@ namespace Metric {
         size_t size,
         off_t offset
     ) {
-        if (type < MetricType::Base)
+        if (metric.type < MetricType::Base)
             return;
 
-        auto& base = static_cast<BaseMetric&>(metric);
-        base.operation_type     = op;
-        base.start_timestamp    = start_ts;
-        base.end_timestamp      = end_ts;
+        auto* base = static_cast<BaseMetric*>(&metric);
+        base->operation_type  = op;
+        base->start_timestamp = start_ts;
+        base->end_timestamp   = end_ts;
 
-        if (type < MetricType::Standard)
+        if (metric.type < MetricType::Standard)
             return;
 
-        auto& standard = static_cast<StandardMetric&>(metric);
-        standard.pid = ::getpid();
-        standard.tid = static_cast<uint64_t>(
-            std::hash<std::thread::id>{}(std::this_thread::get_id())
-        );
+        auto* standard = static_cast<StandardMetric*>(&metric);
 
-        if (type < MetricType::Full)
+        if (metric.type < MetricType::Full)
             return;
 
-        auto& full = static_cast<FullMetric&>(metric);
-        full.requested_bytes    = size;
-        full.offset             = offset;
-        full.processed_bytes    = (result > 0) ? static_cast<size_t>(result) : 0;
-        full.return_code        = static_cast<int32_t>(result);
-        full.error_no           = static_cast<int32_t>(errno);
+        auto* full = static_cast<FullMetric*>(&metric);
+        full->requested_bytes = size;
+        full->offset          = offset;
+        full->processed_bytes = (result > 0) ? static_cast<size_t>(result) : 0;
+        full->return_code     = static_cast<int32_t>(result);
+        full->error_no        = (result < 0) ? errno : 0;
     }
-};
+}
 
 #endif

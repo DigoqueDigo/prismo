@@ -82,8 +82,8 @@ namespace Engine {
         std::vector<spdk_context_t> spdk_context_ts;
         std::vector<spdk_context_t_cb> spdk_context_t_cbs;
 
-        int zones = static_cast<int>(context->buffer_size / context->buffer_size);
-        moodycamel::BlockingConcurrentQueue<int> available_indexes(zones);
+        int num_blocks = spdk_bdev_get_num_blocks(context->bdev);
+        moodycamel::BlockingConcurrentQueue<int> available_indexes(num_blocks);
 
         spdk_thread* main_thread = spdk_get_thread();
         int total_threads = 1;
@@ -122,7 +122,12 @@ namespace Engine {
         }
 
         size_t buf_align = spdk_bdev_get_buf_align(context->bdev);
-        context->dma_buffer = (uint8_t*) spdk_dma_zmalloc(context->buffer_size, buf_align, nullptr);
+        size_t buf_size =
+            spdk_bdev_get_block_size(context->bdev) *
+            spdk_bdev_get_write_unit_size(context->bdev) *
+            spdk_bdev_get_num_blocks(context->bdev);
+
+        context->dma_buffer = (uint8_t*) spdk_dma_zmalloc(buf_size, buf_align, nullptr);
 
         if (!context->dma_buffer) {
             SPDK_ERRLOG("Failed to allocate buffer\n");
@@ -137,7 +142,7 @@ namespace Engine {
             return;
         }
 
-        for (int index = 0; index < zones; index++) {
+        for (int index = 0; index < num_blocks; index++) {
             spdk_context_t_cb context_t_cb = {};
             context_t_cb.free_index = 0;
             context_t_cb.metrics_mutex = &metrics_mutex;

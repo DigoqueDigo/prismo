@@ -24,8 +24,6 @@ namespace Engine {
         spdk_bdev_desc* bdev_desc;
         char* bdev_name;
         uint8_t* dma_buffer;
-        size_t buffer_size;
-        size_t block_size;
         void* spdk_engine;
         std::atomic<spdk_context_request*>* request_trigger;
     };

@@ -39,17 +39,17 @@ namespace Logger {
 
 template<>
 struct fmt::formatter<Metric::BaseMetric> : fmt::formatter<std::string> {
-    auto format(const Metric::BaseMetric metric, fmt::format_context& ctx) const -> decltype(ctx.out());
+    auto format(const Metric::BaseMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out());
 };
 
 template<>
 struct fmt::formatter<Metric::StandardMetric> : fmt::formatter<std::string> {
-    auto format(const Metric::StandardMetric metric, fmt::format_context& ctx) const -> decltype(ctx.out());
+    auto format(const Metric::StandardMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out());
 };
 
 template<>
 struct fmt::formatter<Metric::FullMetric> : fmt::formatter<std::string> {
-    auto format(const Metric::FullMetric metric, fmt::format_context& ctx) const -> decltype(ctx.out());
+    auto format(const Metric::FullMetric& metric, fmt::format_context& ctx) const -> decltype(ctx.out());
 };
 
 #endif

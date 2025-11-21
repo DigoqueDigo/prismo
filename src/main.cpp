@@ -49,13 +49,13 @@ int main(int argc, char** argv) {
     std::unique_ptr<Operation::MultipleBarrier> barrier = Parser::getMultipleBarrier(barrier_j);
 
     // std::cout << "Parse Metric" << std::endl;
-    Metric::MetricType metric_type = Parser::getMetricType(job_j);
+    std::unique_ptr metric = Parser::getMetric(job_j);
 
     // std::cout << "Parse Logger" << std::endl;
     std::unique_ptr<Logger::Logger> logger = Parser::getLogger(logging_j);
 
     // std::cout << "Parse Engine" << std::endl;
-    std::unique_ptr<Engine::Engine> engine = Parser::getEngine( engine_j, metric_type, std::move(logger));
+    std::unique_ptr<Engine::Engine> engine = Parser::getEngine(engine_j, std::move(metric), std::move(logger));
 
     moodycamel::BlockingConcurrentQueue<int> q(10);
 

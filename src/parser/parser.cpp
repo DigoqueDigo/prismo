@@ -60,17 +60,17 @@ namespace Parser {
         );
     }
 
-    Metric::MetricType getMetricType(const json& config) {
+    std::unique_ptr<Metric::Metric> getMetric(const json& config) {
         std::string type = config.at("metric").get<std::string>();
 
         if (type == "none") {
-            return Metric::MetricType::None;
+            return std::make_unique<Metric::NoneMetric>();
         } else if (type == "base") {
-            return Metric::MetricType::Base;
+            return std::make_unique<Metric::BaseMetric>();
         } else if (type == "standard") {
-             return Metric::MetricType::Standard;
+            return std::make_unique<Metric::StandardMetric>();
         } else if (type == "full") {
-            return Metric::MetricType::Full;
+            return std::make_unique<Metric::FullMetric>();
         } else {
             throw std::invalid_argument("Metric type '" + type + "' not recognized");
         }
@@ -91,34 +91,34 @@ namespace Parser {
 
     std::unique_ptr<Engine::Engine> getEngine(
         const json& config,
-        Metric::MetricType metric_type,
+        std::unique_ptr<Metric::Metric> metric,
         std::unique_ptr<Logger::Logger> logger
     ) {
         std::string type = config.at("type").get<std::string>();
 
         if (type == "posix") {
             return std::make_unique<Engine::PosixEngine>(
-                metric_type,
+                std::move(metric),
                 std::move(logger)
             );
         } else if (type == "uring") {
             return std::make_unique<Engine::UringEngine>(
-                metric_type,
+                std::move(metric),
                 std::move(logger),
                 config.get<Engine::UringConfig>()
             );
         } else if (type == "aio") {
             return std::make_unique<Engine::AioEngine>(
-                metric_type,
+                std::move(metric),
                 std::move(logger),
                 config.get<Engine::AioConfig>()
             );
-        } else if (type == "spdk") {
-            return std::make_unique<Engine::SpdkEngine>(
-                metric_type,
-                std::move(logger),
-                config.get<Engine::SpdkConfig>()
-            );
+        // } else if (type == "spdk") {
+        //     return std::make_unique<Engine::SpdkEngine>(
+        //         std::move(metric),
+        //         std::move(logger),
+        //         config.get<Engine::SpdkConfig>()
+        //     );
         } else {
             throw std::invalid_argument("Engine type '" + type + "' not recognized");
         }

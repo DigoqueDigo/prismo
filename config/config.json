@@ -2,16 +2,16 @@
   "job": {
     "name": "job",
     "numjobs": 1,
-    "iterations": 1e7,
+    "iterations": 20,
     "filename": "testfile",
     "block_size": 4096,
     "limit": 65536,
-    "metric": "none"
+    "metric": "full"
   },
 
   "operation": {
     "type": "constant",
-    "operation": "nop",
+    "operation": "write",
     "percentages": {
       "read": 50,
       "write": 50
@@ -37,7 +37,7 @@
   },
 
   "engine": {
-    "type": "spdk",
+    "type": "posix",
     "openflags": [
       "O_CREAT",
       "O_RDWR"
@@ -51,7 +51,9 @@
         "IORING_SETUP_SQPOLL"
       ]
     },
-    "bdev_name": "Malloc0"
+    "bdev_name": "Malloc0",
+    "reactor_mask": "0x1",
+    "json_config_file": "/home/digo/Desktop/prismo/config/spdk_bdev.json"
   },
 
   "logging": {
