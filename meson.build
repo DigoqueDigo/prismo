@@ -63,6 +63,7 @@ libaio_dep = cc.find_library('aio', required: true)
 
 # Find sdpk dependencies (statics libs)
 spdk_bdev_dep = dependency('spdk_bdev', required: true, static: true)
+spdk_event_dep = dependency('spdk_event', required: true, static: true)
 spdk_env_dpdk_dep = dependency('spdk_env_dpdk', required: true, static: true)
 spdk_syslibs_dep = dependency('spdk_syslibs', required: true, static: true)
 
@@ -93,6 +94,7 @@ prismo_exe = executable(
     liburing_dep,
     libaio_dep,
     spdk_bdev_dep,
+    spdk_event_dep,
     spdk_env_dpdk_dep,
     spdk_syslibs_dep,
   ],

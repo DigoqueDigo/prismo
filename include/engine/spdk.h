@@ -10,9 +10,7 @@
 #include <io/metric.h>
 #include <engine/utils.h>
 #include <engine/engine.h>
-#include <worker/utils.h>
-
-using namespace moodycamel;
+#include <lib/blockingconcurrentqueue/blockingconcurrentqueue.h>
 
 namespace Engine {
 
@@ -32,23 +30,6 @@ namespace Engine {
         std::atomic<spdk_context_request*>* request_trigger;
     };
 
-    struct spdk_context_t {
-        spdk_bdev* bdev;
-        spdk_bdev_desc* bdev_desc;
-        spdk_io_channel* bdev_io_channel;
-        spdk_bdev_io_wait_entry bdev_io_wait;
-        Protocol::CommonRequest* request;
-        void* spdk_engine;
-
-        std::atomic<bool>* submitted;
-        std::mutex* metrics_mutex;
-
-        int free_index;
-        BlockingReaderWriterCircularBuffer<int>* available_indexes;
-
-        spdk_context_t_cb* ctx_t_cb;
-    };
-
     struct spdk_context_t_cb {
         size_t size;
         off_t offset;
@@ -56,15 +37,26 @@ namespace Engine {
         Operation::OperationType operation_type;
         void* spdk_engine;
 
-        std::mutex* metrics_mutex;
-
         int free_index;
-        BlockingReaderWriterCircularBuffer<int>* available_indexes;
+        std::mutex* metrics_mutex;
+        moodycamel::BlockingConcurrentQueue<int>* available_indexes;
+    };
+
+    struct spdk_context_t {
+        spdk_bdev* bdev;
+        spdk_bdev_desc* bdev_desc;
+        spdk_io_channel* bdev_io_channel;
+        spdk_bdev_io_wait_entry bdev_io_wait;
+        Protocol::CommonRequest* request;
+
+        std::atomic<bool>* submitted;
+        spdk_context_t_cb* ctx_t_cb;
     };
 
     class SpdkEngine : public Engine {
         private:
             std::thread spdk_main_thread;
+            spdk_context_request pending_request;
             std::atomic<spdk_context_request*> request_trigger;
 
             static int start_spdk_app(

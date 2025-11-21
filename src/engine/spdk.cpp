@@ -8,11 +8,16 @@ namespace Engine {
         const SpdkConfig& config
     ) :
         Engine(_metric_type, std::move(_logger)),
+        pending_request(),
         request_trigger(nullptr)
     {
         spdk_main_thread = std::thread([this, config]() {
             start_spdk_app(this, config, &(this->request_trigger));
         });
+    }
+
+    SpdkEngine::~SpdkEngine() {
+        spdk_main_thread.join();
     }
 
     int SpdkEngine::start_spdk_app(
@@ -21,10 +26,10 @@ namespace Engine {
         std::atomic<spdk_context_request*>* request_trigger
     ) {
         spdk_app_opts opts = {};
-        spdk_context context = {
-            .request_trigger = request_trigger,
-            .spdk_engine = spdk_engine,
-        };
+        spdk_context context = {};
+
+        context.request_trigger = request_trigger;
+        context.spdk_engine = spdk_engine;
 
         spdk_app_opts_init(&opts, sizeof(opts));
         opts.name = "spdk_engine_bdev";
@@ -78,11 +83,12 @@ namespace Engine {
         std::vector<spdk_context_t_cb> spdk_context_t_cbs;
 
         int zones = static_cast<int>(context->buffer_size / context->buffer_size);
-        BlockingReaderWriterCircularBuffer<int> available_indexes(zones);
+        moodycamel::BlockingConcurrentQueue<int> available_indexes(zones);
 
         spdk_thread* main_thread = spdk_get_thread();
+        int total_threads = 1;
 
-        for (int index = 0; index < 2; index++) {
+        for (int index = 0; index < total_threads; index++) {
             SPDK_NOTICELOG("Creating spdk thread\n");
             std::string thread_name = "spdk_thread_" + std::to_string(index);
             spdk_thread* thread = spdk_thread_create(thread_name.c_str(), nullptr);
@@ -95,16 +101,13 @@ namespace Engine {
             spdk_set_thread(thread);
 
             SPDK_NOTICELOG("Opening io channel\n");
-            spdk_context_t context_t = {
-                .bdev               = context->bdev,
-                .bdev_desc          = context->bdev_desc,
-                .spdk_engine        = context->spdk_engine,
-                .bdev_io_channel    = spdk_bdev_get_io_channel(context->bdev_desc),
-                .submitted          = &submitted,
-                .metrics_mutex      = &metrics_mutex,
-                .free_index         = 0,
-                .available_indexes  = &available_indexes,
-            };
+            spdk_io_channel* io_channel = spdk_bdev_get_io_channel(context->bdev_desc);
+            spdk_context_t context_t = {};
+
+            context_t.bdev = context->bdev;
+            context_t.bdev_desc = context->bdev_desc;
+            context_t.bdev_io_channel = io_channel;
+            context_t.submitted = &submitted;
 
             spdk_set_thread(main_thread);
 
@@ -123,8 +126,11 @@ namespace Engine {
 
         if (!context->dma_buffer) {
             SPDK_ERRLOG("Failed to allocate buffer\n");
-            for (auto& ctx : spdk_context_ts){
-                spdk_put_io_channel(ctx.bdev_io_channel);
+            for (int index = 0; index < total_threads; index++) {
+                spdk_thread* thread = spdk_threads[index];
+                spdk_set_thread(thread);
+                spdk_put_io_channel(spdk_context_ts[index].bdev_io_channel);
+                spdk_thread_exit(thread);
             }
             spdk_bdev_close(context->bdev_desc);
             spdk_app_stop(-1);
@@ -132,17 +138,18 @@ namespace Engine {
         }
 
         for (int index = 0; index < zones; index++) {
+            spdk_context_t_cb context_t_cb = {};
+            context_t_cb.free_index = 0;
+            context_t_cb.metrics_mutex = &metrics_mutex;
+            context_t_cb.spdk_engine = context->spdk_engine;
+            context_t_cb.available_indexes = &available_indexes;
+
+            available_indexes.enqueue(index);
+            spdk_context_t_cbs.push_back(context_t_cb);
             dma_zones.push_back(context->dma_buffer + index);
-            available_indexes.wait_enqueue(index);
-            spdk_context_t_cbs.push_back({
-                .spdk_engine        = context->spdk_engine,
-                .metrics_mutex      = &metrics_mutex,
-                .free_index         = 0,
-                .available_indexes  = &available_indexes,
-            });
         }
 
-        for (int thread_index = 0; true; thread_index = (thread_index + 1) % 2) {
+        for (int thread_index = 0; true; thread_index = (thread_index + 1) % total_threads) {
             context->request_trigger->wait(nullptr);
 
             if (context->request_trigger->load()->isShutdown) {
@@ -153,7 +160,6 @@ namespace Engine {
             available_indexes.wait_dequeue(free_index);
 
             spdk_context_t& ctx = spdk_context_ts[thread_index];
-            ctx.free_index = free_index;
             ctx.ctx_t_cb = &spdk_context_t_cbs[free_index];
 
             if (ctx.request->operation == Operation::OperationType::WRITE) {
@@ -161,70 +167,55 @@ namespace Engine {
             }
 
             ctx.request->buffer = dma_zones[free_index];
-            submitted.store(false, std::memory_order_release);
+            ctx.ctx_t_cb->free_index = free_index;
+            ctx.submitted->store(false, std::memory_order_release);
             spdk_thread_send_msg(spdk_threads[thread_index], thread_fn, &ctx);
-            submitted.wait(false);
+
+            ctx.submitted->wait(false);
+            context->request_trigger->store(nullptr, std::memory_order_release);
+            context->request_trigger->notify_one();
         }
-    }
 
+        for (int index = 0; index < total_threads; index++) {
+            spdk_thread* thread = spdk_threads[index];
+            spdk_set_thread(thread);
+            spdk_put_io_channel(spdk_context_ts[index].bdev_io_channel);
+            spdk_thread_exit(thread);
+        }
 
+        spdk_bdev_close(context->bdev_desc);
+        spdk_app_stop(0);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    void SpdkEngine::bdev_event_cb(
-        enum spdk_bdev_event_type type,
-        struct spdk_bdev* bdev,
-        void *event_ctx
-    ) {
-        SPDK_NOTICELOG("Unsupported bdev event: type %d\n", type);
+        context->request_trigger->store(nullptr, std::memory_order_release);
+        context->request_trigger->notify_one();
     }
 
     void SpdkEngine::thread_fn(void *ctx_t) {
         int rc = 0;
         spdk_context_t* context_t = static_cast<spdk_context_t*>(ctx_t);
-        spdk_context_t_cb context_t_cb = {
-            .size = context_t->request->size,
-            .offset = context_t->request->offset,
-            .start_timestamp = Metric::get_current_timestamp(),
-            .operation_type = context_t->request->operation,
-            .spdk_engine = context_t->spdk_engine,
-        };
+        spdk_context_t_cb* context_t_cb = context_t->ctx_t_cb;
+        Protocol::CommonRequest* request = context_t->request;
 
-        switch (context_t_cb.operation_type) {
+        context_t_cb->size = request->size;
+        context_t_cb->offset = request->offset;
+        context_t_cb->start_timestamp = Metric::get_current_timestamp();
+        context_t_cb->operation_type = request->operation;
+
+        switch (context_t_cb->operation_type) {
             case Operation::OperationType::READ:
-                rc = thread_read(context_t, &context_t_cb);
+                rc = thread_read(context_t, context_t_cb);
                 break;
             case Operation::OperationType::WRITE:
-                rc = thread_write(context_t, &context_t_cb);
+                rc = thread_write(context_t, context_t_cb);
                 break;
             case Operation::OperationType::FSYNC:
-                rc = thread_fsync(context_t, &context_t_cb);
+                rc = thread_fsync(context_t, context_t_cb);
                 break;
             case Operation::OperationType::FDATASYNC:
-                rc = thread_fdatasync(context_t, &context_t_cb);
+                rc = thread_fdatasync(context_t, context_t_cb);
                 break;
             case Operation::OperationType::NOP:
-                rc = thread_nop(context_t, &context_t_cb);
+                rc = thread_nop(context_t, context_t_cb);
                 break;
         }
 
@@ -239,6 +230,9 @@ namespace Engine {
                 context_t->bdev_io_channel,
                 &context_t->bdev_io_wait
             );
+        } else if (!rc) {
+            context_t->submitted->store(true, std::memory_order_release);
+            context_t->submitted->notify_one();
         }
     }
 
@@ -247,7 +241,7 @@ namespace Engine {
         spdk_context_t_cb* ctx_t_cb
     ) {
         SPDK_NOTICELOG("Reading to the bdev\n");
-        int rc = spdk_bdev_read(
+        return spdk_bdev_read(
             ctx_t->bdev_desc,
             ctx_t->bdev_io_channel,
             ctx_t->request->buffer,
@@ -263,7 +257,7 @@ namespace Engine {
         spdk_context_t_cb* ctx_t_cb
     ) {
         SPDK_NOTICELOG("Writing to the bdev\n");
-        int rc = spdk_bdev_write(
+        return spdk_bdev_write(
             ctx_t->bdev_desc,
             ctx_t->bdev_io_channel,
             ctx_t->request->buffer,
@@ -297,10 +291,9 @@ namespace Engine {
     }
 
     int SpdkEngine::thread_nop(
-        spdk_context_t* ctx_t,
-        spdk_context_t_cb* ctx_t_cb)
-    {
-        (void) ctx_t;
+        [[maybe_unused]] spdk_context_t* ctx_t,
+        spdk_context_t_cb* ctx_t_cb
+    ) {
         io_complete(nullptr, true, ctx_t_cb);
         return 0;
     }
@@ -323,6 +316,8 @@ namespace Engine {
             SPDK_ERRLOG("bdev io error: %d\n", EIO);
         }
 
+        context_t_cb->metrics_mutex->lock();
+
         Metric::fill_metric(
             spdk_engine->metric_type,
             *spdk_engine->metric,
@@ -338,5 +333,30 @@ namespace Engine {
             spdk_engine->metric_type,
             *spdk_engine->metric
         );
+
+        context_t_cb->metrics_mutex->unlock();
+        context_t_cb->available_indexes->enqueue(context_t_cb->free_index);
     }
+
+    void SpdkEngine::bdev_event_cb(
+        [[maybe_unused]] enum spdk_bdev_event_type type,
+        [[maybe_unused]] struct spdk_bdev* bdev,
+        [[maybe_unused]] void *event_ctx
+    ) {
+        SPDK_NOTICELOG("Unsupported bdev event: type %d\n", type);
+    }
+
+    void SpdkEngine::submit(Protocol::CommonRequest& request) {
+        pending_request.isShutdown = false;
+        pending_request.request = &request;
+        request_trigger.store(&pending_request, std::memory_order_release);
+        request_trigger.wait(&pending_request);
+    };
+
+    void SpdkEngine::reap_left_completions(void) {
+        pending_request.isShutdown = true;
+        pending_request.request = nullptr;
+        request_trigger.store(&pending_request, std::memory_order_release);
+        request_trigger.wait(&pending_request);
+    };
 };

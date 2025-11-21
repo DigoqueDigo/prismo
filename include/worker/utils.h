@@ -3,23 +3,13 @@
 
 #include <iostream>
 #include <io/protocol.h>
-#include <lib/readerwriterqueue/readerwritercircularbuffer.h>
+#include <lib/blockingconcurrentqueue/blockingconcurrentqueue.h>
 
 #define QUEUE_INITIAL_CAPACITY 1024
 
-using namespace moodycamel;
-
 namespace Worker {
 
-    inline void enqueue(BlockingReaderWriterCircularBuffer<Protocol::Packet*>& queue, Protocol::Packet*& packet) {
-        queue.wait_enqueue(packet);
-    };
-
-    inline void dequeue(BlockingReaderWriterCircularBuffer<Protocol::Packet*>& queue, Protocol::Packet*& packet) {
-        queue.wait_dequeue(packet);
-    };
-
-    inline void init_queue_packet(BlockingReaderWriterCircularBuffer<Protocol::Packet*>& queue, size_t block_size) {
+    inline void init_queue_packet(moodycamel::BlockingConcurrentQueue<Protocol::Packet*>& queue, size_t block_size) {
         for (int index = 0; index < QUEUE_INITIAL_CAPACITY; index++) {
             Protocol::Packet* packet = static_cast<Protocol::Packet*>(std::malloc(sizeof(Protocol::Packet)));
 
@@ -38,14 +28,14 @@ namespace Worker {
                 throw std::bad_alloc();
             }
 
-            Worker::enqueue(queue, packet);
+            queue.enqueue(packet);
         }
     }
 
-    inline void destroy_queue_packet(BlockingReaderWriterCircularBuffer<Protocol::Packet*>& queue) {
+    inline void destroy_queue_packet(moodycamel::BlockingConcurrentQueue<Protocol::Packet*>& queue) {
         Protocol::Packet* packet;
-        for (int index = 0; index < QUEUE_INITIAL_CAPACITY; index++) {
-            Worker::dequeue(queue, packet);
+        for (size_t index = 0; index < queue.size_approx(); index++) {
+            queue.wait_dequeue(packet);
             std::free(packet->request.buffer);
             std::free(packet);
         }

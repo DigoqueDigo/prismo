@@ -57,8 +57,10 @@ int main(int argc, char** argv) {
     // std::cout << "Parse Engine" << std::endl;
     std::unique_ptr<Engine::Engine> engine = Parser::getEngine( engine_j, metric_type, std::move(logger));
 
-    auto to_producer = std::make_shared<BlockingReaderWriterCircularBuffer<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);
-    auto to_consumer = std::make_shared<BlockingReaderWriterCircularBuffer<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);
+    moodycamel::BlockingConcurrentQueue<int> q(10);
+
+    auto to_producer = std::make_shared<moodycamel::BlockingConcurrentQueue<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);
+    auto to_consumer = std::make_shared<moodycamel::BlockingConcurrentQueue<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);
     Worker::init_queue_packet(*to_producer, block_size);
 
     Worker::Producer producer (
