@@ -2,8 +2,10 @@
 
 namespace Engine {
 
-    PosixEngine::PosixEngine(Metric::MetricType _metric_type, std::unique_ptr<Logger::Logger> _logger)
-        : Engine(_metric_type, std::move(_logger)) {}
+    PosixEngine::PosixEngine(
+        std::unique_ptr<Metric::Metric> _metric,
+        std::unique_ptr<Logger::Logger> _logger
+    ) : Engine(std::move(_metric), std::move(_logger)) {}
 
     PosixEngine::~PosixEngine() {
         // std::cout << "~Destroying PosixEngine" << std::endl;
@@ -70,7 +72,6 @@ namespace Engine {
         }
 
         Metric::fill_metric(
-            Engine::metric_type,
             *Engine::metric,
             request.operation,
             start_timestamp,
@@ -80,9 +81,6 @@ namespace Engine {
             request.offset
         );
 
-        Engine::logger->info(
-            Engine::metric_type,
-            *Engine::metric
-        );
+        Engine::logger->info(*Engine::metric);
     }
 }

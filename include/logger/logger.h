@@ -13,10 +13,7 @@ namespace Logger {
                 // std::cout << "~Destroying Logger" << std::endl;
             }
 
-            virtual void info(
-                Metric::MetricType type,
-                Metric::NoneMetric& metric
-            ) = 0;
+            virtual void info(Metric::Metric& metric) = 0;
     };
 };
 

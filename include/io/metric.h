@@ -45,8 +45,6 @@ namespace Metric {
 
         StandardMetric() : BaseMetric() {
             this->type = MetricType::Standard;
-            pid = ::getpid();
-            tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
         }
     };
 
@@ -89,6 +87,8 @@ namespace Metric {
             return;
 
         auto* standard = static_cast<StandardMetric*>(&metric);
+        standard->pid = ::getpid();
+        standard->tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
 
         if (metric.type < MetricType::Full)
             return;

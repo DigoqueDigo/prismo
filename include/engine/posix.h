@@ -24,7 +24,7 @@ namespace Engine {
 
         public:
             explicit PosixEngine(
-                Metric::MetricType _metric_type,
+                std::unique_ptr<Metric::Metric> _metric,
                 std::unique_ptr<Logger::Logger> _logger
             );
 

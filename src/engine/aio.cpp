@@ -3,11 +3,11 @@
 namespace Engine {
 
     AioEngine::AioEngine(
-        Metric::MetricType _metric_type,
+        std::unique_ptr<Metric::Metric> _metric,
         std::unique_ptr<Logger::Logger> _logger,
         const AioConfig& _config
     ) :
-        Engine(_metric_type, std::move(_logger)),
+        Engine(std::move(_metric), std::move(_logger)),
         io_context(0),
         iocbs(),
         iocb_ptrs(),
@@ -127,7 +127,6 @@ namespace Engine {
             AioTask* completed_task = static_cast<AioTask*>(ev.data);
 
             Metric::fill_metric(
-                Engine::metric_type,
                 *Engine::metric,
                 completed_task->operation_type,
                 completed_task->start_timestamp,
@@ -137,11 +136,7 @@ namespace Engine {
                 completed_task->offset
             );
 
-            Engine::logger->info(
-                Engine::metric_type,
-                *Engine::metric
-            );
-
+            Engine::logger->info(*Engine::metric);
             available_indexes.push_back(completed_task->index);
         }
     }

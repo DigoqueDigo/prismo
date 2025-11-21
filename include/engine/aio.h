@@ -35,7 +35,7 @@ namespace Engine {
 
         public:
             AioEngine(
-                Metric::MetricType _metric_type,
+                std::unique_ptr<Metric::Metric> _metric,
                 std::unique_ptr<Logger::Logger> _logger,
                 const AioConfig& _config
             );

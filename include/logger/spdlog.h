@@ -31,7 +31,7 @@ namespace Logger {
             Spdlog(const SpdlogConfig& config);
             ~Spdlog() override;
 
-            void info(Metric::MetricType type, Metric::NoneMetric& metric) override;
+            void info(Metric::Metric& metric) override;
         };
 
     void from_json(const json& j, SpdlogConfig& config);

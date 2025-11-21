@@ -2,7 +2,7 @@
   "job": {
     "name": "job",
     "numjobs": 1,
-    "iterations": 20,
+    "iterations": 1e2,
     "filename": "testfile",
     "block_size": 4096,
     "limit": 65536,
@@ -37,7 +37,7 @@
   },
 
   "engine": {
-    "type": "posix",
+    "type": "aio",
     "openflags": [
       "O_CREAT",
       "O_RDWR"

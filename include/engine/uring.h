@@ -34,7 +34,7 @@ namespace Engine {
 
         public:
             explicit UringEngine(
-                Metric::MetricType _metric_type,
+                std::unique_ptr<Metric::Metric> _metric,
                 std::unique_ptr<Logger::Logger> _logger,
                 const UringConfig& _config
             );

@@ -3,11 +3,11 @@
 namespace Engine {
 
     UringEngine::UringEngine(
-        Metric::MetricType _metric_type,
+                std::unique_ptr<Metric::Metric> _metric,
         std::unique_ptr<Logger::Logger> _logger,
         const UringConfig& _config
     ) :
-        Engine(_metric_type, std::move(_logger)),
+        Engine(std::move(_metric), std::move(_logger)),
         ring(),
         iovecs(),
         user_data(),
@@ -148,7 +148,6 @@ namespace Engine {
             UringUserData* ud = static_cast<UringUserData*>(io_uring_cqe_get_data(cqe));
 
             Metric::fill_metric(
-                Engine::metric_type,
                 *Engine::metric,
                 ud->operation_type,
                 ud->start_timestamp,
@@ -158,11 +157,7 @@ namespace Engine {
                 ud->offset
             );
 
-            Engine::logger->info(
-                Engine::metric_type,
-                *Engine::metric
-            );
-
+            Engine::logger->info(*Engine::metric);
             available_indexes.push_back(ud->index);
             io_uring_cqe_seen(&ring, cqe);
         }

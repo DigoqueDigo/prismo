@@ -3,11 +3,11 @@
 namespace Engine {
 
     SpdkEngine::SpdkEngine(
-        Metric::MetricType _metric_type,
+        std::unique_ptr<Metric::Metric> _metric,
         std::unique_ptr<Logger::Logger> _logger,
         const SpdkConfig& config
     ) :
-        Engine(_metric_type, std::move(_logger)),
+        Engine(std::move(_metric), std::move(_logger)),
         pending_request(),
         request_trigger(nullptr)
     {
@@ -324,7 +324,6 @@ namespace Engine {
         context_t_cb->metrics_mutex->lock();
 
         Metric::fill_metric(
-            spdk_engine->metric_type,
             *spdk_engine->metric,
             context_t_cb->operation_type,
             context_t_cb->start_timestamp,
@@ -334,10 +333,7 @@ namespace Engine {
             context_t_cb->offset
         );
 
-        spdk_engine->logger->info(
-            spdk_engine->metric_type,
-            *spdk_engine->metric
-        );
+        spdk_engine->logger->info(*spdk_engine->metric);
 
         context_t_cb->metrics_mutex->unlock();
         context_t_cb->available_indexes->enqueue(context_t_cb->free_index);

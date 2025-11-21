@@ -83,7 +83,7 @@ namespace Engine {
 
             public:
             explicit SpdkEngine(
-                Metric::MetricType _metric_type,
+                std::unique_ptr<Metric::Metric> _metric,
                 std::unique_ptr<Logger::Logger> _loggger,
                 const SpdkConfig& config
             );
