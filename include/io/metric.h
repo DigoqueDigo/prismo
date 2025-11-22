@@ -32,16 +32,16 @@ namespace Metric {
     };
 
     struct BaseMetric : Metric {
-        int64_t start_timestamp{};
-        int64_t end_timestamp{};
+        int64_t start_timestamp;
+        int64_t end_timestamp;
         Operation::OperationType operation_type{};
 
         BaseMetric() : Metric(MetricType::Base) {}
     };
 
     struct StandardMetric : BaseMetric {
-        pid_t pid{};
-        uint64_t tid{};
+        pid_t pid;
+        uint64_t tid;
 
         StandardMetric() : BaseMetric() {
             this->type = MetricType::Standard;
@@ -49,11 +49,11 @@ namespace Metric {
     };
 
     struct FullMetric : StandardMetric {
-        size_t requested_bytes{};
-        size_t processed_bytes{};
-        off_t offset{};
-        int32_t return_code{};
-        int32_t error_no{};
+        size_t requested_bytes;
+        size_t processed_bytes;
+        off_t offset;
+        int32_t return_code;
+        int32_t error_no;
 
         FullMetric() : StandardMetric() {
             this->type = MetricType::Full;
@@ -78,27 +78,27 @@ namespace Metric {
         if (metric.type < MetricType::Base)
             return;
 
-        auto* base = static_cast<BaseMetric*>(&metric);
-        base->operation_type  = op;
-        base->start_timestamp = start_ts;
-        base->end_timestamp   = end_ts;
+        auto& base = static_cast<BaseMetric&>(metric);
+        base.operation_type  = op;
+        base.start_timestamp = start_ts;
+        base.end_timestamp   = end_ts;
 
         if (metric.type < MetricType::Standard)
             return;
 
-        auto* standard = static_cast<StandardMetric*>(&metric);
-        standard->pid = ::getpid();
-        standard->tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
+        auto& standard = static_cast<StandardMetric&>(metric);
+        standard.pid = ::getpid();
+        standard.tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
 
         if (metric.type < MetricType::Full)
             return;
 
-        auto* full = static_cast<FullMetric*>(&metric);
-        full->requested_bytes = size;
-        full->offset          = offset;
-        full->processed_bytes = (result > 0) ? static_cast<size_t>(result) : 0;
-        full->return_code     = static_cast<int32_t>(result);
-        full->error_no        = (result < 0) ? errno : 0;
+        auto& full = static_cast<FullMetric&>(metric);
+        full.requested_bytes = size;
+        full.offset          = offset;
+        full.processed_bytes = (result > 0) ? static_cast<size_t>(result) : 0;
+        full.return_code     = static_cast<int32_t>(result);
+        full.error_no        = (result < 0) ? errno : 0;
     }
 }
 

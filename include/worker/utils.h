@@ -34,7 +34,8 @@ namespace Worker {
 
     inline void destroy_queue_packet(moodycamel::BlockingConcurrentQueue<Protocol::Packet*>& queue) {
         Protocol::Packet* packet;
-        for (size_t index = 0; index < QUEUE_INITIAL_CAPACITY; index++) {
+        size_t size = queue.size_approx();
+        for (size_t index = 0; index < size; index++) {
             queue.wait_dequeue(packet);
             std::free(packet->request.buffer);
             std::free(packet);

@@ -2,16 +2,16 @@
   "job": {
     "name": "job",
     "numjobs": 1,
-    "iterations": 1e2,
+    "iterations": 20,
     "filename": "testfile",
     "block_size": 4096,
     "limit": 65536,
-    "metric": "full"
+    "metric": "none"
   },
 
   "operation": {
     "type": "constant",
-    "operation": "write",
+    "operation": "nop",
     "percentages": {
       "read": 50,
       "write": 50
@@ -37,7 +37,7 @@
   },
 
   "engine": {
-    "type": "aio",
+    "type": "posix",
     "openflags": [
       "O_CREAT",
       "O_RDWR"
