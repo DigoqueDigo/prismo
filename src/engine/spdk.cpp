@@ -14,6 +14,8 @@ namespace Engine {
         spdk_main_thread = std::thread([this, config]() {
             start_spdk_app(this, config, &(this->request_trigger));
         });
+
+        std::cout << "spdk_thread started in constructor" << std::endl;
     }
 
     SpdkEngine::~SpdkEngine() {
@@ -25,24 +27,34 @@ namespace Engine {
         const SpdkConfig& config,
         std::atomic<spdk_context_request*>* request_trigger
     ) {
-        spdk_app_opts opts = {};
-        spdk_context context = {};
+        struct spdk_app_opts opts = {};
+        struct spdk_context context = {};
 
         context.request_trigger = request_trigger;
         context.spdk_engine = spdk_engine;
 
+        std::cout << "before spdk_app_opts_init" << std::endl;
+
         spdk_app_opts_init(&opts, sizeof(opts));
         opts.name = "spdk_engine_bdev";
         opts.rpc_addr = nullptr;
-        opts.reactor_mask = config.reactor_mask.c_str();
         opts.json_config_file = config.json_config_file.c_str();
 
         context.bdev_name = strdup(config.bdev_name.c_str());
+
+        std::cout << opts.name << std::endl;
+        std::cout << opts.json_config_file << std::endl;
+        std::cout << context.bdev_name << std::endl;
+
+        std::cout << "after spdk_app_opts_init" << std::endl;
+        std::cout << "before spdk_app_start" << std::endl;
 
         int rc = spdk_app_start(&opts, start, &context);
         if (rc) {
             SPDK_ERRLOG("Error starting application\n");
         }
+
+        std::cout << "after spdk_app_start" << std::endl;
 
         free(context.bdev_name);
         spdk_dma_free(context.dma_buffer);
@@ -51,12 +63,17 @@ namespace Engine {
     }
 
     void SpdkEngine::start(void* ctx) {
+        std::cout << "init start\n" << std::endl;
         spdk_context* context = static_cast<spdk_context*>(ctx);
         context->bdev = nullptr;
         context->bdev_desc = nullptr;
 
+        std::cout << "init start" << std::endl;
+
         SPDK_NOTICELOG("Successfully started the application\n");
         SPDK_NOTICELOG("Opening the bdev %s\n", context->bdev_name);
+
+        std::cout << "before spdk_bdev_open_ext" << std::endl;
 
         int rc = spdk_bdev_open_ext(
             context->bdev_name,
@@ -66,9 +83,11 @@ namespace Engine {
             &context->bdev_desc
         );
 
+        std::cout << "after spdk_bdev_open_ext" << std::endl;
+
         if (rc) {
             SPDK_ERRLOG("Could not open bdev: %s\n", context->bdev_name);
-            spdk_app_stop(-1);
+            spdk_app_stop(-2);
             return;
         }
 

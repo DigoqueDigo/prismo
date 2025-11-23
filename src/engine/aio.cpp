@@ -42,13 +42,15 @@ namespace Engine {
 
     int AioEngine::open(Protocol::OpenRequest& request) {
         int fd = ::open(request.filename.c_str(), request.flags, request.mode);
-        if (fd < 0) throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
+        if (fd < 0)
+            throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
         return fd;
     }
 
     int AioEngine::close(Protocol::CloseRequest& request) {
         int ret = ::close(request.fd);
-        if (ret < 0) throw std::runtime_error("Failed to close fd: " + std::string(strerror(errno)));
+        if (ret < 0)
+            throw std::runtime_error("Failed to close fd: " + std::string(strerror(errno)));
         return ret;
     }
 

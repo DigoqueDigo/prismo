@@ -3,7 +3,7 @@
 namespace Engine {
 
     UringEngine::UringEngine(
-                std::unique_ptr<Metric::Metric> _metric,
+        std::unique_ptr<Metric::Metric> _metric,
         std::unique_ptr<Logger::Logger> _logger,
         const UringConfig& _config
     ) :

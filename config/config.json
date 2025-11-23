@@ -6,12 +6,12 @@
     "filename": "testfile",
     "block_size": 4096,
     "limit": 65536,
-    "metric": "none"
+    "metric": "full"
   },
 
   "operation": {
     "type": "constant",
-    "operation": "nop",
+    "operation": "write",
     "percentages": {
       "read": 50,
       "write": 50
@@ -37,7 +37,7 @@
   },
 
   "engine": {
-    "type": "posix",
+    "type": "spdk",
     "openflags": [
       "O_CREAT",
       "O_RDWR"
