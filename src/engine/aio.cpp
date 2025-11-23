@@ -16,7 +16,8 @@ namespace Engine {
         available_indexes()
     {
         int ret = io_queue_init(_config.entries, &io_context);
-        if (ret < 0) throw std::runtime_error("Aio queue init failed: " + std::string(strerror(-ret)));
+        if (ret < 0)
+            throw std::runtime_error("Aio queue init failed: " + std::string(strerror(-ret)));
 
         iocbs.resize(_config.entries);
         tasks.resize(_config.entries);
@@ -27,7 +28,8 @@ namespace Engine {
         for (uint32_t i = 0; i < _config.entries; i++) {
             available_indexes[i] = _config.entries - i - 1;
             tasks[i].buffer = std::malloc(_config.block_size);
-            if (!tasks[i].buffer) throw std::bad_alloc();
+            if (!tasks[i].buffer)
+                throw std::bad_alloc();
         }
     }
 

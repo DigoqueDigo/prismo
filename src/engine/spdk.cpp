@@ -38,9 +38,11 @@ namespace Engine {
         spdk_app_opts_init(&opts, sizeof(opts));
         opts.name = "spdk_engine_bdev";
         opts.rpc_addr = nullptr;
+        opts.reactor_mask = config.reactor_mask.c_str();
         opts.json_config_file = config.json_config_file.c_str();
 
-        context.bdev_name = strdup(config.bdev_name.c_str());
+        // context.bdev_name = strdup(config.bdev_name.c_str());
+        context.bdev_name = "Malloc0";
 
         std::cout << opts.name << std::endl;
         std::cout << opts.json_config_file << std::endl;
@@ -54,11 +56,17 @@ namespace Engine {
             SPDK_ERRLOG("Error starting application\n");
         }
 
-        std::cout << "after spdk_app_start" << std::endl;
+        SPDK_NOTICELOG("Exit spdk app\n");
 
-        free(context.bdev_name);
+        std::cout << context.bdev_name << std::endl;
+        std::cout << "_1" << std::endl;
+        // free(context.bdev_name);
+        std::cout << "_2" << std::endl;
         spdk_dma_free(context.dma_buffer);
+
+        std::cout << "_3" << std::endl;
         spdk_app_fini();
+        std::cout << "_4" << std::endl;
         return rc;
     }
 
@@ -67,8 +75,6 @@ namespace Engine {
         spdk_context* context = static_cast<spdk_context*>(ctx);
         context->bdev = nullptr;
         context->bdev_desc = nullptr;
-
-        std::cout << "init start" << std::endl;
 
         SPDK_NOTICELOG("Successfully started the application\n");
         SPDK_NOTICELOG("Opening the bdev %s\n", context->bdev_name);
@@ -101,15 +107,15 @@ namespace Engine {
         std::vector<spdk_context_t> spdk_context_ts;
         std::vector<spdk_context_t_cb> spdk_context_t_cbs;
 
-        int num_blocks = spdk_bdev_get_num_blocks(context->bdev);
+        size_t num_blocks = spdk_bdev_get_num_blocks(context->bdev);
         moodycamel::BlockingConcurrentQueue<int> available_indexes(num_blocks);
 
         spdk_thread* main_thread = spdk_get_thread();
         int total_threads = 1;
 
         for (int index = 0; index < total_threads; index++) {
-            SPDK_NOTICELOG("Creating spdk thread\n");
             std::string thread_name = "spdk_thread_" + std::to_string(index);
+            SPDK_NOTICELOG("Creating spdk thread: %s\n", thread_name.c_str());
             spdk_thread* thread = spdk_thread_create(thread_name.c_str(), nullptr);
 
             if (!thread) {
@@ -119,7 +125,7 @@ namespace Engine {
 
             spdk_set_thread(thread);
 
-            SPDK_NOTICELOG("Opening io channel\n");
+            SPDK_NOTICELOG("Opening io channel: %s\n", thread_name.c_str());
             spdk_io_channel* io_channel = spdk_bdev_get_io_channel(context->bdev_desc);
             spdk_context_t context_t = {};
 
@@ -137,16 +143,25 @@ namespace Engine {
                 return;
             }
 
+            spdk_threads.push_back(thread);
             spdk_context_ts.push_back(context_t);
         }
 
+        SPDK_NOTICELOG("Before spdk_bdev_get_buf_align\n");
+
         size_t buf_align = spdk_bdev_get_buf_align(context->bdev);
-        size_t buf_size =
+        size_t block_size =
             spdk_bdev_get_block_size(context->bdev) *
-            spdk_bdev_get_write_unit_size(context->bdev) *
-            spdk_bdev_get_num_blocks(context->bdev);
+            spdk_bdev_get_write_unit_size(context->bdev);
+
+        size_t buf_size = block_size * num_blocks;
+
+        SPDK_NOTICELOG("After spdk_bdev_get_buf_align\n");
+        SPDK_NOTICELOG("Before spdk_dma_zmalloc\n");
 
         context->dma_buffer = (uint8_t*) spdk_dma_zmalloc(buf_size, buf_align, nullptr);
+        SPDK_NOTICELOG("After spdk_dma_zmalloc\n");
+        SPDK_NOTICELOG("spdk_dma_zmalloc buffer size: %ld\n", buf_size);
 
         if (!context->dma_buffer) {
             SPDK_ERRLOG("Failed to allocate buffer\n");
@@ -161,7 +176,7 @@ namespace Engine {
             return;
         }
 
-        for (int index = 0; index < num_blocks; index++) {
+        for (size_t index = 0; index < num_blocks; index++) {
             spdk_context_t_cb context_t_cb = {};
             context_t_cb.free_index = 0;
             context_t_cb.metrics_mutex = &metrics_mutex;
@@ -170,51 +185,115 @@ namespace Engine {
 
             available_indexes.enqueue(index);
             spdk_context_t_cbs.push_back(context_t_cb);
-            dma_zones.push_back(context->dma_buffer + index);
+            dma_zones.push_back(context->dma_buffer + (index * block_size));
         }
 
-        for (int thread_index = 0; true; thread_index = (thread_index + 1) % total_threads) {
+
+        for (int thread_index = 0, iter = 0; true; thread_index = (thread_index + 1) % total_threads, iter++) {
+            SPDK_NOTICELOG("Wait for trigger in thread index: %d :: iteration: %d\n", thread_index, iter);
             context->request_trigger->wait(nullptr);
 
             if (context->request_trigger->load()->isShutdown) {
+                SPDK_NOTICELOG("Receive shutdown\n");
                 break;
             }
 
             int free_index = 0;
             available_indexes.wait_dequeue(free_index);
+            SPDK_NOTICELOG("Free index: %d\n", free_index);
 
-            spdk_context_t& ctx = spdk_context_ts[thread_index];
-            ctx.ctx_t_cb = &spdk_context_t_cbs[free_index];
+            SPDK_NOTICELOG("A\n");
+            spdk_context_t& context_t = spdk_context_ts[thread_index];
+            context_t.request = context->request_trigger->load(std::memory_order_acquire)->request;
 
-            if (ctx.request->operation == Operation::OperationType::WRITE) {
-                std::memcpy(dma_zones[free_index], ctx.request->buffer, ctx.request->size);
+            SPDK_NOTICELOG("B\n");
+            context_t.ctx_t_cb = &spdk_context_t_cbs[free_index];
+            SPDK_NOTICELOG("C\n");
+
+            std::cout << context_t.request << std::endl;
+            std::cout << static_cast<int>(context_t.request->operation) << std::endl;
+            SPDK_NOTICELOG("C\n");
+
+
+            if (context_t.request->operation == Operation::OperationType::WRITE) {
+                SPDK_NOTICELOG("before Memcopy to dma zone with index: %d\n", free_index);
+                std::memcpy(dma_zones[free_index], context_t.request->buffer, context_t.request->size);
+                SPDK_NOTICELOG("Memcopy to dma zone with index: %d\n", free_index);
             }
 
-            ctx.request->buffer = dma_zones[free_index];
-            ctx.ctx_t_cb->free_index = free_index;
-            ctx.submitted->store(false, std::memory_order_release);
-            spdk_thread_send_msg(spdk_threads[thread_index], thread_fn, &ctx);
+            SPDK_NOTICELOG("D\n");
+            context_t.request->buffer = dma_zones[free_index];
+            SPDK_NOTICELOG("E\n");
+            context_t.ctx_t_cb->free_index = free_index;
+            SPDK_NOTICELOG("F\n");
+            context_t.submitted->store(false, std::memory_order_release);
+            SPDK_NOTICELOG("G\n");
 
-            ctx.submitted->wait(false);
+            std::cout << spdk_threads.size() << std::endl;
+
+            SPDK_NOTICELOG("Send message to thread: %s\n", spdk_thread_get_name(spdk_threads[thread_index]));
+            spdk_thread_send_msg(
+                spdk_threads[thread_index],
+                thread_fn,
+                &context_t
+            );
+
+            SPDK_NOTICELOG("Wait for submmit in thread: %s\n", spdk_thread_get_name(spdk_get_thread()));
+
+            while (!context_t.submitted->load(std::memory_order_acquire)) {
+                for (auto& thread : spdk_threads) {
+                    spdk_thread_poll(thread, 0, 0);
+                }
+            }
+
             context->request_trigger->store(nullptr, std::memory_order_release);
             context->request_trigger->notify_one();
         }
+
+        while (available_indexes.size_approx() != num_blocks) {
+            for (auto& thread : spdk_threads) {
+                spdk_thread_poll(thread, 0, 0);
+            }
+        }
+
+        std::cout << "A notificar" << std::endl;
+        context->request_trigger->store(nullptr, std::memory_order_release);
+        context->request_trigger->notify_one();
 
         for (int index = 0; index < total_threads; index++) {
             spdk_thread* thread = spdk_threads[index];
             spdk_set_thread(thread);
             spdk_put_io_channel(spdk_context_ts[index].bdev_io_channel);
+            spdk_thread_poll(thread, 0, 0);
             spdk_thread_exit(thread);
+            while (!spdk_thread_is_exited(thread)) {
+                std::cout << "exited: " << spdk_thread_is_exited(thread) << std::endl;
+            }
         }
 
-        spdk_bdev_close(context->bdev_desc);
-        spdk_app_stop(0);
+        spdk_set_thread(main_thread);
 
-        context->request_trigger->store(nullptr, std::memory_order_release);
-        context->request_trigger->notify_one();
+        // for (auto& thread : spdk_threads) {
+        //     spdk_thread_exit(thread);
+        //     spdk_thread_poll(thread, 0, 0);
+        //     // while (!spdk_thread_is_exited(thread)) {
+        //     //     std::cout << "exited: " << spdk_thread_is_exited(thread) << std::endl;
+        //     // }
+        // }
+
+        std::cout << "NAAAAAAAAAAAAAAAAA" << std::endl;
+        spdk_bdev_close(context->bdev_desc);
+        std::cout << "NOOOOOOOOOOOOOOOOO" << std::endl;
+        spdk_app_stop(0);
+        std::cout << "NOOOOOOOOOOOOOOOOO" << std::endl;
     }
 
     void SpdkEngine::thread_fn(void *ctx_t) {
+
+        std::cout << "FOOOOOOOOOOOOO" << std::endl;
+        spdk_thread *thread = spdk_get_thread();
+        SPDK_NOTICELOG("Current SPDK thread name: %s\n", spdk_thread_get_name(thread));
+
         int rc = 0;
         spdk_context_t* context_t = static_cast<spdk_context_t*>(ctx_t);
         spdk_context_t_cb* context_t_cb = context_t->ctx_t_cb;
@@ -367,16 +446,22 @@ namespace Engine {
     }
 
     void SpdkEngine::submit(Protocol::CommonRequest& request) {
+        std::cout << "submit init" << std::endl;
         pending_request.isShutdown = false;
         pending_request.request = &request;
         request_trigger.store(&pending_request, std::memory_order_release);
+        request_trigger.notify_one();
         request_trigger.wait(&pending_request);
+        std::cout << "submit end" << std::endl;
     };
 
     void SpdkEngine::reap_left_completions(void) {
+        std::cout << "reap leaf completions init" << std::endl;
         pending_request.isShutdown = true;
         pending_request.request = nullptr;
         request_trigger.store(&pending_request, std::memory_order_release);
+        request_trigger.notify_one();
         request_trigger.wait(&pending_request);
+        std::cout << "reap leaf completions end" << std::endl;
     };
 };

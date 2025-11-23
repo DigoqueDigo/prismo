@@ -16,7 +16,8 @@ namespace Engine {
     {
         UringConfig config = _config;
         int ret = io_uring_queue_init_params(config.entries, &ring, &config.params);
-        if (ret) throw std::runtime_error("Uring initialization failed: " + std::string(strerror(ret)));
+        if (ret)
+            throw std::runtime_error("Uring initialization failed: " + std::string(strerror(ret)));
 
         iovecs.resize(config.params.sq_entries);
         user_data.resize(config.params.sq_entries);
@@ -27,7 +28,8 @@ namespace Engine {
             available_indexes[index] = config.params.sq_entries - index - 1;
             iovecs[index].iov_len = config.block_size;
             iovecs[index].iov_base = std::malloc(config.block_size);
-            if (!iovecs[index].iov_base) throw std::bad_alloc();
+            if (!iovecs[index].iov_base)
+                throw std::bad_alloc();
         }
 
         ret = io_uring_register_buffers(&ring, iovecs.data(), config.params.sq_entries);
