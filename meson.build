@@ -230,6 +230,8 @@ prismo = executable(
     dpdk_libs,
     spdk_libs,
     '-Wl,--no-whole-archive',
+    '-fsanitize=address',
+    '-fno-omit-frame-pointer',
   ],
   install : true,
 )

@@ -2,7 +2,7 @@
   "job": {
     "name": "job",
     "numjobs": 1,
-    "iterations": 0,
+    "iterations": 1,
     "filename": "testfile",
     "block_size": 4096,
     "limit": 65536,
