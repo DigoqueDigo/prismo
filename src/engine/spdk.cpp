@@ -174,7 +174,7 @@ namespace Engine {
                 std::memcpy(dma_zones[free_index], context_t.request->buffer, context_t.request->size);
             }
 
-            context_t.request->buffer = dma_zones[free_index];
+            context_t.request->buffer = dma_zones[free_index]; // FIXME :: vai dar double free
             context_t.ctx_t_cb->free_index = free_index;
             context_t.submitted->store(false, std::memory_order_release);
 
@@ -388,11 +388,13 @@ namespace Engine {
 
     void SpdkEngine::submit(Protocol::CommonRequest& request) {
         std::cout << "submit init" << std::endl;
+        std::cout << &request << std::endl;
         pending_request.isShutdown = false;
         pending_request.request = &request;
         request_trigger.store(&pending_request, std::memory_order_release);
         request_trigger.notify_one();
         request_trigger.wait(&pending_request);
+        std::cout << &request << std::endl;
         std::cout << "submit end" << std::endl;
     };
 

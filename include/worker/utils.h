@@ -37,7 +37,7 @@ namespace Worker {
         size_t size = queue.size_approx();
         for (size_t index = 0; index < size; index++) {
             queue.wait_dequeue(packet);
-            std::free(packet->request.buffer);
+            std::free(packet->request.buffer); // FIXME :: esta merda está a dar erro com o spdk doule free()
             std::free(packet);
         }
     }
