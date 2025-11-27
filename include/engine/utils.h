@@ -37,13 +37,18 @@ namespace Engine {
     struct MetricData {
         size_t size;
         off_t offset;
-        uint32_t index;
         int64_t start_timestamp;
         Operation::OperationType operation_type;
     };
 
+    struct UringUserData {
+        int index;
+        struct MetricData metric_data;
+    };
+
     struct AioTask {
         void* buffer;
+        uint32_t index;
         struct MetricData metric_data;
     };
 

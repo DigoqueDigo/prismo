@@ -91,7 +91,7 @@ namespace Engine {
         available_indexes.pop_back();
 
         AioTask& aio_task = tasks[free_index];
-        aio_task.metric_data.index = free_index;
+        aio_task.index = free_index;
         aio_task.metric_data.size = request.size;
         aio_task.metric_data.offset = request.offset;
         aio_task.metric_data.operation_type = request.operation;
@@ -139,7 +139,7 @@ namespace Engine {
             );
 
             Engine::logger->info(*Engine::metric);
-            available_indexes.push_back(completed_task->metric_data.index);
+            available_indexes.push_back(completed_task->index);
         }
     }
 

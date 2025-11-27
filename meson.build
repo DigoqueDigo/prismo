@@ -232,6 +232,7 @@ prismo = executable(
     '-Wl,--no-whole-archive',
     '-fsanitize=address',
     '-fno-omit-frame-pointer',
+    '-latomic',
   ],
   install : true,
 )
