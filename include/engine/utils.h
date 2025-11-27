@@ -31,9 +31,10 @@ namespace Engine {
         std::string bdev_name;
         std::string reactor_mask;
         std::string json_config_file;
+        uint8_t spdk_threads;
     };
 
-    struct UringUserData {
+    struct MetricData {
         size_t size;
         off_t offset;
         uint32_t index;
@@ -43,11 +44,7 @@ namespace Engine {
 
     struct AioTask {
         void* buffer;
-        size_t size;
-        off_t offset;
-        uint32_t index;
-        int64_t start_timestamp;
-        Operation::OperationType operation_type;
+        struct MetricData metric_data;
     };
 
     void from_json(const json& j, OpenFlags& config);

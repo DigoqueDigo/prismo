@@ -10,7 +10,7 @@ namespace Engine {
         Engine(std::move(_metric), std::move(_logger)),
         ring(),
         iovecs(),
-        user_data(),
+        metric_datas(),
         available_indexes(),
         completed_cqes()
     {
@@ -20,7 +20,7 @@ namespace Engine {
             throw std::runtime_error("Uring initialization failed: " + std::string(strerror(ret)));
 
         iovecs.resize(config.params.sq_entries);
-        user_data.resize(config.params.sq_entries);
+        metric_datas.resize(config.params.sq_entries);
         available_indexes.resize(config.params.sq_entries);
         completed_cqes.resize(config.params.cq_entries);
 
@@ -106,12 +106,12 @@ namespace Engine {
         free_index = available_indexes.back();
         available_indexes.pop_back();
 
-        UringUserData& uring_user_data = user_data[free_index];
-        uring_user_data.index = free_index;
-        uring_user_data.size = request.size;
-        uring_user_data.offset = request.offset;
-        uring_user_data.operation_type = request.operation;
-        uring_user_data.start_timestamp = Metric::get_current_timestamp();
+        MetricData& metric_data = metric_datas[free_index];
+        metric_data.index = free_index;
+        metric_data.size = request.size;
+        metric_data.offset = request.offset;
+        metric_data.operation_type = request.operation;
+        metric_data.start_timestamp = Metric::get_current_timestamp();
 
         switch (request.operation) {
             case Operation::OperationType::READ:
@@ -129,11 +129,9 @@ namespace Engine {
             case Operation::OperationType::NOP:
                 this->nop(sqe);
                 break;
-            default:
-                throw std::invalid_argument("Unsupported operation type by UringEngine");
         }
 
-        io_uring_sqe_set_data(sqe, &uring_user_data);
+        io_uring_sqe_set_data(sqe, &metric_data);
         sqe->flags |= IOSQE_FIXED_FILE;
     }
 
@@ -147,20 +145,20 @@ namespace Engine {
 
         for (int i = 0; i < completions; i++) {
             io_uring_cqe* cqe = completed_cqes[i];
-            UringUserData* ud = static_cast<UringUserData*>(io_uring_cqe_get_data(cqe));
+            MetricData* metric_data = static_cast<MetricData*>(io_uring_cqe_get_data(cqe));
 
             Metric::fill_metric(
                 *Engine::metric,
-                ud->operation_type,
-                ud->start_timestamp,
+                metric_data->operation_type,
+                metric_data->start_timestamp,
                 Metric::get_current_timestamp(),
                 cqe->res,
-                ud->size,
-                ud->offset
+                metric_data->size,
+                metric_data->offset
             );
 
             Engine::logger->info(*Engine::metric);
-            available_indexes.push_back(ud->index);
+            available_indexes.push_back(metric_data->index);
             io_uring_cqe_seen(&ring, cqe);
         }
     }

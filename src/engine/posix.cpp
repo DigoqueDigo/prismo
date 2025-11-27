@@ -65,8 +65,6 @@ namespace Engine {
             case Operation::OperationType::NOP:
                 result = this->nop();
                 break;
-            default:
-                throw std::invalid_argument("Unsupported operation type by PosixEngine");
         }
 
         Metric::fill_metric(

@@ -91,11 +91,11 @@ namespace Engine {
         available_indexes.pop_back();
 
         AioTask& aio_task = tasks[free_index];
-        aio_task.index = free_index;
-        aio_task.size = request.size;
-        aio_task.offset = request.offset;
-        aio_task.operation_type = request.operation;
-        aio_task.start_timestamp = Metric::get_current_timestamp();
+        aio_task.metric_data.index = free_index;
+        aio_task.metric_data.size = request.size;
+        aio_task.metric_data.offset = request.offset;
+        aio_task.metric_data.operation_type = request.operation;
+        aio_task.metric_data.start_timestamp = Metric::get_current_timestamp();
 
         switch (request.operation) {
             case Operation::OperationType::READ:
@@ -113,8 +113,6 @@ namespace Engine {
             case Operation::OperationType::NOP:
                 this->nop(request, free_index);
                 break;
-            default:
-                throw std::invalid_argument("Unsupported operation type by AioEngine");
         }
 
         iocbs[free_index].data = &aio_task;
@@ -132,16 +130,16 @@ namespace Engine {
 
             Metric::fill_metric(
                 *Engine::metric,
-                completed_task->operation_type,
-                completed_task->start_timestamp,
+                completed_task->metric_data.operation_type,
+                completed_task->metric_data.start_timestamp,
                 Metric::get_current_timestamp(),
                 ev.res,
-                completed_task->size,
-                completed_task->offset
+                completed_task->metric_data.size,
+                completed_task->metric_data.offset
             );
 
             Engine::logger->info(*Engine::metric);
-            available_indexes.push_back(completed_task->index);
+            available_indexes.push_back(completed_task->metric_data.index);
         }
     }
 

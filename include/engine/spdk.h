@@ -25,6 +25,7 @@ namespace Engine {
         char* bdev_name;
         uint8_t* dma_buffer;
         void* spdk_engine;
+        int spdk_threads;
         std::atomic<spdk_context_request*>* request_trigger;
     };
 
@@ -72,8 +73,8 @@ namespace Engine {
             );
 
             static void thread_fn(void* ctx_t);
-            static void cleanup_and_exit(void* thread);
-            static void thread_cleanup(struct spdk_thread* thread, struct spdk_io_channel* ch);
+            static void thread_setup(void* ctx_t);
+            static void thread_cleanup(void* ctx_t);
 
             static int thread_read(spdk_context_t* ctx_t, spdk_context_t_cb* ctx_t_cb);
             static int thread_write(spdk_context_t* ctx_t, spdk_context_t_cb* ctx_t_cb);

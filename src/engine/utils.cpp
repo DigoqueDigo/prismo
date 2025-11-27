@@ -66,5 +66,6 @@ namespace Engine {
         j.at("bdev_name").get_to(config.bdev_name);
         j.at("reactor_mask").get_to(config.reactor_mask);
         j.at("json_config_file").get_to(config.json_config_file);
+        j.at("spdk_threads").get_to(config.spdk_threads);
     }
 };

@@ -19,7 +19,7 @@ namespace Engine {
         private:
             io_uring ring;
             std::vector<iovec> iovecs;
-            std::vector<UringUserData> user_data;
+            std::vector<MetricData> metric_datas;
             std::vector<uint32_t> available_indexes;
             std::vector<io_uring_cqe*> completed_cqes;
 
