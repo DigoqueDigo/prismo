@@ -23,6 +23,8 @@ namespace Engine {
         bool is_shutdown;
         bool has_completed;
         Protocol::CommonRequest* request;
+
+        auto operator<=>(const TriggerData&) const = default;
     };
 
     struct SpdkAppContext {
@@ -78,16 +80,63 @@ namespace Engine {
                 void* cb_arg
             );
 
-            static void spdk_main_fn(void* app_ctx);
+            static void thread_main_fn(void* app_ctx);
             static void thread_fn(void* thread_ctx);
-            static void thread_setup(void* thread_ctx);
-            static void thread_cleanup(void* thread_ctx);
+
+            static void thread_setup_io_channel_cb(void* thread_ctx);
+            static void thread_cleanup_cb(void* thread_ctx);
+
+            static void init_threads(
+                std::vector<spdk_thread*>& workers
+            );
+
+            static void init_thread_contexts(
+                SpdkAppContext* app_context,
+                std::atomic<bool>& submitted,
+                std::vector<spdk_thread*>& workers,
+                std::vector<SpdkThreadContext>& thread_contexts
+            );
+
+
+            static void init_thread_cb_contexts(
+                SpdkAppContext* app_context,
+                moodycamel::BlockingConcurrentQueue<int>& available_indexes,
+                std::vector<SpdkThreadCallBackContext>& thread_cb_contexts
+            );
+
+            static void init_available_indexes(
+                int total_indexes,
+                moodycamel::BlockingConcurrentQueue<int>& available_indexes
+            );
+
+            static void* allocate_dma_buffer(
+                SpdkAppContext* app_context,
+                size_t num_blocks,
+                size_t block_size
+            );
+
+            static void thread_main_dispatch(
+                SpdkAppContext* app_context,
+                std::vector<spdk_thread*>& workers,
+                std::vector<SpdkThreadContext>& thread_contexts,
+                std::vector<SpdkThreadCallBackContext>& thread_cb_contexts,
+                moodycamel::BlockingConcurrentQueue<int>& available_indexes,
+                uint8_t* dma_buf,
+                int block_size
+            );
+
+            static void threads_cleanup(
+                std::vector<spdk_thread*>& workers,
+                std::vector<SpdkThreadContext>& thread_contexts
+            );
 
             static int thread_read(SpdkThreadContext* thread_ctx);
             static int thread_write(SpdkThreadContext* thread_ctx);
             static int thread_fsync(SpdkThreadContext* thread_ctx);
             static int thread_fdatasync(SpdkThreadContext* thread_ctx);
             static int thread_nop(SpdkThreadContext* thread_ctx);
+
+            void publish_and_wait(const TriggerData& snap);
 
         public:
             explicit SpdkEngine(
