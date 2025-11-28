@@ -21,7 +21,7 @@ namespace Engine {
     struct TriggerData {
         bool has_next;
         bool is_shutdown;
-        bool has_completed;
+        bool has_submitted;
         Protocol::CommonRequest* request;
 
         auto operator<=>(const TriggerData&) const = default;
@@ -94,14 +94,14 @@ namespace Engine {
                 SpdkAppContext* app_context,
                 std::atomic<bool>& submitted,
                 std::vector<spdk_thread*>& workers,
-                std::vector<SpdkThreadContext>& thread_contexts
+                std::vector<SpdkThreadContext*>& thread_contexts
             );
 
 
             static void init_thread_cb_contexts(
                 SpdkAppContext* app_context,
-                moodycamel::BlockingConcurrentQueue<int>& available_indexes,
-                std::vector<SpdkThreadCallBackContext>& thread_cb_contexts
+                std::vector<SpdkThreadCallBackContext*>& thread_cb_contexts,
+                moodycamel::BlockingConcurrentQueue<int>& available_indexes
             );
 
             static void init_available_indexes(
@@ -118,8 +118,8 @@ namespace Engine {
             static void thread_main_dispatch(
                 SpdkAppContext* app_context,
                 std::vector<spdk_thread*>& workers,
-                std::vector<SpdkThreadContext>& thread_contexts,
-                std::vector<SpdkThreadCallBackContext>& thread_cb_contexts,
+                std::vector<SpdkThreadContext*>& thread_contexts,
+                std::vector<SpdkThreadCallBackContext*>& thread_cb_contexts,
                 moodycamel::BlockingConcurrentQueue<int>& available_indexes,
                 uint8_t* dma_buf,
                 int block_size
@@ -127,7 +127,7 @@ namespace Engine {
 
             static void threads_cleanup(
                 std::vector<spdk_thread*>& workers,
-                std::vector<SpdkThreadContext>& thread_contexts
+                std::vector<SpdkThreadContext*>& thread_contexts
             );
 
             static int thread_read(SpdkThreadContext* thread_ctx);
