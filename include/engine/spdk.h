@@ -30,11 +30,9 @@ namespace Engine {
     struct SpdkAppContext {
         spdk_bdev* bdev;
         spdk_bdev_desc* bdev_desc;
+        const SpdkConfig config;
 
-        char* bdev_name;
         void* spdk_engine;
-        int spdk_threads;
-
         std::atomic<TriggerData>* trigger_atomic;
     };
 
@@ -44,6 +42,8 @@ namespace Engine {
 
         int index;
         moodycamel::BlockingConcurrentQueue<int>* available_indexes;
+
+        std::atomic<int>* out_standing;
     };
 
     struct SpdkThreadContext {
@@ -87,6 +87,7 @@ namespace Engine {
             static void thread_cleanup_cb(void* thread_ctx);
 
             static void init_threads(
+                uint32_t reactor_cores,
                 std::vector<spdk_thread*>& workers
             );
 
@@ -101,7 +102,8 @@ namespace Engine {
             static void init_thread_cb_contexts(
                 SpdkAppContext* app_context,
                 std::vector<SpdkThreadCallBackContext*>& thread_cb_contexts,
-                moodycamel::BlockingConcurrentQueue<int>& available_indexes
+                moodycamel::BlockingConcurrentQueue<int>& available_indexes,
+                std::atomic<int>& out_standing
             );
 
             static void init_available_indexes(

@@ -67,5 +67,38 @@ namespace Engine {
         j.at("reactor_mask").get_to(config.reactor_mask);
         j.at("json_config_file").get_to(config.json_config_file);
         j.at("spdk_threads").get_to(config.spdk_threads);
+
+        char* endptr = nullptr;
+        uint64_t mask = strtoull(config.reactor_mask.c_str(), &endptr, 0);
+
+        if (*endptr != '\0') {
+            throw std::invalid_argument("Invalid reactor mask string: " + config.reactor_mask);
+        }
+
+        if (count_set_bits(mask) < 2) {
+            throw std::runtime_error("Reactor mask must have at least 2 cores selected");
+        }
+
+        std::vector<uint32_t> pinned_cores = get_pinned_cores(mask);
+        std::copy(pinned_cores.begin(), pinned_cores.end(), config.pinned_cores.begin());
+    }
+
+    int count_set_bits(uint64_t mask) {
+        int count = 0;
+        while (mask) {
+            mask &= (mask - 1);
+            count++;
+        }
+        return count;
+    }
+
+    std::vector<uint32_t> get_pinned_cores(uint64_t mask) {
+        std::vector<uint32_t> cores;
+        for (int i = 0; i < MAX_CORES; i++) {
+            if (mask & (1ULL << i)) {
+                cores.push_back(i);
+            }
+        }
+        return cores;
     }
 };
