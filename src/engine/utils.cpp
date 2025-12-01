@@ -75,26 +75,25 @@ namespace Engine {
             throw std::invalid_argument("Invalid reactor mask string: " + config.reactor_mask);
         }
 
-        if (count_set_bits(mask) < 2) {
-            throw std::runtime_error("Reactor mask must have at least 2 cores selected");
-        }
-
         std::vector<uint32_t> pinned_cores = get_pinned_cores(mask);
-        std::copy(pinned_cores.begin(), pinned_cores.end(), config.pinned_cores.begin());
-    }
-
-    int count_set_bits(uint64_t mask) {
-        int count = 0;
-        while (mask) {
-            mask &= (mask - 1);
-            count++;
+        config.pinned_cores.clear();
+        for (const auto& core : pinned_cores) {
+            config.pinned_cores.push_back(core);
         }
-        return count;
+
+        if (config.pinned_cores.size() < 2) {
+            throw std::runtime_error("Reactor mask must have at least 2 pinned cores");
+        }
+
+        for (auto a : config.pinned_cores) {
+            std::cout << a << std::endl;
+        }
     }
 
     std::vector<uint32_t> get_pinned_cores(uint64_t mask) {
         std::vector<uint32_t> cores;
-        for (int i = 0; i < MAX_CORES; i++) {
+        long num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+        for (int i = 0; i < num_cores; i++) {
             if (mask & (1ULL << i)) {
                 cores.push_back(i);
             }

@@ -85,7 +85,6 @@ namespace Engine {
 
         int total_workers = app_context->config.spdk_threads;
         size_t total_blocks = spdk_bdev_get_num_blocks(app_context->bdev);
-        uint32_t reactor_cores = spdk_env_get_core_count();
 
         std::vector<spdk_thread*> workers(total_workers);
         std::vector<SpdkThreadContext*> thread_contexts(total_workers);
@@ -93,17 +92,16 @@ namespace Engine {
         moodycamel::BlockingConcurrentQueue<int> available_indexes(total_blocks);
 
         SPDK_NOTICELOG("[INIT] Initializing SPDK worker threads\n");
-        // NOTE: passar as thread que estão pinned
-        init_threads(reactor_cores, workers);
+        init_threads(app_context->config.pinned_cores, workers);
 
         SPDK_NOTICELOG("[INIT] Initializing SPDK thread contexts\n");
-        init_thread_contexts(app_context, submitted, workers, thread_contexts);
+        init_thread_contexts(app_context, &submitted, workers, thread_contexts);
 
         SPDK_NOTICELOG("[INIT] Initializing available indexes queue\n");
         init_available_indexes(total_blocks, available_indexes);
 
         SPDK_NOTICELOG("[INIT] Initializing SPDK thread callback contexts\n");
-        init_thread_cb_contexts(app_context, thread_cb_contexts, available_indexes, out_standing);
+        init_thread_cb_contexts(app_context, thread_cb_contexts, available_indexes, &out_standing);
 
         SPDK_NOTICELOG("[ALLOC] Allocating DMA buffer for I/O operations\n");
         size_t block_size =
@@ -155,23 +153,19 @@ namespace Engine {
     }
 
     void SpdkEngine::init_threads(
-        uint32_t reactor_cores,
+        std::vector<uint32_t> pinned_cores,
         std::vector<spdk_thread*>& workers
     ) {
-        uint32_t core = 1;
-        for (size_t i = 0; i < workers.size(); i++, core = core % (reactor_cores - 1) + 1) {
+        for (size_t i = 0; i < workers.size(); i++) {
             spdk_cpuset mask{};
+            uint32_t core = pinned_cores[i % (pinned_cores.size() - 1) + 1];
+
             spdk_cpuset_zero(&mask);
             spdk_cpuset_set_cpu(&mask, core, true);
 
             std::string name = "worker" + std::to_string(i);
             spdk_thread* worker = spdk_thread_create(name.c_str(), &mask);
-
-            SPDK_NOTICELOG(
-                "[CREATE] Creating SPDK thread '%s' on core %u\n",
-                name.c_str(),
-                spdk_cpuset_count(&mask) ? spdk_cpuset_get_cpu(&mask, core) : 0
-            );
+            SPDK_NOTICELOG("[CREATE] Creating SPDK thread '%s' on core %u\n", name.c_str(), core);
 
             if (!worker) {
                 SPDK_ERRLOG("[ERROR] Failed to create SPDK thread '%s'\n", name.c_str());
@@ -186,7 +180,7 @@ namespace Engine {
 
     void SpdkEngine::init_thread_contexts(
         SpdkAppContext* app_context,
-        std::atomic<bool>& submitted,
+        std::atomic<bool>* submitted,
         std::vector<spdk_thread*>& workers,
         std::vector<SpdkThreadContext*>& thread_contexts
     ) {
@@ -199,7 +193,7 @@ namespace Engine {
 
             thread_context->bdev = app_context->bdev;
             thread_context->bdev_desc = app_context->bdev_desc;
-            thread_context->submitted = &submitted;
+            thread_context->submitted = submitted;
             thread_context->bdev_io_channel = nullptr;
             thread_contexts[i] = thread_context;
 
@@ -240,7 +234,7 @@ namespace Engine {
         SpdkAppContext* app_context,
         std::vector<SpdkThreadCallBackContext*>& thread_cb_contexts,
         moodycamel::BlockingConcurrentQueue<int>& available_indexes,
-        std::atomic<int>& out_standing
+        std::atomic<int>* out_standing
     ) {
         SPDK_NOTICELOG("[INIT] Initializing %zu callback contexts\n", thread_cb_contexts.size());
         for (size_t i = 0; i < thread_cb_contexts.size(); i++) {
@@ -249,7 +243,7 @@ namespace Engine {
 
             thread_cb_context->spdk_engine = app_context->spdk_engine;
             thread_cb_context->available_indexes = &available_indexes;
-            thread_cb_context->out_standing = &out_standing;
+            thread_cb_context->out_standing = out_standing;
             thread_cb_contexts[i] = thread_cb_context;
         }
         SPDK_NOTICELOG("[READY] Callback contexts initialized\n");
@@ -423,7 +417,12 @@ namespace Engine {
 
         SpdkThreadContext* thread_context = static_cast<SpdkThreadContext*>(thread_ctx);
 
-        SPDK_NOTICELOG("[THREAD %s | CORE %u] Processing request\n", thread_name, core);
+        SPDK_NOTICELOG(
+            "[THREAD %s | CORE %u] Writing %zu bytes at offset %lu\n",
+            thread_name, core,
+            thread_context->request->size,
+            thread_context->request->offset
+        );
 
         int rc = 0;
 
@@ -478,17 +477,6 @@ namespace Engine {
     }
 
     int SpdkEngine::thread_read(SpdkThreadContext* thread_ctx) {
-        spdk_thread* thread = spdk_get_thread();
-        const char* thread_name = spdk_thread_get_name(thread);
-        uint32_t core = spdk_env_get_current_core();
-
-        SPDK_NOTICELOG(
-            "[THREAD %s | CORE %u] Writing %zu bytes at offset %lu\n",
-            thread_name, core,
-            thread_ctx->request->size,
-            thread_ctx->request->offset
-        );
-
         return spdk_bdev_read(
             thread_ctx->bdev_desc,
             thread_ctx->bdev_io_channel,
@@ -501,16 +489,6 @@ namespace Engine {
     }
 
     int SpdkEngine::thread_write(SpdkThreadContext* thread_ctx) {
-        spdk_thread* thread = spdk_get_thread();
-        const char* thread_name = spdk_thread_get_name(thread);
-        uint32_t core = spdk_env_get_current_core();
-
-        SPDK_NOTICELOG(
-            "[THREAD %s | CORE %u] Writing %zu bytes at offset %lu\n",
-            thread_name, core,
-            thread_ctx->request->size,
-            thread_ctx->request->offset);
-
         return spdk_bdev_write(
             thread_ctx->bdev_desc,
             thread_ctx->bdev_io_channel,
@@ -523,17 +501,6 @@ namespace Engine {
     }
 
     int SpdkEngine::thread_fsync(SpdkThreadContext* thread_ctx) {
-        spdk_thread* thread = spdk_get_thread();
-        const char* thread_name = spdk_thread_get_name(thread);
-        uint32_t core = spdk_env_get_current_core();
-
-        SPDK_NOTICELOG(
-            "[THREAD %s | CORE %u] Flushing %zu bytes at offset %lu\n",
-            thread_name, core,
-            thread_ctx->request->size,
-            thread_ctx->request->offset
-        );
-
         return spdk_bdev_flush(
             thread_ctx->bdev_desc,
             thread_ctx->bdev_io_channel,
@@ -545,28 +512,10 @@ namespace Engine {
     }
 
     int SpdkEngine::thread_fdatasync(SpdkThreadContext* thread_ctx) {
-        spdk_thread* thread = spdk_get_thread();
-        const char* thread_name = spdk_thread_get_name(thread);
-        uint32_t core = spdk_env_get_current_core();
-
-        SPDK_NOTICELOG(
-            "[THREAD %s | CORE %u] Performing fdatasync (flush)\n",
-            thread_name, core
-        );
-
         return thread_fsync(thread_ctx);
     }
 
     int SpdkEngine::thread_nop(SpdkThreadContext* thread_ctx) {
-        spdk_thread* thread = spdk_get_thread();
-        const char* thread_name = spdk_thread_get_name(thread);
-        uint32_t core = spdk_env_get_current_core();
-
-        SPDK_NOTICELOG(
-            "[THREAD %s | CORE %u] NOP operation\n",
-            thread_name, core
-        );
-
         io_complete(nullptr, true, thread_ctx->thread_cb_ctx);
         return 0;
     }

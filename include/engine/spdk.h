@@ -41,9 +41,8 @@ namespace Engine {
         MetricData metric_data;
 
         int index;
-        moodycamel::BlockingConcurrentQueue<int>* available_indexes;
-
         std::atomic<int>* out_standing;
+        moodycamel::BlockingConcurrentQueue<int>* available_indexes;
     };
 
     struct SpdkThreadContext {
@@ -87,13 +86,13 @@ namespace Engine {
             static void thread_cleanup_cb(void* thread_ctx);
 
             static void init_threads(
-                uint32_t reactor_cores,
+                std::vector<uint32_t> pinned_cores,
                 std::vector<spdk_thread*>& workers
             );
 
             static void init_thread_contexts(
                 SpdkAppContext* app_context,
-                std::atomic<bool>& submitted,
+                std::atomic<bool>* submitted,
                 std::vector<spdk_thread*>& workers,
                 std::vector<SpdkThreadContext*>& thread_contexts
             );
@@ -103,7 +102,7 @@ namespace Engine {
                 SpdkAppContext* app_context,
                 std::vector<SpdkThreadCallBackContext*>& thread_cb_contexts,
                 moodycamel::BlockingConcurrentQueue<int>& available_indexes,
-                std::atomic<int>& out_standing
+                std::atomic<int>* out_standing
             );
 
             static void init_available_indexes(

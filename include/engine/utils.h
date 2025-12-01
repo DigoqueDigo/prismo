@@ -7,10 +7,9 @@
 #include <liburing.h>
 #include <operation/type.h>
 #include <nlohmann/json.hpp>
+#include <iostream>
 
 using json = nlohmann::json;
-
-#define MAX_CORES 512
 
 namespace Engine {
 
@@ -34,7 +33,7 @@ namespace Engine {
         std::string reactor_mask;
         std::string json_config_file;
         uint8_t spdk_threads;
-        std::vector<uint64_t> pinned_cores;
+        std::vector<uint32_t> pinned_cores;
     };
 
     struct MetricData {
@@ -60,7 +59,6 @@ namespace Engine {
     void from_json(const json& j, UringConfig& config);
     void from_json(const json& j, SpdkConfig& config);
 
-    int count_set_bits(uint64_t mask);
     std::vector<u_int32_t> get_pinned_cores(uint64_t mask);
 };
 
