@@ -97,7 +97,6 @@ namespace Engine {
                 std::vector<SpdkThreadContext*>& thread_contexts
             );
 
-
             static void init_thread_cb_contexts(
                 SpdkAppContext* app_context,
                 std::vector<SpdkThreadCallBackContext*>& thread_cb_contexts,

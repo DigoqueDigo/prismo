@@ -1,6 +1,9 @@
 #include <engine/spdk.h>
 
-// NOTE: ainda falta resolver o problema das metricas
+// NOTE: solve metrics problema
+// im not sure if there is a problem, but i think yes
+// solution: each worker has a pointer to a given metric
+// handle metric ptr like thread_cb_context
 
 namespace Engine {
 
@@ -540,6 +543,7 @@ namespace Engine {
                 "[THREAD %s | CORE %u] Bdev I/O error: %d\n",
                 thread_name, core, EIO
             );
+            throw std::runtime_error("AQUI ");
         }
 
         Metric::fill_metric(
