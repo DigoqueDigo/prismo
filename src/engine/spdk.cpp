@@ -415,6 +415,7 @@ namespace Engine {
         uint32_t core = spdk_env_get_current_core();
         const char* thread_name = spdk_thread_get_name(thread);
 
+        int rc = 0;
         SpdkThreadContext* thread_context = static_cast<SpdkThreadContext*>(thread_ctx);
 
         SPDK_NOTICELOG(
@@ -424,9 +425,6 @@ namespace Engine {
             thread_context->request->offset
         );
 
-        int rc = 0;
-
-        /*
         switch (thread_context->request->operation) {
             case Operation::OperationType::READ:
                 rc = thread_read(thread_context);
@@ -444,9 +442,8 @@ namespace Engine {
                 rc = thread_nop(thread_context);
                 break;
         }
-        */
 
-        SPDK_NOTICELOG("[THREAD %s | CORE %u] Operation return code: %d\n", thread_name, core, rc);
+        SPDK_NOTICELOG("[THREAD %s | CORE %u] submition return code: %d\n", thread_name, core, rc);
 
         if (rc == -ENOMEM) {
             SPDK_NOTICELOG("[THREAD %s | CORE %u] Bdev busy, queueing I/O\n", thread_name, core);
@@ -464,13 +461,6 @@ namespace Engine {
         } else if (rc == 0) {
             SPDK_NOTICELOG("[THREAD %s | CORE %u] Submition completed successfully\n", thread_name, core);
             thread_context->submitted->store(true, std::memory_order_release);
-
-            // NOTE: remover esta merda daqui quando o switch estive ativo
-            thread_context->thread_cb_ctx->out_standing->fetch_sub(1);
-            thread_context->thread_cb_ctx->available_indexes->enqueue(
-                thread_context->thread_cb_ctx->index
-            );
-
         } else {
             SPDK_ERRLOG("[THREAD %s | CORE %u] Submition failed with rc=%d\n", thread_name, core, rc);
         }
@@ -563,6 +553,7 @@ namespace Engine {
         );
 
         spdk_engine->logger->info(*spdk_engine->metric);
+        thread_cb_context->out_standing->fetch_sub(1);
         thread_cb_context->available_indexes->enqueue(thread_cb_context->index);
 
         SPDK_NOTICELOG(

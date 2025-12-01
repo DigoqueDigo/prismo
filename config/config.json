@@ -2,7 +2,7 @@
   "job": {
     "name": "job",
     "numjobs": 1,
-    "iterations": 1000,
+    "iterations": 100,
     "filename": "testfile",
     "block_size": 4096,
     "limit": 40960,
@@ -10,8 +10,8 @@
   },
 
   "operation": {
-    "type": "constant",
-    "operation": "write",
+    "type": "sequence",
+    "operation": "read",
     "percentages": {
       "read": 50,
       "write": 50
@@ -53,7 +53,7 @@
     },
     "bdev_name": "Malloc0",
     "reactor_mask": "0xF",
-    "spdk_threads": 20,
+    "spdk_threads": 10,
     "json_config_file": "/home/digo/Desktop/prismo/config/spdk_bdev.json"
   },
 
@@ -61,7 +61,7 @@
     "type": "spdlog",
     "name": "prismo",
     "queue_size": 8192,
-    "thread_count": 7,
+    "thread_count": 1,
     "truncate": true,
     "to_stdout": true,
     "files": [
