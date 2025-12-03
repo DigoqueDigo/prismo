@@ -35,19 +35,26 @@ namespace Worker {
                 to_consumer(_to_consumer) {}
 
             void run(uint64_t iterations, int fd) {
-                Protocol::Packet* packet = nullptr;
+                Protocol::Packet* packet;
+                Protocol::Packet* packets[BULK_SIZE];
 
-                for (uint64_t iter = 0; iter < iterations; iter++) {
-                    while (!to_producer->try_dequeue(packet));
-                    packet->request.fd = fd;
-                    packet->request.offset = access->nextOffset();
-                    packet->request.operation = barrier->apply(operation->nextOperation());
+                while (iterations > 0) {
+                    size_t ready = 0;
+                    size_t count = to_producer->try_dequeue_bulk(packets, BULK_SIZE);
 
-                    if (packet->request.operation == Operation::OperationType::WRITE) {
-                        generator->nextBlock(packet->request.buffer, packet->request.size);
+                    for (ready = 0; ready < count && iterations != 0; ready++, iterations--) {
+                        packet = packets[ready];
+                        packet->request.fd = fd;
+                        packet->request.offset = access->nextOffset();
+                        packet->request.operation = barrier->apply(operation->nextOperation());
+
+                        if (packet->request.operation == Operation::OperationType::WRITE) {
+                            generator->nextBlock(packet->request.buffer, packet->request.size);
+                        }
                     }
 
-                    to_consumer->enqueue(packet);
+                    to_consumer->enqueue_bulk(packets, ready);
+                    to_producer->enqueue_bulk(packets + ready, count - ready); // enqueue unused packets
                 }
 
                 while (!to_producer->try_dequeue(packet));

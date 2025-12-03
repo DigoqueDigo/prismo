@@ -6,6 +6,7 @@
 #include <lib/concurrentqueue/concurrentqueue.h>
 
 #define QUEUE_INITIAL_CAPACITY 1024
+#define BULK_SIZE 64
 
 namespace Worker {
 

@@ -31,19 +31,26 @@ namespace Worker {
                 engine->close(request);
             }
 
-            void run() {
-                Protocol::Packet* packet = nullptr;
+            void run(void) {
+                bool shudown = false;
+                Protocol::Packet* packet;
+                Protocol::Packet* packets[BULK_SIZE];
 
-                while (true) {
-                    while (!to_consumer->try_dequeue(packet));
+                while (!shudown) {
+                    size_t count = to_consumer->try_dequeue_bulk(packets, BULK_SIZE);
 
-                    if (packet->isShutDown) {
-                        to_producer->enqueue(packet);
-                        break;
+                    for (size_t index = 0; index < count; index++) {
+                        packet = packets[index];
+
+                        if (packet->isShutDown) {
+                            shudown = true;
+                            break;
+                        } // nothing after shutdown (FIFO)
+
+                        engine->submit(packet->request);
                     }
 
-                    engine->submit(packet->request);
-                    to_producer->enqueue(packet);
+                    to_producer->enqueue_bulk(packets, count);
                 }
 
                 engine->reap_left_completions();

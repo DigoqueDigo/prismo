@@ -1,7 +1,5 @@
 #include <engine/spdk.h>
 
-// NOTE: remove delays form better performance
-
 namespace Engine {
 
     SpdkEngine::SpdkEngine(
@@ -128,7 +126,7 @@ namespace Engine {
                 out_standing.load(std::memory_order_acquire)
             );
             // Optional: sleep or small delay to avoid busy spinning
-            spdk_delay_us(500);
+            // spdk_delay_us(500);
         }
 
         SPDK_NOTICELOG("[CLEANUP] Cleaning up SPDK threads and contexts\n");
@@ -201,7 +199,7 @@ namespace Engine {
             SPDK_NOTICELOG("[WAIT] Waiting for I/O channel on thread '%s'...\n", thread_name);
             while (thread_context->bdev_io_channel == nullptr) {
                 // optional: small pause to reduce CPU spinning
-                spdk_delay_us(50);
+                // spdk_delay_us(50);
             }
 
             SPDK_NOTICELOG("[READY] Thread '%s' finished I/O channel setup\n",thread_name);
@@ -292,7 +290,7 @@ namespace Engine {
             SPDK_NOTICELOG("[WAIT] Waiting for thread %s to exit...\n", thread_name);
             while (!spdk_thread_is_exited(workers[i])) {
                 // optional: small pause to reduce CPU spinning
-                spdk_delay_us(50);
+                // spdk_delay_us(50);
             }
 
             SPDK_NOTICELOG("[FREE] Freeing thread context for thread: %s\n", thread_name);
@@ -361,7 +359,7 @@ namespace Engine {
             SPDK_NOTICELOG("[DISPATCH] Waiting for free index\n");
             while (!available_indexes.try_dequeue(free_index)) {
                 // Optional: small pause to reduce CPU spinning
-                spdk_delay_us(1);
+                // spdk_delay_us(1);
             }
 
             spdk_thread* worker = workers[i];
@@ -404,7 +402,7 @@ namespace Engine {
             SPDK_NOTICELOG("[DISPATCH] Waiting for submission done on thread '%s'\n", spdk_thread_get_name(worker));
             while (!thread_context->submitted->load(std::memory_order_acquire)) {
                 // Optional: small pause to reduce CPU spinning
-                spdk_delay_us(1);
+                // spdk_delay_us(1);
             }
 
             // Restore original buffer
