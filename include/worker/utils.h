@@ -11,12 +11,7 @@ namespace Worker {
 
     inline void init_queue_packet(moodycamel::BlockingConcurrentQueue<Protocol::Packet*>& queue, size_t block_size) {
         for (int index = 0; index < QUEUE_INITIAL_CAPACITY; index++) {
-            Protocol::Packet* packet = static_cast<Protocol::Packet*>(std::malloc(sizeof(Protocol::Packet)));
-
-            if (!packet) {
-                throw std::bad_alloc();
-            }
-
+            Protocol::Packet* packet = new Protocol::Packet();
             packet->isShutDown = false;
             packet->request.fd = 0;
             packet->request.offset = 0;
@@ -38,7 +33,7 @@ namespace Worker {
         for (size_t index = 0; index < size; index++) {
             queue.wait_dequeue(packet);
             std::free(packet->request.buffer);
-            std::free(packet);
+            delete packet;
         }
     }
 

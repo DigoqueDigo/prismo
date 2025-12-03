@@ -135,9 +135,7 @@ namespace Engine {
         threads_cleanup(workers, thread_contexts);
 
         SPDK_NOTICELOG("[CLEANUP] Cleaning up SPDK thread callback contexts\n");
-        for (auto* ctx : thread_cb_contexts) {
-            free(ctx);
-        }
+        thread_cb_contexts_cleanup(thread_cb_contexts);
 
         SPDK_NOTICELOG(
             "[CLEANUP] Closing block device on current thread: %s\n",
@@ -190,9 +188,7 @@ namespace Engine {
             const char* thread_name = spdk_thread_get_name(workers[i]);
             SPDK_NOTICELOG("[INIT] Creating SPDK thread context for thread '%s'\n", thread_name);
 
-            SpdkThreadContext* thread_context =
-                (SpdkThreadContext*) std::malloc(sizeof(SpdkThreadContext));
-
+            SpdkThreadContext* thread_context = new SpdkThreadContext();
             thread_context->bdev = app_context->bdev;
             thread_context->bdev_desc = app_context->bdev_desc;
             thread_context->submitted = submitted;
@@ -238,13 +234,13 @@ namespace Engine {
         moodycamel::ConcurrentQueue<int>& available_indexes,
         std::atomic<int>* out_standing
     ) {
+        SpdkEngine* engine = static_cast<SpdkEngine*>(app_context->spdk_engine);
         SPDK_NOTICELOG("[INIT] Initializing %zu callback contexts\n", thread_cb_contexts.size());
         for (size_t i = 0; i < thread_cb_contexts.size(); i++) {
-            SpdkThreadCallBackContext* thread_cb_context =
-                (SpdkThreadCallBackContext*) std::malloc(sizeof(SpdkThreadCallBackContext));
-
+            SpdkThreadCallBackContext* thread_cb_context = new SpdkThreadCallBackContext();
             thread_cb_context->spdk_engine = app_context->spdk_engine;
             thread_cb_context->available_indexes = &available_indexes;
+            thread_cb_context->metric_ptr = engine->metric->clone();
             thread_cb_context->out_standing = out_standing;
             thread_cb_contexts[i] = thread_cb_context;
         }
@@ -300,7 +296,7 @@ namespace Engine {
             }
 
             SPDK_NOTICELOG("[FREE] Freeing thread context for thread: %s\n", thread_name);
-            std::free(thread_contexts[i]);
+            delete thread_contexts[i];
         }
 
         SPDK_NOTICELOG("[READY] All threads cleaned up\n");
@@ -322,6 +318,15 @@ namespace Engine {
 
         SPDK_NOTICELOG("[EXIT] Exiting thread '%s'\n",thread_name);
         spdk_thread_exit(thread);
+    }
+
+    void SpdkEngine::thread_cb_contexts_cleanup(
+        std::vector<SpdkThreadCallBackContext*>& thread_cb_contexts
+    ) {
+        for (auto& thread_cb_context : thread_cb_contexts) {
+            delete thread_cb_context->metric_ptr;
+            delete thread_cb_context;
+        }
     }
 
     void SpdkEngine::thread_main_dispatch(
@@ -582,6 +587,7 @@ namespace Engine {
     void SpdkEngine::submit(Protocol::CommonRequest& request) {
         TriggerData snap = {};
         snap.has_next = true;
+        snap.is_shutdown = false;
         snap.request = &request;
         publish_and_wait(snap);
     }

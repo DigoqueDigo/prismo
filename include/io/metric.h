@@ -21,14 +21,21 @@ namespace Metric {
         explicit Metric(MetricType t) : type(t) {}
         virtual ~Metric() = default;
 
-        Metric(const Metric&) = delete;
-        Metric& operator=(const Metric&) = delete;
+        Metric(const Metric&) = default;
+        Metric& operator=(const Metric&) = default;
+
         Metric(Metric&&) = default;
         Metric& operator=(Metric&&) = default;
+
+        virtual Metric* clone() const = 0;
     };
 
     struct NoneMetric : Metric {
         NoneMetric() : Metric(MetricType::None) {}
+
+        NoneMetric* clone() const override {
+            return new NoneMetric(*this);
+        }
     };
 
     struct BaseMetric : Metric {
@@ -37,6 +44,10 @@ namespace Metric {
         Operation::OperationType operation_type{};
 
         BaseMetric() : Metric(MetricType::Base) {}
+
+        BaseMetric* clone() const override {
+            return new BaseMetric(*this);
+        }
     };
 
     struct StandardMetric : BaseMetric {
@@ -45,6 +56,10 @@ namespace Metric {
 
         StandardMetric() : BaseMetric() {
             this->type = MetricType::Standard;
+        }
+
+        StandardMetric* clone() const override {
+            return new StandardMetric(*this);
         }
     };
 
@@ -57,6 +72,10 @@ namespace Metric {
 
         FullMetric() : StandardMetric() {
             this->type = MetricType::Full;
+        }
+
+        FullMetric* clone() const override {
+            return new FullMetric(*this);
         }
     };
 

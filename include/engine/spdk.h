@@ -39,6 +39,7 @@ namespace Engine {
     struct SpdkThreadCallBackContext {
         void* spdk_engine;
         MetricData metric_data;
+        Metric::Metric* metric_ptr;
 
         int index;
         std::atomic<int>* out_standing;
@@ -128,6 +129,10 @@ namespace Engine {
             static void threads_cleanup(
                 std::vector<spdk_thread*>& workers,
                 std::vector<SpdkThreadContext*>& thread_contexts
+            );
+
+            static void thread_cb_contexts_cleanup(
+                std::vector<SpdkThreadCallBackContext*>& thread_cb_contexts
             );
 
             static int thread_read(SpdkThreadContext* thread_ctx);
