@@ -92,8 +92,9 @@ int main(int argc, char** argv) {
     // std::cout << "Parse Start Consumer" << std::endl;
     std::thread consumer_thread(&Worker::Consumer::run, &consumer);
 
-    Worker::pin_thread(producer_thread, 0);
-    Worker::pin_thread(consumer_thread, 1);
+    // let OS schedule workers
+    // Worker::pin_thread(producer_thread, 0);
+    // Worker::pin_thread(consumer_thread, 1);
 
     producer_thread.join();
     consumer_thread.join();

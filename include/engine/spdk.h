@@ -14,7 +14,7 @@
 #include <io/metric.h>
 #include <engine/utils.h>
 #include <engine/engine.h>
-#include <lib/blockingconcurrentqueue/blockingconcurrentqueue.h>
+#include <lib/concurrentqueue/concurrentqueue.h>
 
 namespace Engine {
 
@@ -42,7 +42,7 @@ namespace Engine {
 
         int index;
         std::atomic<int>* out_standing;
-        moodycamel::BlockingConcurrentQueue<int>* available_indexes;
+        moodycamel::ConcurrentQueue<int>* available_indexes;
     };
 
     struct SpdkThreadContext {
@@ -100,13 +100,13 @@ namespace Engine {
             static void init_thread_cb_contexts(
                 SpdkAppContext* app_context,
                 std::vector<SpdkThreadCallBackContext*>& thread_cb_contexts,
-                moodycamel::BlockingConcurrentQueue<int>& available_indexes,
+                moodycamel::ConcurrentQueue<int>& available_indexes,
                 std::atomic<int>* out_standing
             );
 
             static void init_available_indexes(
                 int total_indexes,
-                moodycamel::BlockingConcurrentQueue<int>& available_indexes
+                moodycamel::ConcurrentQueue<int>& available_indexes
             );
 
             static void* allocate_dma_buffer(
@@ -120,7 +120,7 @@ namespace Engine {
                 std::vector<spdk_thread*>& workers,
                 std::vector<SpdkThreadContext*>& thread_contexts,
                 std::vector<SpdkThreadCallBackContext*>& thread_cb_contexts,
-                moodycamel::BlockingConcurrentQueue<int>& available_indexes,
+                moodycamel::ConcurrentQueue<int>& available_indexes,
                 uint8_t* dma_buf,
                 int block_size
             );
@@ -137,6 +137,9 @@ namespace Engine {
             static int thread_nop(SpdkThreadContext* thread_ctx);
 
             void publish_and_wait(const TriggerData& snap);
+
+            // NOTE: remove this when tested
+            static void print_queue(moodycamel::ConcurrentQueue<int>& queue);
 
         public:
             explicit SpdkEngine(

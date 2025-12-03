@@ -1,9 +1,6 @@
 #include <engine/spdk.h>
 
-// NOTE: solve metrics problema
-// im not sure if there is a problem, but i think yes
-// solution: each worker has a pointer to a given metric
-// handle metric ptr like thread_cb_context
+// NOTE: remove delays form better performance
 
 namespace Engine {
 
@@ -92,7 +89,7 @@ namespace Engine {
         std::vector<spdk_thread*> workers(total_workers);
         std::vector<SpdkThreadContext*> thread_contexts(total_workers);
         std::vector<SpdkThreadCallBackContext*> thread_cb_contexts(total_blocks);
-        moodycamel::BlockingConcurrentQueue<int> available_indexes(total_blocks);
+        moodycamel::ConcurrentQueue<int> available_indexes(total_blocks);
 
         SPDK_NOTICELOG("[INIT] Initializing SPDK worker threads\n");
         init_threads(app_context->config.pinned_cores, workers);
@@ -150,6 +147,8 @@ namespace Engine {
 
         SPDK_NOTICELOG("[CLEANUP] Freeing DMA buffer\n");
         spdk_dma_free(dma_buf);
+
+        print_queue(available_indexes);
 
         SPDK_NOTICELOG("[APP] Stopping SPDK framework\n");
         spdk_app_stop(0);
@@ -236,7 +235,7 @@ namespace Engine {
     void SpdkEngine::init_thread_cb_contexts(
         SpdkAppContext* app_context,
         std::vector<SpdkThreadCallBackContext*>& thread_cb_contexts,
-        moodycamel::BlockingConcurrentQueue<int>& available_indexes,
+        moodycamel::ConcurrentQueue<int>& available_indexes,
         std::atomic<int>* out_standing
     ) {
         SPDK_NOTICELOG("[INIT] Initializing %zu callback contexts\n", thread_cb_contexts.size());
@@ -254,7 +253,7 @@ namespace Engine {
 
     void SpdkEngine::init_available_indexes(
         int total_indexes,
-        moodycamel::BlockingConcurrentQueue<int>& available_indexes
+        moodycamel::ConcurrentQueue<int>& available_indexes
     ) {
         SPDK_NOTICELOG("[INIT] Initializing %d available indexes\n", total_indexes);
         for (int i = 0; i < total_indexes; i++) {
@@ -330,7 +329,7 @@ namespace Engine {
         std::vector<spdk_thread*>& workers,
         std::vector<SpdkThreadContext*>& thread_contexts,
         std::vector<SpdkThreadCallBackContext*>& thread_cb_contexts,
-        moodycamel::BlockingConcurrentQueue<int>& available_indexes,
+        moodycamel::ConcurrentQueue<int>& available_indexes,
         uint8_t* dma_buf,
         int block_size
     ) {
@@ -353,8 +352,13 @@ namespace Engine {
             }
 
             // Acquire a free DMA index
-            int free_index = 0;
-            available_indexes.wait_dequeue(free_index);
+            int free_index;
+            SPDK_NOTICELOG("[DISPATCH] Waiting for free index\n");
+            while (!available_indexes.try_dequeue(free_index)) {
+                // Optional: small pause to reduce CPU spinning
+                spdk_delay_us(1);
+            }
+
             spdk_thread* worker = workers[i];
             SPDK_NOTICELOG("[DISPATCH] Using free index %d for thread '%s'\n", free_index, spdk_thread_get_name(worker));
 
@@ -576,21 +580,17 @@ namespace Engine {
     }
 
     void SpdkEngine::submit(Protocol::CommonRequest& request) {
-        // std::cout << "SpdkEngine submit request" << std::endl;
         TriggerData snap = {};
         snap.has_next = true;
         snap.request = &request;
         publish_and_wait(snap);
-        // std::cout << "SpdkEngine submit request complet" << std::endl;
     }
 
     void SpdkEngine::reap_left_completions(void) {
-        // std::cout << "SpdkEngine submit shutdown" << std::endl;
         TriggerData snap = {};
         snap.has_next = true;
         snap.is_shutdown = true;
         publish_and_wait(snap);
-        // std::cout << "SpdkEngine submit shutdown complet" << std::endl;
     }
 
     void SpdkEngine::publish_and_wait(const TriggerData& snap) {
@@ -599,5 +599,18 @@ namespace Engine {
         while (!current.has_submitted) {
             current = trigger_atomic.load(std::memory_order_acquire);
         }
+    }
+
+    void SpdkEngine::print_queue(moodycamel::ConcurrentQueue<int>& queue) {
+        int val;
+        std::vector<int> snapshot;
+        while (queue.try_dequeue(val)) {
+            snapshot.push_back(val);
+        }
+        for (int v : snapshot) {
+            std::cout << v << " ";
+            queue.enqueue(v);  // Restore immediately
+        }
+        std::cout << "size: " << queue.size_approx() << std::endl;
     }
 };

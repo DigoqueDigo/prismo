@@ -7,8 +7,8 @@
 
 #pragma once
 
-#include <lib/blockingconcurrentqueue/concurrentqueue.h>
-#include <lib/blockingconcurrentqueue/lightweightsemaphore.h>
+#include <lib/concurrentqueue/concurrentqueue.h>
+#include <lib/concurrentqueue/lightweightsemaphore.h>
 
 #include <type_traits>
 #include <cerrno>

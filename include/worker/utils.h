@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <io/protocol.h>
-#include <lib/blockingconcurrentqueue/blockingconcurrentqueue.h>
+#include <lib/concurrentqueue/blockingconcurrentqueue.h>
 
 #define QUEUE_INITIAL_CAPACITY 1024
 
