@@ -58,7 +58,7 @@ namespace Logger {
 };
 
 auto fmt::formatter<Metric::BaseMetric>::format(
-    const Metric::BaseMetric& metric,
+    const Metric::BaseMetric metric,
     fmt::format_context& ctx
 ) const -> decltype(ctx.out()) {
     return fmt::format_to(
@@ -71,7 +71,7 @@ auto fmt::formatter<Metric::BaseMetric>::format(
 }
 
 auto fmt::formatter<Metric::StandardMetric>::format(
-    const Metric::StandardMetric& metric,
+    const Metric::StandardMetric metric,
     fmt::format_context& ctx
 ) const -> decltype(ctx.out()) {
     return fmt::format_to(
@@ -86,7 +86,7 @@ auto fmt::formatter<Metric::StandardMetric>::format(
 }
 
 auto fmt::formatter<Metric::FullMetric>::format(
-    const Metric::FullMetric& metric,
+    const Metric::FullMetric metric,
     fmt::format_context& ctx
 ) const -> decltype(ctx.out()) {
     return fmt::format_to(
