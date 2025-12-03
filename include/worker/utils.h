@@ -3,13 +3,16 @@
 
 #include <iostream>
 #include <io/protocol.h>
-#include <lib/concurrentqueue/blockingconcurrentqueue.h>
+#include <lib/concurrentqueue/concurrentqueue.h>
 
 #define QUEUE_INITIAL_CAPACITY 1024
 
 namespace Worker {
 
-    inline void init_queue_packet(moodycamel::BlockingConcurrentQueue<Protocol::Packet*>& queue, size_t block_size) {
+    inline void init_queue_packet(
+        moodycamel::ConcurrentQueue<Protocol::Packet*>& queue,
+        size_t block_size
+    ) {
         for (int index = 0; index < QUEUE_INITIAL_CAPACITY; index++) {
             Protocol::Packet* packet = new Protocol::Packet();
             packet->isShutDown = false;
@@ -27,11 +30,13 @@ namespace Worker {
         }
     }
 
-    inline void destroy_queue_packet(moodycamel::BlockingConcurrentQueue<Protocol::Packet*>& queue) {
+    inline void destroy_queue_packet(
+        moodycamel::ConcurrentQueue<Protocol::Packet*>& queue,
+        size_t queue_size
+    ) {
         Protocol::Packet* packet;
-        size_t size = queue.size_approx();
-        for (size_t index = 0; index < size; index++) {
-            queue.wait_dequeue(packet);
+        for (size_t index = 0; index < queue_size; index++) {
+            while (!queue.try_dequeue(packet));
             std::free(packet->request.buffer);
             delete packet;
         }

@@ -57,11 +57,13 @@ int main(int argc, char** argv) {
     // std::cout << "Parse Engine" << std::endl;
     std::unique_ptr<Engine::Engine> engine = Parser::getEngine(engine_j, std::move(metric), std::move(logger));
 
-    moodycamel::BlockingConcurrentQueue<int> q(10);
+    auto to_producer = std::make_shared<moodycamel::ConcurrentQueue<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);
+    auto to_consumer = std::make_shared<moodycamel::ConcurrentQueue<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);
 
-    auto to_producer = std::make_shared<moodycamel::BlockingConcurrentQueue<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);
-    auto to_consumer = std::make_shared<moodycamel::BlockingConcurrentQueue<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);
-    Worker::init_queue_packet(*to_producer, block_size);
+    Worker::init_queue_packet(
+        *to_producer,
+        block_size
+    );
 
     Worker::Producer producer (
         std::move(access),
@@ -104,7 +106,7 @@ int main(int argc, char** argv) {
     };
 
     consumer.close(close_request);
-    Worker::destroy_queue_packet(*to_producer);
+    Worker::destroy_queue_packet(*to_producer, QUEUE_INITIAL_CAPACITY);
     config_file.close();
 
     // std::cout << "End" << std::endl;

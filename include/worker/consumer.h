@@ -10,14 +10,14 @@ namespace Worker {
     class Consumer {
         private:
             std::unique_ptr<Engine::Engine> engine;
-            std::shared_ptr<moodycamel::BlockingConcurrentQueue<Protocol::Packet*>> to_producer;
-            std::shared_ptr<moodycamel::BlockingConcurrentQueue<Protocol::Packet*>> to_consumer;
+            std::shared_ptr<moodycamel::ConcurrentQueue<Protocol::Packet*>> to_producer;
+            std::shared_ptr<moodycamel::ConcurrentQueue<Protocol::Packet*>> to_consumer;
 
         public:
             Consumer(
                 std::unique_ptr<Engine::Engine> _engine,
-                std::shared_ptr<moodycamel::BlockingConcurrentQueue<Protocol::Packet*>> _to_producer,
-                std::shared_ptr<moodycamel::BlockingConcurrentQueue<Protocol::Packet*>> _to_consumer
+                std::shared_ptr<moodycamel::ConcurrentQueue<Protocol::Packet*>> _to_producer,
+                std::shared_ptr<moodycamel::ConcurrentQueue<Protocol::Packet*>> _to_consumer
             ) :
                 engine(std::move(_engine)),
                 to_producer(_to_producer),
@@ -35,7 +35,7 @@ namespace Worker {
                 Protocol::Packet* packet = nullptr;
 
                 while (true) {
-                    to_consumer->wait_dequeue(packet);
+                    while (!to_consumer->try_dequeue(packet));
 
                     if (packet->isShutDown) {
                         to_producer->enqueue(packet);

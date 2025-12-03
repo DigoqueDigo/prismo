@@ -15,8 +15,8 @@ namespace Worker {
             std::unique_ptr<Operation::Operation> operation;
             std::unique_ptr<Generator::Generator> generator;
             std::unique_ptr<Operation::MultipleBarrier> barrier;
-            std::shared_ptr<moodycamel::BlockingConcurrentQueue<Protocol::Packet*>> to_producer;
-            std::shared_ptr<moodycamel::BlockingConcurrentQueue<Protocol::Packet*>> to_consumer;
+            std::shared_ptr<moodycamel::ConcurrentQueue<Protocol::Packet*>> to_producer;
+            std::shared_ptr<moodycamel::ConcurrentQueue<Protocol::Packet*>> to_consumer;
 
         public:
             Producer(
@@ -24,8 +24,8 @@ namespace Worker {
                 std::unique_ptr<Operation::Operation> _operation,
                 std::unique_ptr<Generator::Generator> _generator,
                 std::unique_ptr<Operation::MultipleBarrier> _barrier,
-                std::shared_ptr<moodycamel::BlockingConcurrentQueue<Protocol::Packet*>> _to_producer,
-                std::shared_ptr<moodycamel::BlockingConcurrentQueue<Protocol::Packet*>> _to_consumer
+                std::shared_ptr<moodycamel::ConcurrentQueue<Protocol::Packet*>> _to_producer,
+                std::shared_ptr<moodycamel::ConcurrentQueue<Protocol::Packet*>> _to_consumer
             ) :
                 access(std::move(_access)),
                 operation(std::move(_operation)),
@@ -38,7 +38,7 @@ namespace Worker {
                 Protocol::Packet* packet = nullptr;
 
                 for (uint64_t iter = 0; iter < iterations; iter++) {
-                    to_producer->wait_dequeue(packet);
+                    while (!to_producer->try_dequeue(packet));
                     packet->request.fd = fd;
                     packet->request.offset = access->nextOffset();
                     packet->request.operation = barrier->apply(operation->nextOperation());
@@ -50,7 +50,7 @@ namespace Worker {
                     to_consumer->enqueue(packet);
                 }
 
-                to_producer->wait_dequeue(packet);
+                while (!to_producer->try_dequeue(packet));
                 packet->isShutDown = true;
                 to_consumer->enqueue(packet);
             }
