@@ -38,7 +38,7 @@ namespace Engine {
 
     struct MetricData {
         size_t size;
-        off_t offset;
+        uint64_t offset;
         int64_t start_timestamp;
         Operation::OperationType operation_type;
     };

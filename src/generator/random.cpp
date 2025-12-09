@@ -4,8 +4,8 @@ namespace Generator {
 
     RandomGenerator::RandomGenerator()
         : Generator() {
-            uint64_t seed[4] = {0, 0, 0, 0};
-            prng_init(&generator, seed);
+            auto seed = generate_seed();
+            prng_init(&generator, seed.data());
     };
 
     void RandomGenerator::nextBlock(uint8_t* buffer, size_t size) {

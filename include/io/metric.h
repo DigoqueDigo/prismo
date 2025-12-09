@@ -66,7 +66,7 @@ namespace Metric {
     struct FullMetric : StandardMetric {
         size_t requested_bytes;
         size_t processed_bytes;
-        off_t offset;
+        uint64_t offset;
         int32_t return_code;
         int32_t error_no;
 
@@ -92,7 +92,7 @@ namespace Metric {
         int64_t end_ts,
         ssize_t result,
         size_t size,
-        off_t offset
+        uint64_t offset
     ) {
         if (metric.type < MetricType::Base)
             return;

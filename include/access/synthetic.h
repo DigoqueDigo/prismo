@@ -25,14 +25,14 @@ namespace Access {
                 // std::cout << "~Destroying Access" << std::endl;
             }
 
-            virtual off_t nextOffset(void) = 0;
+            virtual uint64_t nextOffset(void) = 0;
             virtual void validate(void) const;
             friend void from_json(const json& j, Access& config);
     };
 
     class SequentialAccess : public Access {
         private:
-            off_t current_offset;
+            uint64_t current_offset;
 
         public:
             SequentialAccess();
@@ -42,14 +42,14 @@ namespace Access {
                 // std::cout << "~Destroying SequentialAccess" << std::endl;
             }
 
-            off_t nextOffset(void) override;
+            uint64_t nextOffset(void) override;
             void validate(void) const;
             friend void from_json(const json& j, SequentialAccess& config);
     };
 
     class RandomAccess : public Access {
         private:
-            Distribution::UniformDistribution<off_t> distribution;
+            Distribution::UniformDistribution<uint64_t> distribution;
 
         public:
             RandomAccess();
@@ -59,7 +59,7 @@ namespace Access {
                 // std::cout << "~Destroying RandomAccess" << std::endl;
             }
 
-            off_t nextOffset(void) override;
+            uint64_t nextOffset(void) override;
             void validate(void) const;
             friend void from_json(const json& j, RandomAccess& config);
     };
@@ -67,7 +67,7 @@ namespace Access {
     class ZipfianAccess : public Access {
         private:
             float skew;
-            Distribution::ZipfianDistribution<off_t> distribution;
+            Distribution::ZipfianDistribution<uint64_t> distribution;
 
         public:
             ZipfianAccess();
@@ -77,7 +77,7 @@ namespace Access {
                 // std::cout << "~Destroying ZipfianAccess" << std::endl;
             }
 
-            off_t nextOffset(void) override;
+            uint64_t nextOffset(void) override;
             void validate(void) const;
             friend void from_json(const json& j, ZipfianAccess& config);
     };

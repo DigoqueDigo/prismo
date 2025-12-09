@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstring>
 #include <iostream>
+#include <lib/shishua/utils.h>
 #include <lib/shishua/shishua.h>
 
 namespace Generator {

@@ -21,7 +21,7 @@ namespace Protocol {
     struct CommonRequest {
         int fd;
         size_t size;
-        off_t offset;
+        uint64_t offset;
         uint8_t* buffer;
         Operation::OperationType operation;
     };

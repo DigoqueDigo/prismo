@@ -1,0 +1,6 @@
+- deduplicacao com a sliding window e reposicionar as coisas
+- taxas de compressao
+- permitir que a seed do random seja manipulada no ficheiro de configuração
+  (vou meter o random do device afinal)
+  (e mais facil e e menos um preocupacao em alterar o ficheiro de config)
+- analisar o ultimo commit

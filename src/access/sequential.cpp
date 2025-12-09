@@ -8,9 +8,9 @@ namespace Access {
     SequentialAccess::SequentialAccess(size_t _block_size, size_t _limit)
         : Access(_block_size, _limit), current_offset(0) {}
 
-    off_t SequentialAccess::nextOffset(void) {
-        const off_t offset = current_offset;
-        current_offset = static_cast<off_t>((current_offset + block_size) % limit);
+    uint64_t SequentialAccess::nextOffset(void) {
+        const uint64_t offset = current_offset;
+        current_offset = static_cast<uint64_t>((current_offset + block_size) % limit);
         return offset;
     }
 

@@ -1,27 +1,77 @@
 #ifndef DISTRIBUTION_H
 #define DISTRIBUTION_H
 
+#include <array>
 #include <random>
+#include <cstdint>
 #include <lib/distribution/zipfian.h>
+#include <lib/shishua/shishua.h>
+#include <lib/shishua/utils.h>
+
+#define UNIFORM_BUFFER_CAPACITY 1024
 
 namespace Distribution {
+
     template<typename DistributionTypeT>
     struct UniformDistribution {
-        std::mt19937 engine;
-        std::uniform_int_distribution<DistributionTypeT> distribution;
+        DistributionTypeT min;
+        DistributionTypeT max;
 
-        explicit UniformDistribution()
-            : engine(std::random_device{}()), distribution() {}
+        size_t current;
+        prng_state generator;
+        DistributionTypeT* buffer;
 
-        explicit UniformDistribution(DistributionTypeT min, DistributionTypeT max)
-            : engine(std::random_device{}()), distribution(min, max) {}
+        UniformDistribution()
+            : min(std::numeric_limits<DistributionTypeT>::lowest()),
+            max(std::numeric_limits<DistributionTypeT>::max()),
+            current(0)
+        {
+            auto seed = generate_seed();
+            prng_init(&generator, seed.data());
+            buffer = new DistributionTypeT[UNIFORM_BUFFER_CAPACITY];
+        }
 
-        void setParams(DistributionTypeT min, DistributionTypeT max) {
-            distribution.param(typename std::uniform_int_distribution<DistributionTypeT>::param_type(min, max));
+        UniformDistribution(DistributionTypeT _min, DistributionTypeT _max)
+            : min(_min), max(_max), current(0)
+        {
+            auto seed = generate_seed();
+            prng_init(&generator, seed.data());
+            buffer = new DistributionTypeT[UNIFORM_BUFFER_CAPACITY];
+        }
+
+        UniformDistribution(const UniformDistribution& other)
+            : min(other.min),
+            max(other.max),
+            current(other.current),
+            generator(other.generator)
+        {
+            buffer = new DistributionTypeT[UNIFORM_BUFFER_CAPACITY];
+            std::copy(
+                other.buffer,
+                other.buffer + UNIFORM_BUFFER_CAPACITY,
+                buffer
+            );
+        }
+
+        ~UniformDistribution() {
+            delete[] buffer;
+        }
+
+        void setParams(DistributionTypeT _min, DistributionTypeT _max) {
+            min = _min;
+            max = _max;
         }
 
         DistributionTypeT nextValue() {
-            return distribution(engine);
+            if (current == 0) {
+                uint8_t* buf = reinterpret_cast<uint8_t*>(buffer);
+                size_t bytes = UNIFORM_BUFFER_CAPACITY * sizeof(DistributionTypeT);
+                prng_gen(&generator, buf, bytes);
+                current = UNIFORM_BUFFER_CAPACITY - 1;
+            }
+            DistributionTypeT value = buffer[current--];
+            DistributionTypeT range = max - min + 1;
+            return static_cast<DistributionTypeT>(min + (value % range));
         }
     };
 

@@ -86,7 +86,6 @@ namespace Parser {
         } else {
             throw std::invalid_argument("Logger type '" + type + "' not recognized");
         }
-
     }
 
     std::unique_ptr<Engine::Engine> getEngine(

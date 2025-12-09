@@ -8,8 +8,8 @@ namespace Access {
     RandomAccess::RandomAccess(size_t _block_size, size_t _limit)
         : Access(_block_size, _limit), distribution(_block_size, _limit) {}
 
-    off_t RandomAccess::nextOffset(void) {
-        return static_cast<off_t>(distribution.nextValue() * block_size);
+    uint64_t RandomAccess::nextOffset(void) {
+        return static_cast<uint64_t>(distribution.nextValue() * block_size);
     }
 
     void RandomAccess::validate(void) const {
