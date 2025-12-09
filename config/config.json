@@ -2,7 +2,7 @@
   "job": {
     "name": "job",
     "numjobs": 1,
-    "iterations": 1e6,
+    "iterations": 1e4,
     "filename": "testfile",
     "block_size": 4096,
     "limit": 65536,
@@ -40,7 +40,7 @@
         "copies": 0
       },
       {
-        "percentage": 25,
+        "percentage": 30,
         "copies": 1
       },
       {
@@ -48,7 +48,7 @@
         "copies": 3
       },
       {
-        "percentage": 25,
+        "percentage": 20,
         "copies": 5
       }
     ]
