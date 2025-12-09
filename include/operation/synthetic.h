@@ -1,11 +1,11 @@
 #ifndef SYNTHETIC_OPERATION_H
 #define SYNTHETIC_OPERATION_H
 
+#include <vector>
+#include <iostream>
 #include <operation/type.h>
 #include <nlohmann/json.hpp>
 #include <lib/distribution/distribution.h>
-#include <iostream>
-#include <vector>
 
 using json = nlohmann::json;
 
@@ -39,7 +39,7 @@ namespace Operation {
 
     class PercentageOperation : public Operation {
         private:
-            std::vector<std::pair<OperationType, uint32_t>> percentages;
+            std::vector<std::pair<uint32_t, OperationType>> percentages;
             Distribution::UniformDistribution<uint32_t> distribution;
 
         public:

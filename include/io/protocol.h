@@ -23,6 +23,7 @@ namespace Protocol {
         size_t size;
         uint64_t offset;
         uint8_t* buffer;
+        uint64_t block_id;
         Operation::OperationType operation;
     };
 

@@ -70,6 +70,7 @@ namespace Engine {
         Metric::fill_metric(
             *Engine::metric,
             request.operation,
+            request.block_id,
             start_timestamp,
             Metric::get_current_timestamp(),
             result,

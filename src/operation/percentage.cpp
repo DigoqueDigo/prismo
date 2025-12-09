@@ -7,9 +7,9 @@ namespace Operation {
 
     OperationType PercentageOperation::nextOperation(void) {
         uint32_t roll = distribution.nextValue();
-        for (auto const& iter : percentages) {
-            if (roll < iter.second) {
-                return iter.first;
+        for (auto const& [cumulative, operation] : percentages) {
+            if (roll < cumulative) {
+                return operation;
             }
         }
         throw std::runtime_error("Can not get nextOperation");
@@ -20,7 +20,7 @@ namespace Operation {
         for (const auto& item: j.at("percentages").items()) {
             std::string operation = item.key();
             cumulative += item.value().template get<uint32_t>();
-            config.percentages.emplace_back(operation_from_str(operation), cumulative);
+            config.percentages.emplace_back(cumulative, operation_from_str(operation));
         }
         if (cumulative != 100) {
             throw std::invalid_argument("Cumulative percentage different of 100");

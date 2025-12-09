@@ -29,6 +29,10 @@ namespace Parser {
             return std::make_unique<Generator::ConstantGenerator>();
         } else if (type == "random") {
             return std::make_unique<Generator::RandomGenerator>();
+        } else if (type == "dedup") {
+            return std::make_unique<Generator::DedupGenerator>(
+                config.get<Generator::DedupGenerator>()
+            );
         } else {
             throw std::invalid_argument("Generator type '" + type + "' not recognized");
         }

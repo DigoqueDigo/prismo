@@ -39,6 +39,7 @@ namespace Metric {
     };
 
     struct BaseMetric : Metric {
+        uint64_t block_id;
         int64_t start_timestamp;
         int64_t end_timestamp;
         Operation::OperationType operation_type{};
@@ -88,6 +89,7 @@ namespace Metric {
     inline void fill_metric(
         Metric& metric,
         Operation::OperationType op,
+        uint64_t block_id,
         int64_t start_ts,
         int64_t end_ts,
         ssize_t result,
@@ -99,6 +101,7 @@ namespace Metric {
 
         auto& base = static_cast<BaseMetric&>(metric);
         base.operation_type  = op;
+        base.block_id = block_id;
         base.start_timestamp = start_ts;
         base.end_timestamp   = end_ts;
 

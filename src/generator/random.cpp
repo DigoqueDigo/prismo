@@ -8,7 +8,9 @@ namespace Generator {
             prng_init(&generator, seed.data());
     };
 
-    void RandomGenerator::nextBlock(uint8_t* buffer, size_t size) {
+    uint64_t RandomGenerator::nextBlock(uint8_t* buffer, size_t size) {
         prng_gen(&generator, buffer, size);
+        std::memcpy(buffer, &block_id, sizeof(block_id));
+        return block_id++;
     }
 }

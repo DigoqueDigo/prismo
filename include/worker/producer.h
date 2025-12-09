@@ -45,11 +45,15 @@ namespace Worker {
                     for (ready = 0; ready < count && iterations != 0; ready++, iterations--) {
                         packet = packets[ready];
                         packet->request.fd = fd;
+                        packet->request.block_id = 0;
                         packet->request.offset = access->nextOffset();
                         packet->request.operation = barrier->apply(operation->nextOperation());
 
                         if (packet->request.operation == Operation::OperationType::WRITE) {
-                            generator->nextBlock(packet->request.buffer, packet->request.size);
+                            packet->request.block_id = generator->nextBlock(
+                                packet->request.buffer,
+                                packet->request.size
+                            );
                         }
                     }
 

@@ -19,6 +19,7 @@ namespace Worker {
             packet->isShutDown = false;
             packet->request.fd = 0;
             packet->request.offset = 0;
+            packet->request.block_id = 0;
             packet->request.size = block_size;
             packet->request.operation = Operation::OperationType::NOP;
             packet->request.buffer = static_cast<uint8_t*>(std::malloc(block_size));
