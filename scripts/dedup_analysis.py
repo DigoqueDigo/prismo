@@ -18,7 +18,6 @@ def get_blocks_ids(log_filename: str) -> list[int]:
 
 
 if __name__ == '__main__':
-    
 
     log_files: list[str] = sys.argv[1:]
 
@@ -48,8 +47,8 @@ if __name__ == '__main__':
                 round(repeats * count / total_operations * 100, 2),
             ))
 
-        data_sorted = sorted(data, key=lambda x: x[0])
-        print(tabulate(data_sorted, headers=headers, tablefmt='rounded_outline'))
+        data.sort(key=lambda x: x[0])
+        print(tabulate(data, headers=headers, tablefmt='rounded_outline'))
 
         print("Summary:")
         print(f"  {'Total operations (log lines)':<30}: {total_operations}")
