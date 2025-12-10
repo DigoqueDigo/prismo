@@ -9,8 +9,8 @@ namespace Operation {
         return operation;
     }
 
-    void from_json(const json& j, ConstantOperation& config) {
+    void from_json(const json& j, ConstantOperation& op_generator) {
         std::string operation = j.at("operation").template get<std::string>();
-        config.operation = operation_from_str(operation);
+        op_generator.operation = operation_from_str(operation);
     }
 }

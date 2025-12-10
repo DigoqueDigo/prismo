@@ -4,13 +4,13 @@ namespace Access {
 
     void Access::validate(void) const {
         if (block_size == 0)
-            throw std::invalid_argument("Invalid block_size for AccessConfig");
+            throw std::invalid_argument("Invalid block_size for Access");
         if (block_size > limit)
-            throw std::invalid_argument("Invalid limit for AccessConfig");
+            throw std::invalid_argument("Invalid limit for Access");
     }
 
-    void from_json(const json& j, Access& config) {
-        j.at("block_size").get_to(config.block_size);
-        j.at("limit").get_to(config.limit);
+    void from_json(const json& j, Access& access_generator) {
+        j.at("block_size").get_to(access_generator.block_size);
+        j.at("limit").get_to(access_generator.limit);
     }
 }

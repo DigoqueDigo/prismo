@@ -9,8 +9,9 @@ namespace Generator {
 
     uint64_t DedupCompressorGenerator::nextBlock(uint8_t* buffer, size_t size) {
         uint32_t roll = distribution.nextValue();
-        uint32_t selected_repeats = select_from_distribution(roll, dedup_percentages);
-        uint32_t selected_reduction = select_from_distribution(roll, models_reduction_percentage[selected_repeats]);
+        uint32_t selected_repeats = select_from_percentage_vector(roll, dedup_percentages);
+        uint32_t selected_reduction = select_from_percentage_vector(
+            roll, models_reduction_percentage[selected_repeats]);
 
         uint32_t bytes_reduction = size * selected_reduction / 100;
         std::shared_ptr<uint8_t[]> base_buffer = models_base_buffer[selected_repeats];
@@ -79,28 +80,10 @@ namespace Generator {
         reduction_percentages.push_back(reduction_percentage);
     }
 
-    void DedupCompressorGenerator::validate(void) {
-        if (!std::ranges::is_sorted(dedup_percentages, {},
-            &PercentageElement<uint32_t, uint32_t>::cumulative_percentage))
-        {
-            throw std::runtime_error("Cumulative dedup percentage not increasing");
-        }
-
-        if (dedup_percentages.back().cumulative_percentage != 100) {
-            throw std::runtime_error("Cumulative dedup percentage different of 100");
-        }
-
+    void DedupCompressorGenerator::validate() const {
+        validate_percentage_vector(dedup_percentages, "dedup");
         for (const auto& [key, vec] : models_reduction_percentage) {
-            if (!std::ranges::is_sorted(vec, {},
-                &PercentageElement<uint32_t, uint32_t>::cumulative_percentage))
-            {
-                throw std::runtime_error(
-                    "Cumulative reduction percentage not increasing for repeats " + std::to_string(key)
-                );
-            }
-            if (vec.back().cumulative_percentage != 100) {
-                throw std::runtime_error("Cumulative reduction percentage different of 100");
-            }
+            validate_percentage_vector(vec, "reduction for repeats " + std::to_string(key));
         }
     }
 

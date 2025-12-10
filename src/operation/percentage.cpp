@@ -3,27 +3,32 @@
 namespace Operation {
 
     PercentageOperation::PercentageOperation()
-        : Operation(), percentages(), distribution(0, 99) {}
+        : Operation(), op_percentages(), distribution(0, 99) {}
 
     OperationType PercentageOperation::nextOperation(void) {
         uint32_t roll = distribution.nextValue();
-        for (auto const& [cumulative, operation] : percentages) {
-            if (roll < cumulative) {
-                return operation;
-            }
-        }
-        throw std::runtime_error("Can not get nextOperation");
+        return select_from_percentage_vector(roll, op_percentages);
     }
 
-    void from_json(const json& j, PercentageOperation& config) {
+    void PercentageOperation::validate(void) const {
+        validate_percentage_vector(op_percentages, "dedup");
+    }
+
+    void from_json(const json& j, PercentageOperation& op_generator) {
         uint32_t cumulative = 0;
+
         for (const auto& item: j.at("percentages").items()) {
             std::string operation = item.key();
             cumulative += item.value().template get<uint32_t>();
-            config.percentages.emplace_back(cumulative, operation_from_str(operation));
+
+            PercentageElement<uint32_t, OperationType> element {
+                .cumulative_percentage = cumulative,
+                .value = operation_from_str(operation)
+            };
+
+            op_generator.op_percentages.push_back(element);
         }
-        if (cumulative != 100) {
-            throw std::invalid_argument("Cumulative percentage different of 100 in PercentageOperation");
-        }
+
+        op_generator.validate();
     }
 }

@@ -16,10 +16,10 @@ namespace Access {
         Access::validate();
     }
 
-    void from_json(const json& j, RandomAccess& config) {
-        from_json(j, static_cast<Access&>(config));
-        config.validate();
-        config.limit = config.limit / config.block_size - 1;
-        config.distribution.setParams(0, config.limit);
+    void from_json(const json& j, RandomAccess& access_generator) {
+        from_json(j, static_cast<Access&>(access_generator));
+        access_generator.validate();
+        access_generator.limit = access_generator.limit / access_generator.block_size - 1;
+        access_generator.distribution.setParams(0, access_generator.limit);
     }
 }

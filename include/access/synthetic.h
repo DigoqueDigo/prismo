@@ -27,7 +27,7 @@ namespace Access {
 
             virtual uint64_t nextOffset(void) = 0;
             virtual void validate(void) const;
-            friend void from_json(const json& j, Access& config);
+            friend void from_json(const json& j, Access& access_generator);
     };
 
     class SequentialAccess : public Access {
@@ -44,7 +44,7 @@ namespace Access {
 
             uint64_t nextOffset(void) override;
             void validate(void) const;
-            friend void from_json(const json& j, SequentialAccess& config);
+            friend void from_json(const json& j, SequentialAccess& access_generator);
     };
 
     class RandomAccess : public Access {
@@ -61,7 +61,7 @@ namespace Access {
 
             uint64_t nextOffset(void) override;
             void validate(void) const;
-            friend void from_json(const json& j, RandomAccess& config);
+            friend void from_json(const json& j, RandomAccess& access_generator);
     };
 
     class ZipfianAccess : public Access {
@@ -79,13 +79,13 @@ namespace Access {
 
             uint64_t nextOffset(void) override;
             void validate(void) const;
-            friend void from_json(const json& j, ZipfianAccess& config);
+            friend void from_json(const json& j, ZipfianAccess& access_generator);
     };
 
-    void from_json(const json& j, Access& config);
-    void from_json(const json& j, SequentialAccess& config);
-    void from_json(const json& j, RandomAccess& config);
-    void from_json(const json& j, ZipfianAccess& config);
+    void from_json(const json& j, Access& access_generator);
+    void from_json(const json& j, SequentialAccess& access_generator);
+    void from_json(const json& j, RandomAccess& access_generator);
+    void from_json(const json& j, ZipfianAccess& access_generator);
 };
 
 #endif

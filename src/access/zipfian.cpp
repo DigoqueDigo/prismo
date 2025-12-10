@@ -15,14 +15,22 @@ namespace Access {
     void ZipfianAccess::validate(void) const {
         Access::validate();
         if (skew <= 0 || skew >= 1)
-            throw std::invalid_argument("Invalid skew for ZipfianAccessConfig");
+            throw std::invalid_argument("Invalid skew for ZipfianAccess");
     }
 
-    void from_json(const json& j, ZipfianAccess& config) {
-        from_json(j, static_cast<Access&>(config));
-        j.at("skew").get_to(config.skew);
-        config.validate();
-        config.limit = config.limit / config.block_size - 1;
-        config.distribution.setParams(0, config.limit, config.skew);
+    void from_json(const json& j, ZipfianAccess& access_generator) {
+        from_json(j, static_cast<Access&>(access_generator));
+        j.at("skew").get_to(access_generator.skew);
+        access_generator.validate();
+
+        access_generator.limit =
+            access_generator.limit /
+            access_generator.block_size - 1;
+
+        access_generator.distribution.setParams(
+            0,
+            access_generator.limit,
+            access_generator.skew
+        );
     }
 }

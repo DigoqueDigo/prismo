@@ -18,9 +18,11 @@ namespace Access {
         Access::validate();
     }
 
-    void from_json(const json& j, SequentialAccess& config) {
-        from_json(j, static_cast<Access&>(config));
-        config.validate();
-        config.limit = config.block_size * (config.limit / config.block_size);
+    void from_json(const json& j, SequentialAccess& access_generator) {
+        from_json(j, static_cast<Access&>(access_generator));
+        access_generator.validate();
+        access_generator.limit =
+            access_generator.block_size *
+            (access_generator.limit / access_generator.block_size);
     }
 }

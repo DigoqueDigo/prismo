@@ -13,16 +13,16 @@ namespace Operation {
 
     void SequenceOperation::validate(void) const {
         if (operations.size() == 0) {
-            throw std::invalid_argument("Invalid operations for SequenceOperationConfig");
+            throw std::invalid_argument("Invalid operations for SequenceOperation");
         }
     }
 
-    void from_json(const json& j, SequenceOperation& config) {
+    void from_json(const json& j, SequenceOperation& op_generator) {
         for (auto& item : j.at("operations")) {
             std::string operation = item.template get<std::string>();
-            config.operations.push_back(operation_from_str(operation));
+            op_generator.operations.push_back(operation_from_str(operation));
         }
-        config.length = config.operations.size();
-        config.validate();
+        op_generator.length = op_generator.operations.size();
+        op_generator.validate();
     }
 }

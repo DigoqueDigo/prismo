@@ -9,4 +9,4 @@
   o indice do bloco utilizador nas escritas, para as restantes operações de io é
   utilizador o indice zero por defeito
 
-- modularizar a cumulative percentage
++ modularizar a cumulative percentage

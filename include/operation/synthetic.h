@@ -6,6 +6,7 @@
 #include <operation/type.h>
 #include <nlohmann/json.hpp>
 #include <lib/distribution/distribution.h>
+#include <lib/distribution/percentage.h>
 
 using json = nlohmann::json;
 
@@ -34,12 +35,12 @@ namespace Operation {
             }
 
             OperationType nextOperation(void);
-            friend void from_json(const json& j, ConstantOperation& config);
+            friend void from_json(const json& j, ConstantOperation& op_generator);
     };
 
     class PercentageOperation : public Operation {
         private:
-            std::vector<std::pair<uint32_t, OperationType>> percentages;
+            std::vector<PercentageElement<uint32_t, OperationType>> op_percentages;
             Distribution::UniformDistribution<uint32_t> distribution;
 
         public:
@@ -49,8 +50,9 @@ namespace Operation {
                 // std::cout << "~Destroying PercentageOperation" << std::endl;
             }
 
+            void validate(void) const;
             OperationType nextOperation(void);
-            friend void from_json(const json& j, PercentageOperation& config);
+            friend void from_json(const json& j, PercentageOperation& op_generator);
     };
 
     class SequenceOperation : public Operation {
@@ -66,14 +68,14 @@ namespace Operation {
                 // std::cout << "~Destroying SequenceOperation" << std::endl;
             }
 
-            OperationType nextOperation(void);
             void validate(void) const;
-            friend void from_json(const json& j, SequenceOperation& config);
+            OperationType nextOperation(void);
+            friend void from_json(const json& j, SequenceOperation& op_generator);
     };
 
-    void from_json(const json& j, ConstantOperation& config);
-    void from_json(const json& j, PercentageOperation& config);
-    void from_json(const json& j, SequenceOperation& config);
+    void from_json(const json& j, ConstantOperation& op_generator);
+    void from_json(const json& j, PercentageOperation& op_generator);
+    void from_json(const json& j, SequenceOperation& op_generator);
 };
 
 #endif
