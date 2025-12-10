@@ -94,6 +94,7 @@ namespace Engine {
         aio_task.index = free_index;
         aio_task.metric_data.size = request.size;
         aio_task.metric_data.offset = request.offset;
+        aio_task.metric_data.metadata = request.metadata;
         aio_task.metric_data.operation_type = request.operation;
         aio_task.metric_data.start_timestamp = Metric::get_current_timestamp();
 
@@ -131,8 +132,8 @@ namespace Engine {
             Metric::fill_metric(
                 *Engine::metric,
                 completed_task->metric_data.operation_type,
-                0, // FIXME: pass correct aio params
-                0, // FIXME: update uring params
+                completed_task->metric_data.metadata.block_id,
+                completed_task->metric_data.metadata.compression,
                 completed_task->metric_data.start_timestamp,
                 Metric::get_current_timestamp(),
                 ev.res,

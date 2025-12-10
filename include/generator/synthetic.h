@@ -5,17 +5,13 @@
 #include <cstddef>
 #include <cstring>
 #include <iostream>
+#include <generator/metadata.h>
 #include <nlohmann/json.hpp>
 #include <lib/distribution/distribution.h>
 
 using json = nlohmann::json;
 
 namespace Generator {
-
-    struct BlockMetadata {
-        uint64_t block_id;
-        uint32_t compression;
-    };
 
     class Generator {
         protected:

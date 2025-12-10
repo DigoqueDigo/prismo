@@ -389,6 +389,10 @@ namespace Engine {
                 .size = thread_context->request->size,
                 .offset = thread_context->request->offset,
                 .start_timestamp = Metric::get_current_timestamp(),
+                .metadata = Generator::BlockMetadata {
+                    .block_id = thread_context->request->metadata.block_id,
+                    .compression = thread_context->request->metadata.compression
+                },
                 .operation_type = thread_context->request->operation
             };
 
@@ -556,8 +560,8 @@ namespace Engine {
         Metric::fill_metric(
             *spdk_engine->metric,
             thread_cb_context->metric_data.operation_type,
-            0, // FIXME: pass correct spdk params
-            0, // FIXME: update uring params
+            thread_cb_context->metric_data.metadata.block_id,
+            thread_cb_context->metric_data.metadata.compression,
             thread_cb_context->metric_data.start_timestamp,
             Metric::get_current_timestamp(),
             success ? thread_cb_context->metric_data.size : 0,

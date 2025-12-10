@@ -3,11 +3,12 @@
 
 #include <cstdint>
 #include <fcntl.h>
+#include <iostream>
 #include <libaio.h>
 #include <liburing.h>
 #include <operation/type.h>
+#include <generator/metadata.h>
 #include <nlohmann/json.hpp>
-#include <iostream>
 
 using json = nlohmann::json;
 
@@ -40,6 +41,7 @@ namespace Engine {
         size_t size;
         uint64_t offset;
         int64_t start_timestamp;
+        Generator::BlockMetadata metadata;
         Operation::OperationType operation_type;
     };
 

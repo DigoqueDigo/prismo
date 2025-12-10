@@ -4,8 +4,8 @@
 #include <cstddef>
 #include <fcntl.h>
 #include <cstdint>
-#include <generator/synthetic.h>
 #include <operation/type.h>
+#include <generator/metadata.h>
 
 namespace Protocol {
 
