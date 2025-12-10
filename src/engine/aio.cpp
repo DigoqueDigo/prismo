@@ -132,6 +132,7 @@ namespace Engine {
                 *Engine::metric,
                 completed_task->metric_data.operation_type,
                 0, // FIXME: pass correct aio params
+                0, // FIXME: update uring params
                 completed_task->metric_data.start_timestamp,
                 Metric::get_current_timestamp(),
                 ev.res,

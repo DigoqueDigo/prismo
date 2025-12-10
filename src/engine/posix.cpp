@@ -70,7 +70,8 @@ namespace Engine {
         Metric::fill_metric(
             *Engine::metric,
             request.operation,
-            request.block_id,
+            request.metadata.block_id,
+            request.metadata.compression,
             start_timestamp,
             Metric::get_current_timestamp(),
             result,

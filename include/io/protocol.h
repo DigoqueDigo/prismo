@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <fcntl.h>
 #include <cstdint>
+#include <generator/synthetic.h>
 #include <operation/type.h>
 
 namespace Protocol {
@@ -23,7 +24,7 @@ namespace Protocol {
         size_t size;
         uint64_t offset;
         uint8_t* buffer;
-        uint64_t block_id;
+        Generator::BlockMetadata metadata;
         Operation::OperationType operation;
     };
 

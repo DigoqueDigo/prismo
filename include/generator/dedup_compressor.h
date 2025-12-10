@@ -36,9 +36,7 @@ namespace Generator {
 
             void validate(void) const;
 
-            uint64_t nextBlock(uint8_t* buffer, size_t size) override;
-            uint64_t applyCompression(uint8_t* buffer, size_t size);
-
+            BlockMetadata nextBlock(uint8_t* buffer, size_t size) override;
             friend void from_json(const json& j, DedupCompressorGenerator& generator);
     };
 

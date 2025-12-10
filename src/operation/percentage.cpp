@@ -11,7 +11,7 @@ namespace Operation {
     }
 
     void PercentageOperation::validate(void) const {
-        validate_percentage_vector(op_percentages, "dedup");
+        validate_percentage_vector(op_percentages, "percentage operation");
     }
 
     void from_json(const json& j, PercentageOperation& op_generator) {

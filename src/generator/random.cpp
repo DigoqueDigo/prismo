@@ -8,9 +8,12 @@ namespace Generator {
             prng_init(&generator, seed.data());
     };
 
-    uint64_t RandomGenerator::nextBlock(uint8_t* buffer, size_t size) {
+    BlockMetadata RandomGenerator::nextBlock(uint8_t* buffer, size_t size) {
         prng_gen(&generator, buffer, size);
         std::memcpy(buffer, &block_id, sizeof(block_id));
-        return block_id++;
+        return BlockMetadata {
+            .block_id = block_id++,
+            .compression = 0
+        };
     }
 }

@@ -2,7 +2,7 @@
   "job": {
     "name": "job",
     "numjobs": 1,
-    "iterations": 10000,
+    "iterations": 20,
     "filename": "testfile",
     "block_size": 4096,
     "limit": 65536,
@@ -13,8 +13,8 @@
     "type": "constant",
     "operation": "write",
     "percentages": {
-      "read": 90,
-      "write": 10
+      "read": 50,
+      "write": 50
     },
     "operations": [
       "read",
@@ -36,7 +36,7 @@
     "type": "dedup",
     "distribution": [
       {
-        "percentage": 50,
+        "percentage": 100,
         "repeats": 0,
         "compression": [
           {
@@ -50,7 +50,7 @@
         ]
       },
       {
-        "percentage": 5,
+        "percentage": 0,
         "repeats": 1,
         "compression": [
           {
@@ -64,7 +64,7 @@
         ]
       },
       {
-        "percentage": 15,
+        "percentage": 0,
         "repeats": 3,
         "compression": [
           {
@@ -74,7 +74,7 @@
         ]
       },
       {
-        "percentage": 30,
+        "percentage": 0,
         "repeats": 5,
         "compression": [
           {

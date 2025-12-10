@@ -7,7 +7,7 @@ namespace Generator {
         dedup_percentages(), models_dedup(),
         models_base_buffer(), models_reduction_percentage() {}
 
-    uint64_t DedupCompressorGenerator::nextBlock(uint8_t* buffer, size_t size) {
+    BlockMetadata DedupCompressorGenerator::nextBlock(uint8_t* buffer, size_t size) {
         uint32_t roll = distribution.nextValue();
         uint32_t selected_repeats = select_from_percentage_vector(roll, dedup_percentages);
         uint32_t selected_reduction = select_from_percentage_vector(
@@ -23,7 +23,10 @@ namespace Generator {
 
         if (selected_repeats == 0) {
             std::memcpy(buffer, &block_id, sizeof(block_id));
-            return block_id++;
+            return BlockMetadata {
+                .block_id = block_id++,
+                .compression = selected_reduction
+            };
         }
 
         if (dedup_window.size() == dedup_window_size) {
@@ -38,7 +41,10 @@ namespace Generator {
                 dedup_window.pop_back();
             }
 
-            return element.block_id;
+            return BlockMetadata {
+                .block_id = element.block_id,
+                .compression = selected_reduction
+            };
         }
 
         DedupElement element = {
@@ -49,7 +55,10 @@ namespace Generator {
         dedup_window.push_back(element);
         std::memcpy(buffer, &(element.block_id), sizeof(element.block_id));
 
-        return element.block_id;
+        return BlockMetadata {
+            .block_id = element.block_id,
+            .compression = selected_reduction
+        };
     }
 
     void DedupCompressorGenerator::add_dedup_percentage(

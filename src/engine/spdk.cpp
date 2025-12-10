@@ -557,6 +557,7 @@ namespace Engine {
             *spdk_engine->metric,
             thread_cb_context->metric_data.operation_type,
             0, // FIXME: pass correct spdk params
+            0, // FIXME: update uring params
             thread_cb_context->metric_data.start_timestamp,
             Metric::get_current_timestamp(),
             success ? thread_cb_context->metric_data.size : 0,

@@ -12,6 +12,11 @@ using json = nlohmann::json;
 
 namespace Generator {
 
+    struct BlockMetadata {
+        uint64_t block_id;
+        uint32_t compression;
+    };
+
     class Generator {
         protected:
             uint64_t block_id = 0;
@@ -23,7 +28,7 @@ namespace Generator {
                 // std::cout << "~Destroying Generator" << std::endl;
             }
 
-            virtual uint64_t nextBlock(uint8_t* buffer, size_t size) = 0;
+            virtual BlockMetadata nextBlock(uint8_t* buffer, size_t size) = 0;
     };
 
     class ConstantGenerator : public Generator {
@@ -34,10 +39,13 @@ namespace Generator {
                 // std::cout << "~Destroying ConstantGenerator" << std::endl;
             }
 
-            uint64_t nextBlock(uint8_t* buffer, size_t size) override {
+            BlockMetadata nextBlock(uint8_t* buffer, size_t size) override {
                 std::memset(buffer, 0, size);
                 std::memcpy(buffer, &block_id, sizeof(block_id));
-                return block_id;
+                return BlockMetadata {
+                    .block_id = block_id++,
+                    .compression = 100
+                };
             }
     };
 
@@ -52,7 +60,7 @@ namespace Generator {
                 // std::cout << "~Destroying RandomGenerator" << std::endl;
             }
 
-            uint64_t nextBlock(uint8_t* buffer, size_t size) override;
+            BlockMetadata nextBlock(uint8_t* buffer, size_t size) override;
     };
 }
 

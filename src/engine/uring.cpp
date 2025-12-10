@@ -151,6 +151,7 @@ namespace Engine {
                 *Engine::metric,
                 uring_user_data->metric_data.operation_type,
                 0, // FIXME: update uring params
+                0, // FIXME: update uring params
                 uring_user_data->metric_data.start_timestamp,
                 Metric::get_current_timestamp(),
                 cqe->res,
