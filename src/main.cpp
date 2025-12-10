@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
 
     access_j.merge_patch(job_j);
     engine_j.merge_patch(job_j);
+    generator_j.merge_patch(job_j);
 
     const size_t block_size = job_j.at("block_size").get<size_t>();
     const uint64_t iterations = job_j.at("iterations").get<uint64_t>();

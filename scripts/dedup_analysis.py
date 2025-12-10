@@ -9,7 +9,7 @@ def get_blocks_ids(log_filename: str) -> list[int]:
 
     with open(log_filename, 'r') as log_file:
         for log_line in log_file:
-            match = re.search(r"block=(\d+)", log_line)
+            match = re.search(r'block=(\d+)', log_line)
             if match:
                 block_id = int(match.group(1))
                 block_ids.append(int(block_id))
@@ -31,11 +31,11 @@ if __name__ == '__main__':
 
         data: list[tuple[int, int, float, int, float]] = []
         headers: list[str] = [
-            "Repeats",
-            "Unique blocks",
-            "Percentage unique",
-            "Operations",
-            "Percentage global"
+            'Repeats',
+            'Unique blocks',
+            'Percentage unique',
+            'Operations',
+            'Percentage global'
         ]
 
         for repeats, count in summary.items():
@@ -50,7 +50,7 @@ if __name__ == '__main__':
         data.sort(key=lambda x: x[0])
         print(tabulate(data, headers=headers, tablefmt='rounded_outline'))
 
-        print("Summary:")
-        print(f"  {'Total operations (log lines)':<30}: {total_operations}")
-        print(f"  {'Unique blocks':<30}: {unique_blocks}")
-        print(f"  {'Average accesses per block':<30}: {total_operations/unique_blocks:.3f}")
+        print(f'Summary: {log_file}')
+        print(f'  {'Total operations (log lines)':<30}: {total_operations}')
+        print(f'  {'Unique blocks':<30}: {unique_blocks}')
+        print(f'  {'Average accesses per block':<30}: {total_operations/unique_blocks:.3f}')

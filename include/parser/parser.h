@@ -5,6 +5,7 @@
 #include <access/synthetic.h>
 #include <generator/synthetic.h>
 #include <operation/synthetic.h>
+#include <generator/dedup_compressor.h>
 #include <operation/barrier.h>
 #include <engine/engine.h>
 #include <engine/aio.h>

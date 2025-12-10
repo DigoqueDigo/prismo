@@ -37,7 +37,7 @@ src = files(
   'src/engine/uring.cpp',
   'src/engine/utils.cpp',
   'src/generator/random.cpp',
-  'src/generator/dedup.cpp',
+  'src/generator/dedup_compressor.cpp',
   'src/logger/spdlog.cpp',
   'src/operation/barrier.cpp',
   'src/operation/constant.cpp',

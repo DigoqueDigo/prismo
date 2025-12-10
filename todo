@@ -8,3 +8,5 @@
 - atualizar a recolhas das metricas nas engines de aio, uring e spdk para refletir
   o indice do bloco utilizador nas escritas, para as restantes operações de io é
   utilizador o indice zero por defeito
+
+- modularizar a cumulative percentage

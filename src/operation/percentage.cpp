@@ -23,7 +23,7 @@ namespace Operation {
             config.percentages.emplace_back(cumulative, operation_from_str(operation));
         }
         if (cumulative != 100) {
-            throw std::invalid_argument("Cumulative percentage different of 100");
+            throw std::invalid_argument("Cumulative percentage different of 100 in PercentageOperation");
         }
     }
 }

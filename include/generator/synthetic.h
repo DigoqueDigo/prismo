@@ -5,7 +5,6 @@
 #include <cstddef>
 #include <cstring>
 #include <iostream>
-#include <unordered_map>
 #include <nlohmann/json.hpp>
 #include <lib/distribution/distribution.h>
 
@@ -55,32 +54,6 @@ namespace Generator {
 
             uint64_t nextBlock(uint8_t* buffer, size_t size) override;
     };
-
-    struct WindowElement {
-        uint64_t block_id;
-        uint32_t left_copies;
-    };
-
-    class DedupGenerator : public Generator {
-        private:
-            size_t sliding_window = 2;
-            Distribution::UniformDistribution<uint32_t> distribution;
-
-            std::vector<std::pair<uint32_t, uint32_t>> percentages;
-            std::unordered_map<uint32_t, std::vector<WindowElement>> windows;
-
-        public:
-            DedupGenerator();
-
-            ~DedupGenerator() override {
-                // std::cout << "~Destroying DedupGenerator" << std::endl;
-            }
-
-            uint64_t nextBlock(uint8_t* buffer, size_t size) override;
-            friend void from_json(const json& j, DedupGenerator& generator);
-    };
-
-    void from_json(const json& j, DedupGenerator& generator);
-};
+}
 
 #endif
