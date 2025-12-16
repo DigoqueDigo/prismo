@@ -36,7 +36,7 @@
     "type": "dedup",
     "distribution": [
       {
-        "percentage": 25,
+        "percentage": 40,
         "repeats": 0,
         "compression": [
           {
@@ -50,7 +50,7 @@
         ]
       },
       {
-        "percentage": 25,
+        "percentage": 30,
         "repeats": 1,
         "compression": [
           {
@@ -64,7 +64,7 @@
         ]
       },
       {
-        "percentage": 25,
+        "percentage": 20,
         "repeats": 3,
         "compression": [
           {
@@ -74,7 +74,7 @@
         ]
       },
       {
-        "percentage": 25,
+        "percentage": 10,
         "repeats": 5,
         "compression": [
           {

@@ -8,10 +8,12 @@ namespace Generator {
         models_base_buffer(), models_reduction_percentage() {}
 
     BlockMetadata DedupCompressorGenerator::next_block(uint8_t* buffer, size_t size) {
-        uint32_t roll = distribution.nextValue();
-        uint32_t selected_repeats = select_from_percentage_vector(roll, dedup_percentages);
+        uint32_t dedup_roll = distribution.nextValue();
+        uint32_t reduction_roll = distribution.nextValue();
+
+        uint32_t selected_repeats = select_from_percentage_vector(dedup_roll, dedup_percentages);
         uint32_t selected_reduction = select_from_percentage_vector(
-            roll, models_reduction_percentage[selected_repeats]);
+            reduction_roll, models_reduction_percentage[selected_repeats]);
 
         uint32_t bytes_reduction = size * selected_reduction / 100;
         std::shared_ptr<uint8_t[]>& base_buffer = models_base_buffer[selected_repeats];

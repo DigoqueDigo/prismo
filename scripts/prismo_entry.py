@@ -46,3 +46,8 @@ class PrismoEntry:
             if field not in fields:
                 raise ValueError(f"Missing field '{field}' in log line: {line}")
             setattr(self, field, fields[field])
+
+
+def get_prismo_entries(log_filename: str) -> List[PrismoEntry]:
+    with open(log_filename, 'r') as log_file:
+        return [PrismoEntry(line) for line in log_file if line.strip()]
