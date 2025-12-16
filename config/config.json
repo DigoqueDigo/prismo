@@ -10,7 +10,7 @@
   },
 
   "operation": {
-    "type": "percentage",
+    "type": "constant",
     "operation": "write",
     "percentages": {
       "read": 50,
@@ -28,7 +28,7 @@
   },
 
   "access": {
-    "type": "random",
+    "type": "sequential",
     "skew": 0.9
   },
 
