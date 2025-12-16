@@ -7,14 +7,14 @@ namespace Generator {
         dedup_percentages(), models_dedup(),
         models_base_buffer(), models_reduction_percentage() {}
 
-    BlockMetadata DedupCompressorGenerator::nextBlock(uint8_t* buffer, size_t size) {
+    BlockMetadata DedupCompressorGenerator::next_block(uint8_t* buffer, size_t size) {
         uint32_t roll = distribution.nextValue();
         uint32_t selected_repeats = select_from_percentage_vector(roll, dedup_percentages);
         uint32_t selected_reduction = select_from_percentage_vector(
             roll, models_reduction_percentage[selected_repeats]);
 
         uint32_t bytes_reduction = size * selected_reduction / 100;
-        std::shared_ptr<uint8_t[]> base_buffer = models_base_buffer[selected_repeats];
+        std::shared_ptr<uint8_t[]>& base_buffer = models_base_buffer[selected_repeats];
 
         std::memset(buffer, 0, bytes_reduction);
         std::memcpy(buffer + bytes_reduction, base_buffer.get(), size - bytes_reduction);
@@ -67,8 +67,7 @@ namespace Generator {
     ) {
         auto it = models_dedup.find(repeats);
         if (it != models_dedup.end()) {
-            throw std::runtime_error(
-                "Dedup percentage already registered for repeats: " + std::to_string(repeats));
+            throw std::invalid_argument("add_dedup_percentage: percentage already registered for repeats: " + std::to_string(repeats));
         }
         models_dedup.try_emplace(repeats);
         dedup_percentages.push_back(dedup_percentage);
@@ -93,12 +92,21 @@ namespace Generator {
         validate_percentage_vector(dedup_percentages, "dedup");
         for (const auto& [key, vec] : models_reduction_percentage) {
             validate_percentage_vector(vec, "reduction for repeats " + std::to_string(key));
+
+            bool has_invalid_reduction = std::any_of(vec.begin(), vec.end(),
+                [](const auto& elem){ return elem.value > 100; });
+
+            if (has_invalid_reduction) {
+                throw std::invalid_argument("validate: reduction value must be less than 100");
+            }
         }
     }
 
     void from_json(const json& j, DedupCompressorGenerator& generator) {
         uint32_t dedup_cumulative = 0;
         uint32_t reduction_cumulative = 0;
+
+        RandomGenerator random_generator;
         size_t block_size = j.at("block_size").get<size_t>();
 
         for (const auto& dedup_item : j.at("distribution")) {
@@ -110,7 +118,9 @@ namespace Generator {
                 .value = repeats,
             };
 
-            auto base_buffer = std::shared_ptr<uint8_t[]>(new uint8_t[block_size]());
+            auto base_buffer = std::make_shared<uint8_t[]>(block_size);
+            random_generator.next_block(base_buffer.get(), block_size);
+
             generator.add_dedup_percentage(repeats, dedup_percentage);
             generator.set_model_base_buffer(repeats, base_buffer);
 

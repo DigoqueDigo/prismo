@@ -17,14 +17,14 @@
 
 namespace Parser {
 
-    std::unique_ptr<Access::Access> getAccess(const json& config);
-    std::unique_ptr<Generator::Generator> getGenerator(const json& config);
-    std::unique_ptr<Operation::Operation> getOperation(const json& config);
-    std::unique_ptr<Operation::MultipleBarrier> getMultipleBarrier(const json& config);
+    std::unique_ptr<Access::Access> get_access(const json& config);
+    std::unique_ptr<Generator::Generator> get_generator(const json& config);
+    std::unique_ptr<Operation::Operation> get_operation(const json& config);
+    std::unique_ptr<Operation::MultipleBarrier> get_multiple_barrier(const json& config);
 
-    std::unique_ptr<Metric::Metric> getMetric(const json& config);
-    std::unique_ptr<Logger::Logger> getLogger(const json& config);
-    std::unique_ptr<Engine::Engine> getEngine(
+    std::unique_ptr<Metric::Metric> get_metric(const json& config);
+    std::unique_ptr<Logger::Logger> get_logger(const json& config);
+    std::unique_ptr<Engine::Engine> get_engine(
         const json& config,
         std::unique_ptr<Metric::Metric> metric,
         std::unique_ptr<Logger::Logger> logger

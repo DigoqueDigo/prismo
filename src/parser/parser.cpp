@@ -2,7 +2,7 @@
 
 namespace Parser {
 
-    std::unique_ptr<Access::Access> getAccess(const json& config) {
+    std::unique_ptr<Access::Access> get_access(const json& config) {
         std::string type = config.at("type").get<std::string>();
 
         if (type == "sequential") {
@@ -18,11 +18,11 @@ namespace Parser {
                 config.get<Access::ZipfianAccess>()
             );
         } else {
-            throw std::invalid_argument("Access type '" + type + "' not recognized");
+            throw std::invalid_argument("get_access: type '" + type + "' not recognized");
         }
     }
 
-    std::unique_ptr<Generator::Generator> getGenerator(const json& config) {
+    std::unique_ptr<Generator::Generator> get_generator(const json& config) {
         std::string type = config.at("type").get<std::string>();
 
         if (type == "constant") {
@@ -34,11 +34,11 @@ namespace Parser {
                 config.get<Generator::DedupCompressorGenerator>()
             );
         } else {
-            throw std::invalid_argument("Generator type '" + type + "' not recognized");
+            throw std::invalid_argument("get_generator: type '" + type + "' not recognized");
         }
     }
 
-    std::unique_ptr<Operation::Operation> getOperation(const json& config) {
+    std::unique_ptr<Operation::Operation> get_operation(const json& config) {
         std::string type = config.at("type").get<std::string>();
 
         if (type == "constant") {
@@ -54,17 +54,17 @@ namespace Parser {
                 config.get<Operation::SequenceOperation>()
             );
         } else {
-            throw std::invalid_argument("Operation type '" + type + "' not recognized");
+            throw std::invalid_argument("get_operation: type '" + type + "' not recognized");
         }
     }
 
-    std::unique_ptr<Operation::MultipleBarrier> getMultipleBarrier(const json& config) {
+    std::unique_ptr<Operation::MultipleBarrier> get_multiple_barrier(const json& config) {
         return std::make_unique<Operation::MultipleBarrier>(
             config.get<Operation::MultipleBarrier>()
         );
     }
 
-    std::unique_ptr<Metric::Metric> getMetric(const json& config) {
+    std::unique_ptr<Metric::Metric> get_metric(const json& config) {
         std::string type = config.at("metric").get<std::string>();
 
         if (type == "none") {
@@ -76,11 +76,11 @@ namespace Parser {
         } else if (type == "full") {
             return std::make_unique<Metric::FullMetric>();
         } else {
-            throw std::invalid_argument("Metric type '" + type + "' not recognized");
+            throw std::invalid_argument("get_metric: type '" + type + "' not recognized");
         }
     }
 
-    std::unique_ptr<Logger::Logger> getLogger(const json& config) {
+    std::unique_ptr<Logger::Logger> get_logger(const json& config) {
         const std::string type = config.at("type").get<std::string>();
 
         if (type == "spdlog") {
@@ -88,11 +88,11 @@ namespace Parser {
                 config.get<Logger::SpdlogConfig>()
             );
         } else {
-            throw std::invalid_argument("Logger type '" + type + "' not recognized");
+            throw std::invalid_argument("get_logger: type '" + type + "' not recognized");
         }
     }
 
-    std::unique_ptr<Engine::Engine> getEngine(
+    std::unique_ptr<Engine::Engine> get_engine(
         const json& config,
         std::unique_ptr<Metric::Metric> metric,
         std::unique_ptr<Logger::Logger> logger
@@ -123,7 +123,7 @@ namespace Parser {
                 config.get<Engine::SpdkConfig>()
             );
         } else {
-            throw std::invalid_argument("Engine type '" + type + "' not recognized");
+            throw std::invalid_argument("get_engine: type '" + type + "' not recognized");
         }
     }
 }

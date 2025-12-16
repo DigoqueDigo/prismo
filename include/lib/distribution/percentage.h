@@ -28,11 +28,15 @@ void validate_percentage_vector(
     if (!std::ranges::is_sorted(vec, {},
         &PercentageElement<PercentageT, ValueT>::cumulative_percentage))
     {
-        throw std::runtime_error(name + " cumulative percentage not increasing");
+        throw std::invalid_argument(
+            "validate_percentage_vector: " + name + " cumulative percentage not increasing"
+        );
     }
 
     if (!vec.empty() && vec.back().cumulative_percentage != 100) {
-        throw std::runtime_error(name + " cumulative percentage not equal to 100");
+        throw std::invalid_argument(
+            "validate_percentage_vector: " + name + " cumulative percentage not equal to 100"
+        );
     }
 }
 

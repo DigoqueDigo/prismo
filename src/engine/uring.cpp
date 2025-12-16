@@ -17,7 +17,7 @@ namespace Engine {
         UringConfig config = _config;
         int ret = io_uring_queue_init_params(config.entries, &ring, &config.params);
         if (ret)
-            throw std::runtime_error("Uring initialization failed: " + std::string(strerror(ret)));
+            throw std::runtime_error("uring_constructor: initialization failed: " + std::string(strerror(ret)));
 
         iovecs.resize(config.params.sq_entries);
         user_data.resize(config.params.sq_entries);
@@ -35,14 +35,14 @@ namespace Engine {
         ret = io_uring_register_buffers(&ring, iovecs.data(), config.params.sq_entries);
         if (ret) {
             io_uring_queue_exit(&ring);
-            throw std::runtime_error("Uring register buffers failed: " + std::string(strerror(errno)));
+            throw std::runtime_error("uring_constructor: register buffers failed: " + std::string(strerror(errno)));
         }
     }
 
     UringEngine::~UringEngine() {
         // std::cout << "~Destroying UringEngine" << std::endl;
         if (io_uring_unregister_buffers(&ring))
-            std::cerr << "Uring unregister buffers failed: " << strerror(errno) << std::endl;
+            std::cerr << "uring_destructor: unregister buffers failed: " << strerror(errno) << std::endl;
         for (auto& iv : iovecs)
             std::free(iv.iov_base);
         io_uring_queue_exit(&ring);
@@ -51,18 +51,18 @@ namespace Engine {
     int UringEngine::open(Protocol::OpenRequest& request) {
         int fd = ::open(request.filename.c_str(), request.flags, request.mode);
         if (fd < 0)
-            throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
+            throw std::runtime_error("uring_open: failed to open file: " + std::string(strerror(errno)));
         int ret = io_uring_register_files(&ring, &fd, 1);
         if (ret)
-            throw std::runtime_error("Uring register file failed: " + std::string(strerror(ret)));
+            throw std::runtime_error("uring_open: register file failed: " + std::string(strerror(ret)));
         return fd;
     }
 
     int UringEngine::close(Protocol::CloseRequest& request) {
         if (io_uring_unregister_files(&ring))
-            throw std::runtime_error("Uring unregister files failed: " + std::string(strerror(errno)));
+            throw std::runtime_error("uring_close: unregister files failed: " + std::string(strerror(errno)));
         if (::close(request.fd) < 0)
-            throw std::runtime_error("Failed to close fd: " + std::string(strerror(errno)));
+            throw std::runtime_error("uring_close: failed to close fd: " + std::string(strerror(errno)));
         return 0;
     }
 

@@ -18,9 +18,16 @@ namespace Generator {
             size_t dedup_window_size = 3;
             Distribution::UniformDistribution<uint32_t> distribution;
 
+            // vector with dedup percentages to choose repeats
             std::vector<PercentageElement<uint32_t, uint32_t>> dedup_percentages;
+
+            // map with sliding window for each dedup model
             std::unordered_map<uint32_t, std::vector<DedupElement>> models_dedup;
+
+            // random base buffer for each dedup model
             std::unordered_map<uint32_t, std::shared_ptr<uint8_t[]>> models_base_buffer;
+
+            // vector with reduction percentages for each dedup model to choose reduction percentage
             std::unordered_map<uint32_t, std::vector<PercentageElement<uint32_t, uint32_t>>> models_reduction_percentage;
 
         public:
@@ -36,7 +43,7 @@ namespace Generator {
 
             void validate(void) const;
 
-            BlockMetadata nextBlock(uint8_t* buffer, size_t size) override;
+            BlockMetadata next_block(uint8_t* buffer, size_t size) override;
             friend void from_json(const json& j, DedupCompressorGenerator& generator);
     };
 

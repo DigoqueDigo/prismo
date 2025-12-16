@@ -5,7 +5,7 @@ namespace Operation {
     PercentageOperation::PercentageOperation()
         : Operation(), op_percentages(), distribution(0, 99) {}
 
-    OperationType PercentageOperation::nextOperation(void) {
+    OperationType PercentageOperation::next_operation(void) {
         uint32_t roll = distribution.nextValue();
         return select_from_percentage_vector(roll, op_percentages);
     }

@@ -26,7 +26,7 @@ namespace Operation {
         } else if (operation == "nop") {
             return OperationType::NOP;
         } else {
-            throw std::invalid_argument("Operation of type '" + operation + "' not recognized");
+            throw std::invalid_argument("operation_from_str: operation of type '" + operation + "' not recognized");
         }
     }
 };

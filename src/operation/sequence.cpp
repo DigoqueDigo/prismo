@@ -5,7 +5,7 @@ namespace Operation {
     SequenceOperation::SequenceOperation()
         : Operation(), index(0), length(0), operations() {}
 
-    OperationType SequenceOperation::nextOperation(void) {
+    OperationType SequenceOperation::next_operation(void) {
         OperationType operation = operations.at(index);
         index = (index + 1) % length;
         return operation;
@@ -13,7 +13,7 @@ namespace Operation {
 
     void SequenceOperation::validate(void) const {
         if (operations.size() == 0) {
-            throw std::invalid_argument("Invalid operations for SequenceOperation");
+            throw std::invalid_argument("validate: invalid sequence of operations");
         }
     }
 

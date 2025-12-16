@@ -2,7 +2,7 @@
   "job": {
     "name": "job",
     "numjobs": 1,
-    "iterations": 20,
+    "iterations": 1e6,
     "filename": "testfile",
     "block_size": 4096,
     "limit": 65536,
@@ -28,7 +28,7 @@
   },
 
   "access": {
-    "type": "sequential",
+    "type": "random",
     "skew": 0.9
   },
 
@@ -36,7 +36,7 @@
     "type": "dedup",
     "distribution": [
       {
-        "percentage": 100,
+        "percentage": 25,
         "repeats": 0,
         "compression": [
           {
@@ -50,7 +50,7 @@
         ]
       },
       {
-        "percentage": 0,
+        "percentage": 25,
         "repeats": 1,
         "compression": [
           {
@@ -64,7 +64,7 @@
         ]
       },
       {
-        "percentage": 0,
+        "percentage": 25,
         "repeats": 3,
         "compression": [
           {
@@ -74,7 +74,7 @@
         ]
       },
       {
-        "percentage": 0,
+        "percentage": 25,
         "repeats": 5,
         "compression": [
           {

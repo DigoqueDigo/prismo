@@ -25,7 +25,7 @@ namespace Access {
                 // std::cout << "~Destroying Access" << std::endl;
             }
 
-            virtual uint64_t nextOffset(void) = 0;
+            virtual uint64_t next_offset(void) = 0;
             virtual void validate(void) const;
             friend void from_json(const json& j, Access& access_generator);
     };
@@ -42,7 +42,7 @@ namespace Access {
                 // std::cout << "~Destroying SequentialAccess" << std::endl;
             }
 
-            uint64_t nextOffset(void) override;
+            uint64_t next_offset(void) override;
             void validate(void) const;
             friend void from_json(const json& j, SequentialAccess& access_generator);
     };
@@ -59,7 +59,7 @@ namespace Access {
                 // std::cout << "~Destroying RandomAccess" << std::endl;
             }
 
-            uint64_t nextOffset(void) override;
+            uint64_t next_offset(void) override;
             void validate(void) const;
             friend void from_json(const json& j, RandomAccess& access_generator);
     };
@@ -77,7 +77,7 @@ namespace Access {
                 // std::cout << "~Destroying ZipfianAccess" << std::endl;
             }
 
-            uint64_t nextOffset(void) override;
+            uint64_t next_offset(void) override;
             void validate(void) const;
             friend void from_json(const json& j, ZipfianAccess& access_generator);
     };

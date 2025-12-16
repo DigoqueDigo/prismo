@@ -32,7 +32,7 @@ namespace Engine {
             if (it != flag_map.end()) {
                 config.value |= it->second;
             } else {
-                throw std::invalid_argument("Open flag value '" + value.template get<std::string>() + "' is not recognized");
+                throw std::invalid_argument("from_json: open flag value '" + value.template get<std::string>() + "' not recognized");
             }
         }
     };
@@ -57,7 +57,7 @@ namespace Engine {
             if (it != params_flag_map.end()) {
                 config.params.flags |= it->second;
             } else {
-                throw std::invalid_argument("Uring params flag value '" + value.template get<std::string>() + "' is not recognized");
+                throw std::invalid_argument("from_json: uring params flag value '" + value.template get<std::string>() + "' not recognized");
             }
         }
     };
@@ -72,7 +72,7 @@ namespace Engine {
         uint64_t mask = strtoull(config.reactor_mask.c_str(), &endptr, 0);
 
         if (*endptr != '\0') {
-            throw std::invalid_argument("Invalid reactor mask string: " + config.reactor_mask);
+            throw std::invalid_argument("from_json: invalid reactor mask: " + config.reactor_mask);
         }
 
         std::vector<uint32_t> pinned_cores = get_pinned_cores(mask);
@@ -82,7 +82,7 @@ namespace Engine {
         }
 
         if (config.pinned_cores.size() < 2) {
-            throw std::runtime_error("Reactor mask must have at least 2 pinned cores");
+            throw std::invalid_argument("from_json: reactor mask must have at least 2 pinned cores");
         }
 
         for (auto a : config.pinned_cores) {

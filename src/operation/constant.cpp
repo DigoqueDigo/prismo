@@ -5,7 +5,7 @@ namespace Operation {
     ConstantOperation::ConstantOperation()
         : Operation(), operation(OperationType::READ) {}
 
-    OperationType ConstantOperation::nextOperation(void) {
+    OperationType ConstantOperation::next_operation(void) {
         return operation;
     }
 

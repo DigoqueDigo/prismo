@@ -554,7 +554,6 @@ namespace Engine {
                 "[THREAD %s | CORE %u] Bdev I/O error: %d\n",
                 thread_name, core, EIO
             );
-            throw std::runtime_error("AQUI ");
         }
 
         Metric::fill_metric(

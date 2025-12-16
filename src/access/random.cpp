@@ -8,7 +8,7 @@ namespace Access {
     RandomAccess::RandomAccess(size_t _block_size, size_t _limit)
         : Access(_block_size, _limit), distribution(_block_size, _limit) {}
 
-    uint64_t RandomAccess::nextOffset(void) {
+    uint64_t RandomAccess::next_offset(void) {
         return static_cast<uint64_t>(distribution.nextValue() * block_size);
     }
 

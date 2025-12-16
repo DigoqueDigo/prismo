@@ -14,14 +14,14 @@ namespace Engine {
     int PosixEngine::open(Protocol::OpenRequest& request) {
         int fd = ::open(request.filename.c_str(), request.flags, request.mode);
         if (fd < 0)
-            throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
+            throw std::runtime_error("posix_open: failed to open file: " + std::string(strerror(errno)));
         return fd;
     }
 
     int PosixEngine::close(Protocol::CloseRequest& request) {
         int rt = ::close(request.fd);
         if (rt < 0)
-            throw std::runtime_error("Failed to close fd: " + std::string(strerror(errno)));
+            throw std::runtime_error("posix_close: failed to close fd: " + std::string(strerror(errno)));
         return rt;
     }
 

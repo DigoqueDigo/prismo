@@ -13,7 +13,7 @@
 int main(int argc, char** argv) {
 
     if (argc < 2) {
-        throw std::invalid_argument("Invalid number of arguments");
+        throw std::invalid_argument("main: invalid number of arguments");
     }
 
     std::ifstream config_file(argv[1]);
@@ -38,25 +38,25 @@ int main(int argc, char** argv) {
     Engine::OpenFlags open_flags = engine_j.at("openflags").get<Engine::OpenFlags>();
 
     // std::cout << "Parse Access" << std::endl;
-    std::unique_ptr<Access::Access> access = Parser::getAccess(access_j);
+    std::unique_ptr<Access::Access> access = Parser::get_access(access_j);
 
     // std::cout << "Parse Operation" << std::endl;
-    std::unique_ptr<Operation::Operation> operation = Parser::getOperation(operation_j);
+    std::unique_ptr<Operation::Operation> operation = Parser::get_operation(operation_j);
 
     // std::cout << "Parse Generator" << std::endl;
-    std::unique_ptr<Generator::Generator> generator = Parser::getGenerator(generator_j);
+    std::unique_ptr<Generator::Generator> generator = Parser::get_generator(generator_j);
 
     // std::cout << "Parse MultipleBarrier" << std::endl;
-    std::unique_ptr<Operation::MultipleBarrier> barrier = Parser::getMultipleBarrier(barrier_j);
+    std::unique_ptr<Operation::MultipleBarrier> barrier = Parser::get_multiple_barrier(barrier_j);
 
     // std::cout << "Parse Metric" << std::endl;
-    std::unique_ptr metric = Parser::getMetric(job_j);
+    std::unique_ptr metric = Parser::get_metric(job_j);
 
     // std::cout << "Parse Logger" << std::endl;
-    std::unique_ptr<Logger::Logger> logger = Parser::getLogger(logging_j);
+    std::unique_ptr<Logger::Logger> logger = Parser::get_logger(logging_j);
 
     // std::cout << "Parse Engine" << std::endl;
-    std::unique_ptr<Engine::Engine> engine = Parser::getEngine(engine_j, std::move(metric), std::move(logger));
+    std::unique_ptr<Engine::Engine> engine = Parser::get_engine(engine_j, std::move(metric), std::move(logger));
 
     auto to_producer = std::make_shared<moodycamel::ConcurrentQueue<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);
     auto to_consumer = std::make_shared<moodycamel::ConcurrentQueue<Protocol::Packet*>>(QUEUE_INITIAL_CAPACITY);

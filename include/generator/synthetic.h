@@ -24,7 +24,7 @@ namespace Generator {
                 // std::cout << "~Destroying Generator" << std::endl;
             }
 
-            virtual BlockMetadata nextBlock(uint8_t* buffer, size_t size) = 0;
+            virtual BlockMetadata next_block(uint8_t* buffer, size_t size) = 0;
     };
 
     class ConstantGenerator : public Generator {
@@ -35,7 +35,7 @@ namespace Generator {
                 // std::cout << "~Destroying ConstantGenerator" << std::endl;
             }
 
-            BlockMetadata nextBlock(uint8_t* buffer, size_t size) override {
+            BlockMetadata next_block(uint8_t* buffer, size_t size) override {
                 std::memset(buffer, 0, size);
                 std::memcpy(buffer, &block_id, sizeof(block_id));
                 return BlockMetadata {
@@ -56,7 +56,7 @@ namespace Generator {
                 // std::cout << "~Destroying RandomGenerator" << std::endl;
             }
 
-            BlockMetadata nextBlock(uint8_t* buffer, size_t size) override;
+            BlockMetadata next_block(uint8_t* buffer, size_t size) override;
     };
 }
 

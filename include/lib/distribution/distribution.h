@@ -19,7 +19,7 @@ namespace Distribution {
 
         size_t current;
         prng_state generator;
-        DistributionTypeT* buffer;
+        std::shared_ptr<DistributionTypeT[]>buffer;
 
         UniformDistribution()
             : min(std::numeric_limits<DistributionTypeT>::lowest()),
@@ -28,7 +28,7 @@ namespace Distribution {
         {
             auto seed = generate_seed();
             prng_init(&generator, seed.data());
-            buffer = new DistributionTypeT[UNIFORM_BUFFER_CAPACITY];
+            buffer = std::make_shared<DistributionTypeT[]>(UNIFORM_BUFFER_CAPACITY);
         }
 
         UniformDistribution(DistributionTypeT _min, DistributionTypeT _max)
@@ -36,25 +36,7 @@ namespace Distribution {
         {
             auto seed = generate_seed();
             prng_init(&generator, seed.data());
-            buffer = new DistributionTypeT[UNIFORM_BUFFER_CAPACITY];
-        }
-
-        UniformDistribution(const UniformDistribution& other)
-            : min(other.min),
-            max(other.max),
-            current(other.current),
-            generator(other.generator)
-        {
-            buffer = new DistributionTypeT[UNIFORM_BUFFER_CAPACITY];
-            std::copy(
-                other.buffer,
-                other.buffer + UNIFORM_BUFFER_CAPACITY,
-                buffer
-            );
-        }
-
-        ~UniformDistribution() {
-            delete[] buffer;
+            buffer = std::make_shared<DistributionTypeT[]>(UNIFORM_BUFFER_CAPACITY);
         }
 
         void setParams(DistributionTypeT _min, DistributionTypeT _max) {
@@ -64,10 +46,12 @@ namespace Distribution {
 
         DistributionTypeT nextValue() {
             if (current == 0) {
-                uint8_t* buf = reinterpret_cast<uint8_t*>(buffer);
-                size_t bytes = UNIFORM_BUFFER_CAPACITY * sizeof(DistributionTypeT);
-                prng_gen(&generator, buf, bytes);
                 current = UNIFORM_BUFFER_CAPACITY - 1;
+                prng_gen(
+                    &generator,
+                    reinterpret_cast<uint8_t*>(buffer.get()),
+                    UNIFORM_BUFFER_CAPACITY * sizeof(DistributionTypeT)
+                );
             }
             DistributionTypeT value = buffer[current--];
             DistributionTypeT range = max - min + 1;

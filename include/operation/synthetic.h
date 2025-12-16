@@ -20,7 +20,7 @@ namespace Operation {
                 // std::cout << "~Destroying Operation" << std::endl;
             }
 
-            virtual OperationType nextOperation(void) = 0;
+            virtual OperationType next_operation(void) = 0;
     };
 
     class ConstantOperation : public Operation {
@@ -34,7 +34,7 @@ namespace Operation {
                 // std::cout << "~Destroying ConstantOperation" << std::endl;
             }
 
-            OperationType nextOperation(void);
+            OperationType next_operation(void);
             friend void from_json(const json& j, ConstantOperation& op_generator);
     };
 
@@ -51,7 +51,7 @@ namespace Operation {
             }
 
             void validate(void) const;
-            OperationType nextOperation(void);
+            OperationType next_operation(void);
             friend void from_json(const json& j, PercentageOperation& op_generator);
     };
 
@@ -69,7 +69,7 @@ namespace Operation {
             }
 
             void validate(void) const;
-            OperationType nextOperation(void);
+            OperationType next_operation(void);
             friend void from_json(const json& j, SequenceOperation& op_generator);
     };
 

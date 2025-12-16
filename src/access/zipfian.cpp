@@ -8,14 +8,15 @@ namespace Access {
     ZipfianAccess::ZipfianAccess(size_t _block_size, size_t _limit, float _skew)
         : Access(_block_size, _limit), skew(_skew), distribution(0, _limit, _skew) {}
 
-    uint64_t ZipfianAccess::nextOffset(void) {
+    uint64_t ZipfianAccess::next_offset(void) {
         return static_cast<uint64_t>(distribution.nextValue() * block_size);
     }
 
     void ZipfianAccess::validate(void) const {
         Access::validate();
-        if (skew <= 0 || skew >= 1)
-            throw std::invalid_argument("Invalid skew for ZipfianAccess");
+        if (skew <= 0 || skew >= 1) {
+            throw std::invalid_argument("zipfian_validate: skew must belong to range [0; 1]");
+        }
     }
 
     void from_json(const json& j, ZipfianAccess& access_generator) {

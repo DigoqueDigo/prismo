@@ -17,7 +17,7 @@ namespace Engine {
     {
         int ret = io_queue_init(_config.entries, &io_context);
         if (ret < 0)
-            throw std::runtime_error("Aio queue init failed: " + std::string(strerror(-ret)));
+            throw std::runtime_error("aio_queue_init: failed: " + std::string(strerror(-ret)));
 
         iocbs.resize(_config.entries);
         tasks.resize(_config.entries);
@@ -45,14 +45,14 @@ namespace Engine {
     int AioEngine::open(Protocol::OpenRequest& request) {
         int fd = ::open(request.filename.c_str(), request.flags, request.mode);
         if (fd < 0)
-            throw std::runtime_error("Failed to open file: " + std::string(strerror(errno)));
+            throw std::runtime_error("aio_open: failed to open file: " + std::string(strerror(errno)));
         return fd;
     }
 
     int AioEngine::close(Protocol::CloseRequest& request) {
         int ret = ::close(request.fd);
         if (ret < 0)
-            throw std::runtime_error("Failed to close fd: " + std::string(strerror(errno)));
+            throw std::runtime_error("aio_open: failed to close fd: " + std::string(strerror(errno)));
         return ret;
     }
 
@@ -80,7 +80,8 @@ namespace Engine {
     void AioEngine::submit(Protocol::CommonRequest& request) {
         if (iocb_ptrs.size() == iocb_ptrs.capacity()) {
             int submit_result = io_submit(io_context, iocb_ptrs.size(), &iocb_ptrs[0]);
-            if (submit_result != static_cast<int>(iocb_ptrs.size())) throw std::runtime_error("Aio submission failed");
+            if (submit_result != static_cast<int>(iocb_ptrs.size()))
+                throw std::runtime_error("aio_submit: submission failed");
             iocb_ptrs.clear();
         }
 
@@ -123,7 +124,7 @@ namespace Engine {
     void AioEngine::reap_completions(void) {
         int events_returned = io_getevents(io_context, 1, io_events.capacity(), io_events.data(), nullptr);
         if (events_returned < 0)
-            throw std::runtime_error("Aio getevents failed: " + std::string(strerror(-events_returned)));
+            throw std::runtime_error("aio_reap_completions getevents failed: " + std::string(strerror(-events_returned)));
 
         for (int i = 0; i < events_returned; i++) {
             io_event& ev = io_events[i];
@@ -149,7 +150,7 @@ namespace Engine {
     void AioEngine::reap_left_completions(void) {
         int submit_result = io_submit(io_context, iocb_ptrs.size(), &iocb_ptrs[0]);
         if (submit_result != static_cast<int>(iocb_ptrs.size()))
-            throw std::runtime_error("Flush Invalid submission");
+            throw std::runtime_error("aio_reap_left_completions: submission failed");
         iocb_ptrs.clear();
         while (available_indexes.size() < available_indexes.capacity())
             this->reap_completions();
