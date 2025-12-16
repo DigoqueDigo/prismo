@@ -67,7 +67,10 @@ namespace Generator {
     ) {
         auto it = models_dedup.find(repeats);
         if (it != models_dedup.end()) {
-            throw std::invalid_argument("add_dedup_percentage: percentage already registered for repeats: " + std::to_string(repeats));
+            throw std::invalid_argument(
+                "add_dedup_percentage: percentage already registered for repeats: "
+                + std::to_string(repeats)
+            );
         }
         models_dedup.try_emplace(repeats);
         dedup_percentages.push_back(dedup_percentage);

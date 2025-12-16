@@ -1,56 +1,89 @@
-import re
 import sys
 from collections import Counter
-from tabulate import tabulate # type: ignore
+from typing import List, Tuple
+from prismo_entry import PrismoEntry
+from dataclasses import dataclass
+from tabulate import tabulate  # type: ignore
+
+@dataclass
+class BlockStatsEntry:
+    repeats: int
+    unique_blocks: int
+    percentage_unique: float
+    operations: int
+    percentage_global: float
+
+    def to_tuple(self) -> Tuple[int, int, float, int, float]:
+        return (
+            self.repeats,
+            self.unique_blocks,
+            self.percentage_unique,
+            self.operations,
+            self.percentage_global
+        )
+
+@dataclass
+class WriteStatistics:
+    entries: List[BlockStatsEntry]
+    total_operations: int
+    unique_blocks: int
 
 
-def get_blocks_ids(log_filename: str) -> list[int]:
-    block_ids: list[int] = []
-
+def get_prismo_entries(log_filename: str) -> List[PrismoEntry]:
     with open(log_filename, 'r') as log_file:
-        for log_line in log_file:
-            match = re.search(r'block=(\d+)', log_line)
-            if match:
-                block_id = int(match.group(1))
-                block_ids.append(int(block_id))
+        return [PrismoEntry(line) for line in log_file if line.strip()]
 
-    return block_ids
+
+def compute_write_statistics(entries: List[PrismoEntry]) -> WriteStatistics:
+    write_blocks: List[int] = [entry.block for entry in entries if entry.type == 1]
+    repetitions_by_block: Counter[int] = Counter(write_blocks)
+    summary: Counter[int] = Counter(repetitions_by_block.values())
+
+    total_operations: int = len(entries)
+    unique_blocks: int = len(repetitions_by_block)
+
+    data: List[BlockStatsEntry] = []
+    for repeats, count in summary.items():
+        data.append(BlockStatsEntry(
+            repeats=repeats - 1,
+            unique_blocks=count,
+            percentage_unique=round(count / unique_blocks * 100, 2) if unique_blocks else 0,
+            operations=repeats * count,
+            percentage_global=round(repeats * count / total_operations * 100, 2) if total_operations else 0
+        ))
+
+    data.sort(key=lambda x: x.repeats)
+
+    return WriteStatistics(entries=data, total_operations=total_operations, unique_blocks=unique_blocks)
+
+
+def print_statistics(log_file: str, stats: WriteStatistics):
+    headers = [
+        'Repeats',
+        'Unique blocks',
+        'Percentage unique',
+        'Operations',
+        'Percentage global'
+    ]
+
+    table_data: List[Tuple[int, int, float, int, float]] = [entry.to_tuple() for entry in stats.entries]
+    avg_access = stats.total_operations / stats.unique_blocks if stats.unique_blocks else 0
+
+    print(tabulate(table_data, headers=headers, tablefmt='rounded_outline'))
+
+    print(f'\nSummary: {log_file}')
+    print(f'  {"Total operations (log lines)":<30}: {stats.total_operations}')
+    print(f'  {"Total writes":<30}: {sum(entry.operations for entry in stats.entries)}')
+    print(f'  {"Unique blocks":<30}: {stats.unique_blocks}')
+    print(f'  {"Average accesses per block":<30}: {avg_access:.3f}')
+
+
+def dedup_analysis(log_filename: str) -> None:
+    entries: List[PrismoEntry] = get_prismo_entries(log_filename)
+    write_stats: WriteStatistics = compute_write_statistics(entries)
+    print_statistics(log_filename, write_stats)
 
 
 if __name__ == '__main__':
-
-    log_files: list[str] = sys.argv[1:]
-
-    for log_file in log_files:
-        blocks_ids: list[int] = get_blocks_ids(log_file)
-        repetitions_by_block: Counter[int] = Counter(blocks_ids)
-        summary: Counter[int] = Counter(repetitions_by_block.values())
-
-        total_operations: int = len(blocks_ids)
-        unique_blocks: int = len(repetitions_by_block)
-
-        data: list[tuple[int, int, float, int, float]] = []
-        headers: list[str] = [
-            'Repeats',
-            'Unique blocks',
-            'Percentage unique',
-            'Operations',
-            'Percentage global'
-        ]
-
-        for repeats, count in summary.items():
-            data.append((
-                repeats - 1,
-                count,
-                round(count / unique_blocks * 100, 2),
-                repeats * count,
-                round(repeats * count / total_operations * 100, 2),
-            ))
-
-        data.sort(key=lambda x: x[0])
-        print(tabulate(data, headers=headers, tablefmt='rounded_outline'))
-
-        print(f'Summary: {log_file}')
-        print(f'  {'Total operations (log lines)':<30}: {total_operations}')
-        print(f'  {'Unique blocks':<30}: {unique_blocks}')
-        print(f'  {'Average accesses per block':<30}: {total_operations/unique_blocks:.3f}')
+    for log_filename in sys.argv[1:]:
+        dedup_analysis(log_filename)

@@ -2,7 +2,7 @@
   "job": {
     "name": "job",
     "numjobs": 1,
-    "iterations": 1e6,
+    "iterations": 1e5,
     "filename": "testfile",
     "block_size": 4096,
     "limit": 65536,
@@ -10,7 +10,7 @@
   },
 
   "operation": {
-    "type": "constant",
+    "type": "percentage",
     "operation": "write",
     "percentages": {
       "read": 50,
