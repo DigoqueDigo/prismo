@@ -2,60 +2,38 @@
 
 namespace Generator {
 
-    DedupCompressorGenerator::DedupCompressorGenerator()
-        : Generator(), distribution(0, 99),
-        dedup_percentages(), models_dedup(),
-        models_base_buffer(), models_reduction_percentage() {}
+    DedupCompressorGenerator::DedupCompressorGenerator(const DedupCompressorGeneratorConfig& _config)
+        : Generator(), pool(_config.buffer_size), config(_config), distribution(0, 99) {
+            refill_buffer = std::make_unique<uint8_t[]>(config.buffer_size);
+            random_generator.next_block(refill_buffer.get(), config.buffer_size);
+        }
 
     BlockMetadata DedupCompressorGenerator::next_block(uint8_t* buffer, size_t size) {
         uint32_t dedup_roll = distribution.nextValue();
         uint32_t reduction_roll = distribution.nextValue();
 
-        uint32_t selected_repeats = select_from_percentage_vector(dedup_roll, dedup_percentages);
-        uint32_t selected_reduction = select_from_percentage_vector(
-            reduction_roll, models_reduction_percentage[selected_repeats]);
-
-        uint32_t bytes_reduction = size * selected_reduction / 100;
-        std::shared_ptr<uint8_t[]>& base_buffer = models_base_buffer[selected_repeats];
-
-        std::memset(buffer, 0, bytes_reduction);
-        std::memcpy(buffer + bytes_reduction, base_buffer.get(), size - bytes_reduction);
-
-        std::vector<DedupElement>& dedup_window = models_dedup[selected_repeats];
+        uint32_t selected_repeats = config.select_repeats(dedup_roll);
+        uint32_t selected_reduction = config.select_reduction(reduction_roll, selected_repeats);
 
         if (selected_repeats == 0) {
-            std::memcpy(buffer, &block_id, sizeof(block_id));
-            return BlockMetadata {
-                .block_id = block_id++,
-                .compression = selected_reduction
-            };
-        }
-
-        if (dedup_window.size() == dedup_window_size) {
-            uint32_t index = distribution.nextValue() % dedup_window_size;
-            DedupElement& element = dedup_window[index];
-
-            std::memcpy(buffer, &element.block_id, sizeof(element.block_id));
-            element.left_repeats--;
-
-            if (element.left_repeats == 0) {
-                std::swap(dedup_window[index], dedup_window.back());
-                dedup_window.pop_back();
-            }
-
+            DedupElement element = create_dedup_element(selected_repeats, selected_reduction, size);
             return BlockMetadata {
                 .block_id = element.block_id,
-                .compression = selected_reduction
+                .compression = element.reduction,
             };
         }
 
-        DedupElement element = {
-            .block_id = block_id++,
-            .left_repeats = selected_repeats,
-        };
+        if (dedup_windows[selected_repeats].size() == DEDUP_WINDOW_SIZE) {
+            DedupElement element = reuse_dedup_element(selected_repeats, buffer, size);
+            return BlockMetadata {
+                .block_id = element.block_id,
+                .compression = element.reduction,
+            };
+        }
 
-        dedup_window.push_back(element);
-        std::memcpy(buffer, &(element.block_id), sizeof(element.block_id));
+        DedupElement element = create_dedup_element(selected_repeats, selected_reduction, size);
+        dedup_windows[selected_repeats].push_back(element);
+        std::memcpy(buffer, element.buffer, size);
 
         return BlockMetadata {
             .block_id = element.block_id,
@@ -63,39 +41,84 @@ namespace Generator {
         };
     }
 
-    void DedupCompressorGenerator::add_dedup_percentage(
+    DedupElement DedupCompressorGenerator::reuse_dedup_element(
         uint32_t repeats,
-        PercentageElement<uint32_t, uint32_t> dedup_percentage
+        uint8_t* buffer,
+        size_t size
     ) {
-        auto it = models_dedup.find(repeats);
-        if (it != models_dedup.end()) {
-            throw std::invalid_argument(
-                "add_dedup_percentage: percentage already registered for repeats: "
-                + std::to_string(repeats)
+        auto& dedup_window = dedup_windows[repeats];
+        uint32_t index = distribution.nextValue() % dedup_window.size();
+        DedupElement& element = dedup_windows[repeats][index];
+
+        element.left_repeats--;
+        std::memcpy(buffer, element.buffer, size);
+
+        if (element.left_repeats == 0) {
+            std::swap(dedup_window[index], dedup_window.back());
+            dedup_window.pop_back();
+            pool.free(element.buffer);
+        }
+
+        return element;
+    }
+
+    DedupElement DedupCompressorGenerator::create_dedup_element(
+        uint32_t repeats,
+        uint32_t reduction,
+        size_t size
+    ) {
+        DedupElement element = {
+            .block_id = block_id++,
+            .left_repeats = repeats,
+            .reduction = reduction,
+            .buffer = static_cast<uint8_t*>(pool.malloc()),
+        };
+
+        uint32_t bytes_reduction = size * reduction / 100.0;
+
+        std::memset(element.buffer, 0, bytes_reduction);
+        std::memcpy(element.buffer, &element.block_id, sizeof(element.block_id));
+
+        if (config.refill_buffers) {
+            random_generator.next_block(
+                element.buffer + bytes_reduction,
+                size - bytes_reduction
+            );
+        } else {
+            std::memcpy(
+                element.buffer + bytes_reduction,
+                refill_buffer.get() + bytes_reduction,
+                size - bytes_reduction
             );
         }
-        models_dedup.try_emplace(repeats);
+
+        return element;
+    }
+
+    void DedupCompressorGeneratorConfig::add_dedup_percentage(
+        PercentageElement<uint32_t, uint32_t> dedup_percentage
+    ) {
         dedup_percentages.push_back(dedup_percentage);
     }
 
-    void DedupCompressorGenerator::set_model_base_buffer(
-        uint32_t repeats,
-        std::shared_ptr<uint8_t[]>& buffer
-    ) {
-        models_base_buffer[repeats] = std::move(buffer);
-    }
-
-    void DedupCompressorGenerator::add_reduction_percentage(
+    void DedupCompressorGeneratorConfig::add_reduction_percentage(
         uint32_t repeats,
         PercentageElement<uint32_t, uint32_t> reduction_percentage
     ) {
-        auto& reduction_percentages = models_reduction_percentage[repeats];
-        reduction_percentages.push_back(reduction_percentage);
+        reduction_percentages[repeats].push_back(reduction_percentage);
     }
 
-    void DedupCompressorGenerator::validate() const {
+    uint32_t DedupCompressorGeneratorConfig::select_repeats(uint32_t roll) {
+        return select_from_percentage_vector(roll, dedup_percentages);
+    };
+
+    uint32_t DedupCompressorGeneratorConfig::select_reduction(uint32_t roll, uint32_t repeats) {
+        return select_from_percentage_vector(roll, reduction_percentages[repeats]);
+    }
+
+    void DedupCompressorGeneratorConfig::validate() const {
         validate_percentage_vector(dedup_percentages, "dedup");
-        for (const auto& [key, vec] : models_reduction_percentage) {
+        for (const auto& [key, vec] : reduction_percentages) {
             validate_percentage_vector(vec, "reduction for repeats " + std::to_string(key));
 
             bool has_invalid_reduction = std::any_of(vec.begin(), vec.end(),
@@ -107,42 +130,37 @@ namespace Generator {
         }
     }
 
-    void from_json(const json& j, DedupCompressorGenerator& generator) {
+    void from_json(const json& j, DedupCompressorGeneratorConfig& config) {
         uint32_t dedup_cumulative = 0;
         uint32_t reduction_cumulative = 0;
 
-        RandomGenerator random_generator;
-        size_t block_size = j.at("block_size").get<size_t>();
+        j.at("block_size").get_to(config.buffer_size);
+        j.at("refill_buffers").get_to(config.refill_buffers);
 
         for (const auto& dedup_item : j.at("distribution")) {
             uint32_t repeats = dedup_item.at("repeats").get<uint32_t>();
             dedup_cumulative += dedup_item.at("percentage").get<uint32_t>();
 
-            PercentageElement<uint32_t, uint32_t> dedup_percentage {
-                .cumulative_percentage = dedup_cumulative,
-                .value = repeats,
-            };
-
-            auto base_buffer = std::make_shared<uint8_t[]>(block_size);
-            random_generator.next_block(base_buffer.get(), block_size);
-
-            generator.add_dedup_percentage(repeats, dedup_percentage);
-            generator.set_model_base_buffer(repeats, base_buffer);
+            config.add_dedup_percentage(
+                PercentageElement<uint32_t, uint32_t> {
+                    .cumulative_percentage = dedup_cumulative,
+                    .value = repeats,
+            });
 
             reduction_cumulative = 0;
 
             for (const auto& reduction_item : dedup_item.at("compression")) {
                 reduction_cumulative += reduction_item.at("percentage").get<uint32_t>();
+                uint32_t reduction_value = reduction_item.at("reduction").get<uint32_t>();
 
-                PercentageElement<uint32_t, uint32_t> reduction_percentage {
-                    .cumulative_percentage = reduction_cumulative,
-                    .value = reduction_item.at("reduction").get<uint32_t>()
-                };
-
-                generator.add_reduction_percentage(repeats, reduction_percentage);
+                config.add_reduction_percentage(repeats,
+                    PercentageElement<uint32_t, uint32_t> {
+                        .cumulative_percentage = reduction_cumulative,
+                        .value = reduction_value,
+                });
             }
         }
 
-        generator.validate();
+        config.validate();
     }
 }

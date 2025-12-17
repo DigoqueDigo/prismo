@@ -62,6 +62,9 @@ liburing_dep = dependency('liburing', required: true)
 # Find libaio dependency (header-only)
 libaio_dep = cc.find_library('aio', required: true)
 
+# Find boost dependencu (header-only)
+boost_dep = dependency( 'boost', modules: ['pool'], required: true)
+
 # Find sdpk dependencies (statics libs)
 spdk_env_dpdk_dep   = dependency('spdk_env_dpdk', required: true, static: true)
 spdk_event_dep      = dependency('spdk_event', required: true, static: true)
@@ -212,6 +215,7 @@ prismo = executable(
     spdlog_dep,
     liburing_dep,
     libaio_dep,
+    boost_dep,
     spdk_bdev_dep,
     spdk_event_dep,
     spdk_conf_dep,
