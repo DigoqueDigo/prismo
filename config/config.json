@@ -29,7 +29,7 @@
 
   "access": {
     "type": "sequential",
-    "skew": 0.9
+    "skew": 0.99
   },
 
   "generator": {
@@ -37,7 +37,7 @@
     "refill_buffers": false,
     "distribution": [
       {
-        "percentage": 30,
+        "percentage": 20,
         "repeats": 0,
         "compression": [
           {
@@ -51,7 +51,7 @@
         ]
       },
       {
-        "percentage": 20,
+        "percentage": 30,
         "repeats": 1,
         "compression": [
           {
