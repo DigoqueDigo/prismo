@@ -21,6 +21,12 @@
 // Setup index
 #import "@preview/in-dexter:0.7.2": *
 
+#set par(
+  justify: true,
+  spacing: 1em,
+  first-line-indent: 1em,
+)
+
 #formatting.show-preamble[
 //  #include "preamble/copyright.typ"
 //  #pagebreak()
