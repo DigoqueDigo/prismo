@@ -5,7 +5,7 @@
   title: [Realistic Benchmarking of Data Deduplication \ and  Compression Systems],
   date: [september 2025],
   supervisors: (
-    [João Tiago Paulo Medeiros],
+    [João Tiago Medeiros Paulo],
     // [Co-Supervisor Name],
   ),
   cover-images: (image("logos/uminho/color/UM.jpg"), image("logos/uminho/color/EE.jpg")),
@@ -22,12 +22,12 @@
 #import "@preview/in-dexter:0.7.2": *
 
 #formatting.show-preamble[
-  #include "preamble/copyright.typ"
-  #pagebreak()
-  #include "preamble/acknowledgements.typ"
-  #pagebreak()
-  #include "preamble/integrity.typ"
-  #pagebreak()
+//  #include "preamble/copyright.typ"
+//  #pagebreak()
+//  #include "preamble/acknowledgements.typ"
+//  #pagebreak()
+//  #include "preamble/integrity.typ"
+//  #pagebreak()
   #include "preamble/abstract.typ"
   #pagebreak()
   #outline()
@@ -36,10 +36,14 @@
   #pagebreak()
   #outline(title: [List of Tables], target: figure.where(kind: table))
   #pagebreak()
-  #pagebreak()
+  #include "preamble/acronyms.typ"
 ]
 
 #show: formatting.show-main-content
+
+#include "chapters/introduction.typ"
+
+/*
 
 = Introductory Material
 
@@ -181,10 +185,17 @@ For more elegant visualisation check some community-made packages like #link("ht
   #include "appendix.typ"
 ]
 
+*/
+
 #set page(numbering: none)
 
 #page(fill: colors.pantonecoolgray7)[]
 
+
+#pagebreak()
+/*
 #align(
   horizon,
 )[Place here information about funding, FCT project, etc. in which the work is framed. Leave empty otherwise.]
+
+*/

@@ -8,6 +8,7 @@ Write abstract here (in English)
 
 = Resumo
 
-Escrever aqui o resumo (em português)
+A 
+
 
 *Palavras-chave* #h(10pt) palavras, chaves, aqui, separadas, por, vírgulas
