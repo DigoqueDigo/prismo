@@ -43,6 +43,7 @@
   #outline(title: [List of Tables], target: figure.where(kind: table))
   #pagebreak()
   #include "preamble/acronyms.typ"
+  #pagebreak()
 ]
 
 #show: formatting.show-main-content

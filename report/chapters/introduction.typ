@@ -1,4 +1,4 @@
-== Introdução
+== Introdução <chapter1>
 
 Com o aumento das aplicações de inteligência artificial, a necessidade de processar e armazenar grandes quantidades de dados tornou-se cada vez mais relevante, consequentemente os sistemas de armazenamento evoluíram no sentido de oferecer uma maior eficiência de acessos e densidade dos dados.
 
@@ -10,26 +10,44 @@ Por outro lado, e com o objetivo de ultrapassar as limitações impostas pela st
 
 Tendo em consideração a diversidade de técnicas que podemos encontrar num sistema de armazenamento e interfaces de #link(<io>)[*I/O*] existentes para interagir com o disco, torna-se difícil avaliar um qualquer sistema nos seus pontos específicos de funcionamento, isto porque nem todos os sistemas foram desenvolvidos para servir o mesmo fim, devendo assim procurar ajustar o benchmark e workload àquilo que o sistema oferece, pois somente assim será alcançada uma análise justa e correta do seu funcionamento.
 
-
 === Definição do Problema e Desafios
 
-Devido ao baixo nível de manipulação em termos de deduplicação e compressão, os benchmarks atuais não proporcionam uma avaliação correta dos sistemas de armazenamento orientados a estas técnicas, contribuindo para análises incorretas dos mesmos. Entre os fatores que justificam esta deficiencia convém destacar os seguintes:
+Devido ao baixo nível de manipulação em termos de deduplicação e compressão, os benchmarks atuais não proporcionam uma avaliação correta dos sistemas de armazenamento orientados a estas técnicas, contribuindo para análises incorretas dos mesmos. Entre os fatores que justificam esta deficiência convém destacar os seguintes:
 
-1. A geração de conteúdo deduplicado deve seguir uma determinada distribuição, o que por sua acarreta custos aos nível da seleção dos índices e transferencia de dados entre buffers, consequentemente obtemos um débito menor, e nor pior dos casos não somos capazes de saturar o disco.
++ A geração de conteúdo deduplicado deve seguir uma determinada distribuição, o que por sua acarreta custos aos nível da seleção dos índices e transferência de dados entre buffers, consequentemente obtemos um débito menor, e no pior dos casos não somos capazes de saturar o disco.
 
-2. Os sistemas de armazenamento comportam-se de modo diferente conforme a distribuição de deduplicados e compressão, no entanto os padrões oferecidos pelo #link(<fio>)[*FIO*] são bastante simplistas por realizarem deduplicação sobre o mesmo bloco, o que aumenta a localidade temporal e espacial, benficiando indevidamente o sistema de armazenamento.
++ Os sistemas de armazenamento comportam-se de modo diferente conforme a distribuição de deduplicados e compressão, no entanto os padrões oferecidos pelo #link(<fio>)[*FIO*] são bastante simplistas por realizarem deduplicação sobre o mesmo bloco, o que aumenta a localidade temporal e espacial, beneficiando indevidamente o sistema de armazenamento.
 
-3. Embora o #link(<fio>)[*FIO*] seja um benchmark relativamente ofereça suporte a várias interfaces de #link(<io>)[*I/O*] sincronas e assincronas, os restantes oferecem uma gama muito limitada de #link(<api>)[*APIs*], tornando-se a utilização do #link(<fio>)[*FIO*] praticamente obrigatoria, no entanto este não oferece de forma direta suporte para #link(<spdk>)[*SPDK*] e portanto dificulta a avaliação de sistemas que funcionem diretamente sobre um #link(<nvme>)[*NVMe*], ou seja, com bypass da stack de #link(<io>)[*I/O*].
++ Embora o #link(<fio>)[*FIO*] seja um benchmark relativamente ofereça suporte a várias interfaces de #link(<io>)[*I/O*] síncronas e assíncronas, os restantes oferecem uma gama muito limitada de #link(<api>)[*APIs*], tornando-se a utilização do #link(<fio>)[*FIO*] praticamente obrigatória, no entanto este não oferece de forma direta suporte para #link(<spdk>)[*SPDK*] e portanto dificulta a avaliação de sistemas que funcionem diretamente sobre um #link(<nvme>)[*NVMe*], ou seja, com bypass da stack de #link(<io>)[*I/O*].
 
-4. Os sistemas de armazenamento evoluiram imenso nos ultimos anos, consequentemente a replicação de traces antigos praticamente instantáneo e como tal não poermite uma avalização correta do sistema, podem não existe um metodo conhecido para extender o trace à medida que o benchmark é executado, sendo que a extensão deverão salvaguar as propiedades de deduplicação e compressão do trace original. No fundo isto resume-se a seguir dados reais enquanto for possível, e depois gerar sinteticamente para manter a avaliação durante o tempo que for necessário.
++ Os sistemas de armazenamento evoluíram imenso nos últimos anos, consequentemente a replicação de traces antigos praticamente instantâneo e como tal não permite uma avaliação correta do sistema, podem não existe um método conhecido para estender o trace à medida que o benchmark é executado, sendo que a extensão deverão salvaguardar as propriedades de deduplicação e compressão do trace original. No fundo isto resume-se a seguir dados reais enquanto for possível, e depois gerar sinteticamente para manter a avaliação durante o tempo que for necessário.
 
-5. Perante a impossibilidade de acesso a dados reais, o benchmark é obrigado a seguir uma distribuição que defina padrões de acessos e operações a realizar, no entanto a maior parte das soluções é demasiado simplista e não permite testar pardrões do género: READ, WRITE, WRITE, READ.
++ Perante a impossibilidade de acesso a dados reais, o benchmark é obrigado a seguir uma distribuição que defina padrões de acessos e operações a realizar, no entanto a maior parte das soluções é demasiado simplista e não permite testar padrões do género: `READ`, `WRITE`, `NOP`, `READ`, `FSYNC`.
 
-Posto isto, nenhum benchmark é versátil o suficente para permitir ao uitlizador definir as suas ditribuições de padrões de acesso ou taxa de deduplicados e assim avaliar corretamente as caracteristicas alvo do sistema de armazenamento.
+Posto isto, nenhum benchmark é versátil o suficiente para permitir ao utilizador definir as suas distribuições de padrões de acesso ou taxa de deduplicados e assim avaliar corretamente as características alvo do sistema de armazenamento.
 
 === Objetivos e Contribuições
 
+Perante os problemas mencionados anteriormente, esta dissertação tem como principal objetivo melhorar a eficiência e dotar duma maior flexibilidade os algoritmos para geração de conteúdo, em particular o respeito pelas taxas de deduplicação e compressão num sistema orientado ao bloco.
 
-// o meu algortimo de sliding window para obter deduplicado de modo eficiente
+No entanto, tal condição é insuficiente para alcançar workloads realistas que efetuem uma avaliação correta do sistema, para isto é necessário replicar as propriedades de traces extraídos a partir de ambientes em produção, pois somente estes oferecem informações acerca das cargas reais.
+
+Posto isto, o protótipo do benchmark reúne todas as contribuições da dissertação numa arquitetura que torna as #link(<api>)[*APIs*] completamente independentes da geração de conteúdo, deste modo o utilizador final usufrui das seguintes vantagens:
+
++ O funcionamento do benchmark não depende de implementações concretas das interfaces de #link(<io>)[*I/O*], o sistema apenas define uma interface para operações de #link(<io>)[*I/O*], consequentemente qualquer programador pode estender o benchmark para usufruir de uma #link(<api>)[*API*] totalmente customizada.
+
++ A geração de conteúdo é dividida em vários módulos, cada um respeitante aos parâmetros da operação de #link(<io>)[*I/O*] (offset, tipo de operação e conteúdo), assim diferentes estratégias e distribuições dos parâmetros são combinadas para extrair mais versatilidade das workloads.
+
++ Cada um dos módulos definidos anteriormente define um interface, portanto é permitido misturar dados sintéticos com traces, ou seja, uma workload pode replicar os bytes de um traces enquanto os restantes parâmetros da operação de #link(<io>)[*I/O*] são gerados sinteticamente enquanto o benchmark decorre.
+
+Tendo um protótipo com estas características, contribuímos para que a avaliação dos sistemas de armazenamento seja efetuada como mais critério, afinal o utilizador tem a possibilidade de testar várias #link(<api>)[*APIs*] e para cada uma selecionar workloads que avaliem determinadas características do sistema, tudo com o maior realismo possível, e não através de métodos simplistas como praticam grande parte das soluções atuais.
 
 === Estrutura do Documento
+
+#text(stroke: 0.5pt + red)[Os capítulos estão com o link errado, não esquecer de trocar]
+
+Este documento encontra-se dividido em três capítulos, o #link(<chapter1>)[*Capitulo 1*] serve de introdução ao problema abordado na dissertação, procurando desvendar os problemas e desafios inerentes ao mesmo, sendo ainda apontadas as contribuições que se pretendem alcançar.
+
+Já o #link(<chapter1>)[*Capítulo 2*] apresenta o background relativo à deduplicação e compressão, em particular as técnicas aplicadas para gerar conteúdo com estas propriedades, além disso a stack de #link(<io>)[*I/O*] é explorada para justificar as diferenças entre #link(<api>)[*APIs*] e perceber os pontos de melhoria em soluções de benchmark já estabelecidas (DEDISBench e DEDISBench++).
+
+Por fim, o #link(<chapter1>)[*Capitulo 3*] corresponde a uma visão geral da arquitetura da solução, especificando os fluxos entre componentes e configurações necessárias à descrição da workload por parte do utilizador, concluindo-se com a descrição do plano para o restante da dissertação.
