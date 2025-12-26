@@ -49,6 +49,7 @@
 #show: formatting.show-main-content
 
 #include "chapters/introduction.typ"
+#include "chapters/background.typ"
 
 /*
 
