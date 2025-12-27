@@ -1,3 +1,5 @@
+#import "../utils/functions.typ" : raw_code_block
+
 == Background e Trabalho Relacionado
 
 Este capítulo tem por objetivo apresentar os conceitos e trabalho relacionado que sejam relevantes para a compreensão do projeto, nesse sentido, inicialmente é apresentada uma breve descrição das técnicas de deduplicação e compressão, realçando as implementações e desafios associados.
@@ -57,35 +59,83 @@ Com o objetivo de tirar partido da localidade espacial e temporal, este índice 
 
 
 
+
+
+
+
 ==== Compressão
 
-// explicar muito sucintamente a copmressão e as vantagens que podemos retirar daí, isto é importante para o benchmark porque os sistemas mais recentes també já abordam deduplicação
+Os sistemas de armazenamento modernos aplicam compressão aos blocos únicos identificados pelo processo de deduplicação, assim a informação é codificadas de modo mais eficiente, reduzindo a quantidade de bits necessários para representar a mesma informação. Daqui obtem-se mais aproveitamento do espaço de armazenamento, o que diminui os custos e aumenta a rapidez da transferencia entre sistemas.
 
-// começar por explicar o lz77 e depois passo para o codigo de huffman, no fim deizer que os dois podem ser combinardo, ou seja, os indices do lz77 podem ser otimizados com codigos de huffman, o que dá orignem ao deflate, o algoritmo tilizador pelo gzip, no entanto o algoritmo mais utilizado atualmente é o lz77
+===== Entropia
 
-// explicar muito sucintamnte alguns algoritmos e dizer que o sztd é o standard atual
+A fim de conhecer o limite da compressão, a entropia consiste numa medida que reflete a incerteza ou aleatoriedade associada à informação, como tal baixa entropia implica a existencia de padrões e uma oportunidade para comprimir, enquanto uma entropia elevada resulta da aleatoriedade dos dados, havendo por isso pouca margem de compressão.
+
+$
+  H = - sum_(i) p_i log_2 p_i
+$
+
+A partir da formula da entropia ficamos a conhecer o número médio de bits necessários para representar cada simbolo de forma ideal, onde $p_i$ estabelece a probabilidade do simbolo $i$, enquanto $log_2 p_i$ a informação associada a esse mesmo simbolo.
+
+Com o objetivo de exclarecer a formula, apresentam-se de seguida os calculos relativos à string `banana`. Uma vez que o simbolo `a` repete-se três vezes, a sua probabilidade ($p_i$) equivale a $3/6 = 1/2$, raciocinio que aplicamos aos restantes simbolos
+
+$
+  H = - ( 1/6 dot log_2/6 + 1/2 dot log_2/2 + 1/3 dot log_2 / 3) = 1.46 #text("bits/símbolo")
+$
+
+Tendo em conta que a string é constituida por seis caracteres, $6 dot 1.46 = 8.76 #text("bits")$ corresponde ao limite teorico minimo para codificar `banana` de forma ideal através de codificação ótima como Huffman ou Shannon-Fano.
+
+===== Huffman Coding
+
+A formula da entropia nada diz sobre a codificação dos simbolos, para isso é necessário recorrer a um algoritmo de codificação, neste caso abordamos os Huffman Coding, que permitem gerar codigos binarios de tamamnho variavel para uma compressão sem perdas, nela os símbolos mais frequentes recebem códigos mais curtos enquanto os símbolos menos frequentes códigos mais longos.
 
 #figure(
-  image("../images/lz77_sliding_window.png", width: 60%),
-  caption: [Funcionamento da sliding window no algoritmo LZ77]
-) <lz77>
-
-#figure(
-  image("../images/huffman.png", width: 30%),
+  image("../images/huffman.png", width: 60%),
   caption: [Árvore de Huffman]
 ) <huffman>
 
-// dizer os codigos resultantes desta arvore
-// como base no que aprendemos podemos arranjar uma forma de manipular a cmopressão, esplicar a tecnica do tudo random e tudo a zero
+O funcionamento do algoritmos é bastante simples, incialmente os simbolos são ordenados conforma a sua frequencia, de seguida os dois primeiros da lista são agrupados numa arvore cuja raiz tem valores de frequencias igual ao somatorio, sendo esta colocada de novo na lista conforme o seu valor de frequencia.
+
+Ao repetir este processo, obtemos uma arvore com as frequencias dos simbolos, deste modo os mais populares estão possicionados perto da raiz e portanto necessitam de menos bits para serem representados. Tendo em consideração a @huffman, a codificação de cada simbolo obtem-se ao atravesar a arvove, onde um salto para a esquerda corresponde a `0`, e para a direita `1`. Assim o simbolo `a` possui o codigo `010`, enquanto `x` corresponde a `10010`.
+
+===== LZ77
+
+Huffman provou que o seu codigo é a forma mais eficiente de associar uns e zeros a caracteres individuas, é matematicamente impossível superar isso. Porém os algoritmos de compressão procuram identificar padrões para aumentar o tamanho dos simbolos e assim obter melhores taxas de compressão.
+
+#figure(
+  image("../images/lz77_sliding_window.png", width: 60%),
+  caption: [Sliding window no algoritmo LZ77]
+) <lz77>
+
+Na grande maioria dos algoritmos, incluido o LZ77, a identifcação de padrões ocorre dentro de uma sliding window, assim sempre que um padrão é quebrado, a codificação dos simbolos anteriores é dada por um tuplo com o deslocamento, comprimento, e novo simbolo.
+
+Deste modo o índice $(3,3,a)$ indica que é necessário deslocar três posições para trás e repetir os três simbolo seguintes, sendo no final adicionado um $a$ que originou a quebra do padrão dentro da sliding window.
+
+Quanto maior for a sliding window, maior será a probabilidade de encontrar padrões, no entanto isso acarreta custos computacionais, daí que 65536 bytes seja um standard adotado em vários algoritmos. Por outro lado, reparamos que a codificação dos proprios indicies atraves de Huffman Coding pode trazer melhor desempenho ao LZ77, de facto os algoritmos mais recente, como o `DEFLATE` utilizado no `gzip`, aplicam este principio.
+
+Tendo por base estes conceitos, a geração de conteudo que comprime X% torna-se deveras simples, bastando para isso fixar X% dos simbolos da string, enquanto os restantes devem ser completamente aleatorios e sem qualquer padrão possível de exploração. No fundo, procuramos o minimo de entropia em X% da string, e o maximo de aleatoriedade entre os demais simbolos.
 
 ==== Traces
 
-// explicar que os tracespodem ser recolhidos de ambiente em produção e portanto reflem as cargas de trabalho reiais,
+A melhor forma de simular workloads realistas é saber exatamente em que consistem essas workloads, por conseguinte um trace oferece uma visão detalhada de todas as operações que ocorreram no sistema, permitindo conhecer os momentos em que as aplicações e processos interagiram com o sistema de aramazenamento.
 
-// mencionar que os traces dispoinivies são muito antigos e pertencem ao FIU, apresentar a estrutura dos mesmos num pedaço de codigo tipo ASCN e procurar explicar cada campo desse trace
+Idealmente os traces são obtidos em ambiente de produção, dado que somente aí observamos o sistema sob condições reais de uso, portanto faz sentido que o benchmark consiga replicar esse ambiente para termos uma noção do desempenho esperado.
 
+Infelizmente existem pouquissimos traces disponiveis, e os do #link(<fiu>)[*FIU*] já contam com imensos anos, não sendo a sua replicação viáel em máquinas modernas, isto por terem sido obtidos em dispositivos obsoletos aos dias de hoje.
 
+#raw_code_block[
+```
+<timestamp> <file_id> <process> <offset> <size> <op> <version> <0> <hash>
+89967404265337 4253 nfsd 508516672 8 W 6 0 88b93b628d84082186026d9da044f173
+89967404311353 4253 nfsd 508516680 8 W 6 0 b5e9f4e5ab62a4fff5313a606b0ad4e3
+89967404359328 4253 nfsd 508516688 8 W 6 0 e6434714a2358bc5f55005d6c5502d80
+89968195447404 20782 gzip 283193112 8 R 6 0 ef58ea75660587908a49b83a338bff34
+89968195487477 20782 gzip 283193120 8 R 6 0 980f03b2810fd0267bea07bc4f0c78fa
+89968195487477 20782 gzip 283193120 8 R 6 0 980f03b2810fd0267bea07bc4f0c78fa
+```
+]
 
+A estrutura do trace é descritiva das operações efetuadas, sendo para cada uma identificado o timestamp, processo responsável e dados da operação de #link(<io>)[*I/O*], como offset, tamanho e tipo de operação. Por fim, cada registo conta com uma assinatura, pois sendo este um trace de deduplicação, é necessário conhecer o bloco alvo da operação, o que permite identificar duplicados.
 
 
 
