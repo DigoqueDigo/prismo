@@ -55,73 +55,65 @@ Este índice caracteriza-se por conter as assinaturas de todos os blocos únicos
 
 Com o objetivo de tirar partido da localidade espacial e temporal, este índice armazena somente as informações relativas aos blocos mais recentes e populares, por conseguinte a estrutura de dados pode ser armazenada em #link(<ram>)[*RAM*], o que permite diminuir a latência dos pedidos. Por outro lado, uma vez que o índice não contém todos os blocos, é possível que blocos antigos ou pouco populares possam não ser identificados como duplicados e portanto existirão cópias no sistema de armazenamento.
 
+==== Compreensão
 
-
-
-
-
-
-
-
-==== Compressão
-
-Os sistemas de armazenamento modernos aplicam compressão aos blocos únicos identificados pelo processo de deduplicação, assim a informação é codificadas de modo mais eficiente, reduzindo a quantidade de bits necessários para representar a mesma informação. Daqui obtem-se mais aproveitamento do espaço de armazenamento, o que diminui os custos e aumenta a rapidez da transferencia entre sistemas.
+Os sistemas de armazenamento modernos aplicam compressão aos blocos únicos identificados pelo processo de deduplicação, assim a informação é codificada de modo mais eficiente, reduzindo a quantidade de bits necessários para representar os mesmos dados. Daqui obtém-se mais aproveitamento do espaço de armazenamento, o que diminui custos e aumenta a rapidez da transferência entre sistemas.
 
 ===== Entropia
 
-A fim de conhecer o limite da compressão, a entropia consiste numa medida que reflete a incerteza ou aleatoriedade associada à informação, como tal baixa entropia implica a existencia de padrões e uma oportunidade para comprimir, enquanto uma entropia elevada resulta da aleatoriedade dos dados, havendo por isso pouca margem de compressão.
+A fim de conhecer o limite de compressão, a entropia consiste numa medida que reflete a incerteza ou aleatoriedade associada à informação, como tal baixa entropia implica a existência de padrões e uma oportunidade para comprimir, enquanto entropia elevada resulta da aleatoriedade dos dados, havendo por isso pouca margem de compressão.
 
 $
-  H = - sum_(i) p_i log_2 p_i
+  H = - sum_(i=0)^k p_i log_2(p_i)
 $
 
-A partir da formula da entropia ficamos a conhecer o número médio de bits necessários para representar cada simbolo de forma ideal, onde $p_i$ estabelece a probabilidade do simbolo $i$, enquanto $log_2 p_i$ a informação associada a esse mesmo simbolo.
+A partir da fórmula da entropia, ficamos a conhecer o número médio de bits necessários para representar cada símbolo de forma ideal, onde $p_i$ estabelece a probabilidade do símbolo $i$, enquanto $log_2(p_i)$ a informação associada a esse mesmo.
 
-Com o objetivo de exclarecer a formula, apresentam-se de seguida os calculos relativos à string `banana`. Uma vez que o simbolo `a` repete-se três vezes, a sua probabilidade ($p_i$) equivale a $3/6 = 1/2$, raciocinio que aplicamos aos restantes simbolos
+Com o objetivo de esclarecer a fórmula, apresentam-se de seguida os cálculos relativos à string `banana`. Uma vez que o símbolo `a` repete-se três vezes, a sua probabilidade ($p_i$) equivale a $3/6 = 1/2$, raciocínio que aplicamos aos restantes símbolos.
 
 $
-  H = - ( 1/6 dot log_2/6 + 1/2 dot log_2/2 + 1/3 dot log_2 / 3) = 1.46 #text("bits/símbolo")
+  H = - (frac(log_2(1/6), 6) + frac(log_2(1/2), 2) + frac(log_2(1/3), 3)) = 1.46 #text("bits/símbolo")
 $
 
-Tendo em conta que a string é constituida por seis caracteres, $6 dot 1.46 = 8.76 #text("bits")$ corresponde ao limite teorico minimo para codificar `banana` de forma ideal através de codificação ótima como Huffman ou Shannon-Fano.
+Tendo em conta que a string é constituída por seis caracteres, $6 dot 1.46 = 8.76 #text("bits")$ corresponde ao limite teórico mínimo para codificar `banana` de forma ideal através de codificação ótima como Huffman ou Shannon-Fano.
 
 ===== Huffman Coding
 
-A formula da entropia nada diz sobre a codificação dos simbolos, para isso é necessário recorrer a um algoritmo de codificação, neste caso abordamos os Huffman Coding, que permitem gerar codigos binarios de tamamnho variavel para uma compressão sem perdas, nela os símbolos mais frequentes recebem códigos mais curtos enquanto os símbolos menos frequentes códigos mais longos.
+A fórmula da entropia nada diz sobre a codificação dos símbolos, para isso é necessário recorrer a um algoritmo de codificação, neste caso abordamos o Huffman Coding, que permitem gerar códigos binários de tamanho variável para uma compressão sem perdas, nela os símbolos mais frequentes recebem códigos mais curtos enquanto os símbolos menos frequentes códigos mais longos.
 
 #figure(
   image("../images/huffman.png", width: 60%),
   caption: [Árvore de Huffman]
 ) <huffman>
 
-O funcionamento do algoritmos é bastante simples, incialmente os simbolos são ordenados conforma a sua frequencia, de seguida os dois primeiros da lista são agrupados numa arvore cuja raiz tem valores de frequencias igual ao somatorio, sendo esta colocada de novo na lista conforme o seu valor de frequencia.
+O funcionamento do algoritmo é bastante simples, inicialmente os símbolos são ordenados conforme a sua frequência, de seguida os dois primeiros da lista são agrupados numa árvore cuja raiz tem valor de frequência igual ao somatório, sendo esta colocada de novo na lista conforme o seu valor de frequência.
 
-Ao repetir este processo, obtemos uma arvore com as frequencias dos simbolos, deste modo os mais populares estão possicionados perto da raiz e portanto necessitam de menos bits para serem representados. Tendo em consideração a @huffman, a codificação de cada simbolo obtem-se ao atravesar a arvove, onde um salto para a esquerda corresponde a `0`, e para a direita `1`. Assim o simbolo `a` possui o codigo `010`, enquanto `x` corresponde a `10010`.
+Ao repetir este processo, obtemos uma árvore com as frequências dos símbolos, deste modo os mais populares estão posicionados perto da raiz e portanto necessitam de menos bits para serem representados. Tendo em consideração a @huffman, a codificação de cada símbolo obtém-se ao atravessar a árvore, onde um salto para a esquerda corresponde a `0`, e para a direita `1`. Por conseguinte, o símbolo `a` possui o código `010`, enquanto `x` corresponde a `10010`.
 
 ===== LZ77
 
-Huffman provou que o seu codigo é a forma mais eficiente de associar uns e zeros a caracteres individuas, é matematicamente impossível superar isso. Porém os algoritmos de compressão procuram identificar padrões para aumentar o tamanho dos simbolos e assim obter melhores taxas de compressão.
+Huffman provou que o seu código é a forma mais eficiente de associar uns e zeros a caracteres individuais, é matematicamente impossível superar isso. Porém os algoritmos de compressão procuram identificar padrões que aumentem o tamanho dos símbolos e assim alcançar melhores taxas de compressão.
 
 #figure(
   image("../images/lz77_sliding_window.png", width: 60%),
   caption: [Sliding window no algoritmo LZ77]
 ) <lz77>
 
-Na grande maioria dos algoritmos, incluido o LZ77, a identifcação de padrões ocorre dentro de uma sliding window, assim sempre que um padrão é quebrado, a codificação dos simbolos anteriores é dada por um tuplo com o deslocamento, comprimento, e novo simbolo.
+Na grande maioria dos algoritmos, incluído o LZ77, a identificação de padrões ocorre dentro de uma sliding window, assim sempre que um padrão é quebrado, a codificação dos símbolos anteriores é dada por um tuplo com o deslocamento, comprimento, e novo símbolo.
 
-Deste modo o índice $(3,3,a)$ indica que é necessário deslocar três posições para trás e repetir os três simbolo seguintes, sendo no final adicionado um $a$ que originou a quebra do padrão dentro da sliding window.
+Deste modo o índice $(3,3,a)$ indica que é necessário deslocar três posições para trás e repetir os três símbolos seguintes, sendo no final adicionado um $a$ que originou a quebra do padrão dentro da sliding window.
 
-Quanto maior for a sliding window, maior será a probabilidade de encontrar padrões, no entanto isso acarreta custos computacionais, daí que 65536 bytes seja um standard adotado em vários algoritmos. Por outro lado, reparamos que a codificação dos proprios indicies atraves de Huffman Coding pode trazer melhor desempenho ao LZ77, de facto os algoritmos mais recente, como o `DEFLATE` utilizado no `gzip`, aplicam este principio.
+Quanto maior for a sliding window, maior será a probabilidade de encontrar padrões, no entanto isso acarreta custos computacionais, daí que 65536 bytes seja um standard adotado em vários algoritmos. Por outro lado, reparamos que a codificação dos próprios índices através de Huffman Coding pode trazer melhorias de desempenho ao LZ77, de facto os algoritmos mais recentes, como o `DEFLATE` utilizado no `gzip`, aplicam este princípio.
 
-Tendo por base estes conceitos, a geração de conteudo que comprime X% torna-se deveras simples, bastando para isso fixar X% dos simbolos da string, enquanto os restantes devem ser completamente aleatorios e sem qualquer padrão possível de exploração. No fundo, procuramos o minimo de entropia em X% da string, e o maximo de aleatoriedade entre os demais simbolos.
+Tendo por base estes conceitos, a geração de conteúdo que comprime X% torna-se deveras simples, bastando para isso fixar X% dos símbolos da string, enquanto os restantes devem ser completamente aleatórios e sem qualquer padrão possível de exploração. No fundo, procuramos o mínimo de entropia em X% da string, e o máximo de aleatoriedade entre os demais símbolos.
 
 ==== Traces
 
-A melhor forma de simular workloads realistas é saber exatamente em que consistem essas workloads, por conseguinte um trace oferece uma visão detalhada de todas as operações que ocorreram no sistema, permitindo conhecer os momentos em que as aplicações e processos interagiram com o sistema de aramazenamento.
+A melhor forma de simular workloads realistas é saber exatamente em que consistem essas workloads, por conseguinte um trace oferece uma visão detalhada de todas as operações que ocorrem no sistema, permitindo conhecer os momentos em que as aplicações e processos interagiram com o sistema de armazenamento.
 
-Idealmente os traces são obtidos em ambiente de produção, dado que somente aí observamos o sistema sob condições reais de uso, portanto faz sentido que o benchmark consiga replicar esse ambiente para termos uma noção do desempenho esperado.
+Idealmente os traces são obtidos em ambiente de produção, dado que somente aí observamos o sistema sob condições reais de uso, portanto faz todo o sentido que o benchmark consiga replicar esse ambiente para termos uma noção do desempenho esperado.
 
-Infelizmente existem pouquissimos traces disponiveis, e os do #link(<fiu>)[*FIU*] já contam com imensos anos, não sendo a sua replicação viáel em máquinas modernas, isto por terem sido obtidos em dispositivos obsoletos aos dias de hoje.
+Infelizmente existem pouquíssimos traces disponíveis, e os do #link(<fiu>)[*FIU*] já contam com imensos anos, não sendo a sua replicação viável em máquinas modernas, isto por terem sido obtidos em dispositivos obsoletos aos dias de hoje.
 
 #raw_code_block[
 ```
@@ -135,7 +127,10 @@ Infelizmente existem pouquissimos traces disponiveis, e os do #link(<fiu>)[*FIU*
 ```
 ]
 
-A estrutura do trace é descritiva das operações efetuadas, sendo para cada uma identificado o timestamp, processo responsável e dados da operação de #link(<io>)[*I/O*], como offset, tamanho e tipo de operação. Por fim, cada registo conta com uma assinatura, pois sendo este um trace de deduplicação, é necessário conhecer o bloco alvo da operação, o que permite identificar duplicados.
+A estrutura do trace é descritiva das operações efetuadas, sendo para cada uma identificado o timestamp, processo responsável e dados da operação de #link(<io>)[*I/O*], como offset, tamanho e tipo de operação. Por fim, cada registo conta com uma assinatura, pois sendo este um trace de deduplicação, é necessário conhecer o bloco alvo da operação, o que permite posteriormente identificar duplicados.
+
+
+
 
 
 
