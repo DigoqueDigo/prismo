@@ -1,6 +1,6 @@
 #import "../utils/functions.typ" : raw_code_block
 
-== Background e Trabalho Relacionado
+== Background e Trabalho Relacionado <chapter2>
 
 Este capítulo tem por objetivo apresentar os conceitos e trabalho relacionado que sejam relevantes para a compreensão do projeto, nesse sentido, inicialmente é apresentada uma breve descrição das técnicas de deduplicação e compressão, realçando as implementações e desafios associados.
 
@@ -129,19 +129,54 @@ Infelizmente existem pouquíssimos traces disponíveis, e os do #link(<fiu>)[*FI
 
 A estrutura do trace é descritiva das operações efetuadas, sendo para cada uma identificado o timestamp, processo responsável e dados da operação de #link(<io>)[*I/O*], como offset, tamanho e tipo de operação. Por fim, cada registo conta com uma assinatura, pois sendo este um trace de deduplicação, é necessário conhecer o bloco alvo da operação, o que permite posteriormente identificar duplicados.
 
-
-
-
-
-
-
 ==== Stack de I/O
 
-// apresentar o diagrama da stack de io
-// dizer o monte de implicações de egurança e o impacto que isso tem na performance
+Sempre que uma aplicação solicita operações de #link(<io>)[*I/O*], as mesmas são obrigadas a fluir através de várias camadas a fim de garantir segurança e eficiência, contribuindo para ligar a aplicação ao hardware de modo totalmente abstrato.
+
+Posto isto, ao ser invocada uma system call, por exemplo `READ` ou `WRITE`, o kernel é notificado da existência de uma operação de #link(<io>)[*I/O*], havendo assim uma transição de user para kernel space. Já dentro do kernel, o pedido é recebido pelo #link(<vfs>)[*Virtual File System (VFS)*], que fornece uma interface independente do sistema de ficheiros, sendo este último responsável por traduzir a operação em acessos a blocos lógicos e verificar se os dados encontram-se em cache, em caso afirmativo o pedido é satisfeito imediatamente e sem aceder ao disco.
+
+#figure(
+  image("../images/stack.png", width: 60%),
+  caption: [Visão alto nível da stack de I/O em linux]
+) <iostack>
+
+Perante a necessidade de aceder ao disco, o pedido é encaminhado para a camada de blocos, de modo a agrupar e escalonar os pedidos de #link(<io>)[*I/O*] o mais eficientemente possível. Por fim, o pedido é transmitido ao driver do dispositivo, que conhece os detalhes específicos do hardware e por isso converte o pedido em instruções claras ao controlador de disco.
+
+Em suma, este fluxo permite que as aplicações realizem operações de #link(<io>)[*I/O*] de modo transparente, enquanto o sistema operativo gere a complexidade, desempenho e segurança dos acessos ao dispositivo de armazenamento.
 
 ==== Interfaces de I/O
 
-// explicar a diversiadde de interfaces mas que eles se dividem entre sync e async
+Devido aos imensos passos realizados no interior de stack de #link(<io>)[*I/O*], a execução dos pedidos tende a ser bastante demorada, o que contribui para uma penalização da performance das aplicações. Tendo isto em mente, surgiram diversas #link(<api>)[*APIs*] que trazem otimizações para cenários específicos, e como tal estabelecem compromissos entre simplicidade, desempenho e controlo.
 
-// explicar posix, uring e spdk, dizer que aio é muito parecido ao uring no sentido em que também funcoina atrávez de submissões e explicar que o spdk é um caso completamente à parte que solicita o controlo total do disco
+===== Posix
+
+De todas a mais simplista, esta interface funciona através das system calls `open`, `read`, `write` e `close`, o que a torna bastante portável e amplamente utilizada entre os sistemas UNIX. Por outro lado, acarreta a desvantagem das chamadas serem síncronas e realizar cópias entre user e kernel space, consequentemente penaliza aplicações com workloads intensivas.
+
+===== Uring
+
+Recentemente as interfaces assíncronas têm ganho popularidade por conseguirem submeter novos pedidos enquanto os anteriores ainda não foram concluídos, além disso possibilitam a execução de pedidos em batch como meio para diminuir as chamadas ao sistema, afinal o custo da mudança de contexto entre user para kernel space é deveras elevado.
+
+#figure(
+  image("../images/uring.png", width: 70%),
+  caption: [Visão alto nível das queues circulares do uring]
+) <uring>
+
+Inicialmente a #link(<sq>)[*Submission Queue (SQ)*] encontra-se vazia e por isso disponível para receber #link(<sqe>)[*Submission Queue Entries (SQE)*], quando a aplicação julgar conveniente ou a #link(<sq>)[*SQ*] ficar cheia é necessário realizar uma syscall de `submit`, informando o kernel sobre a existência de #link(<sqe>)[*SQEs*] disponíveis para submissão, neste momento ocorre uma mudança de contexto, no entanto a aplicação pode continuar a submeter novos pedidos caso encontre espaço disponível na #link(<sq>)[*SQ*].
+
+Assim que o kernel termina o pedido resultante de uma #link(<sqe>)[*SQE*], o mesmo origina uma #link(<cqe>)[*Completion Queue Entry (CQE)*] com os dados resultantes da operação de #link(<io>)[*I/O*], sendo este inserido na #link(<cq>)[*Completion Queue (CQ)*] de modo a informar a aplicação sobre a conclusão do pedido. Convém realçar que a aplicação é responsável por recolher as #link(<cqe>)[*CQEs*], caso contrário a #link(<cq>)[*CQ*] ficará cheia e o kernel bloqueará por não conseguir transmitir os resultados à aplicação.
+
+Por fim, a interface suporta #link(<dma>)[*Direct Memory Access (DMA)*] através de buffers registados, ou seja, em vez dos dados serem constantemente copiados entre user e kernel space, a aplicação compromete-se a gerir uma zona de memória que o kernel confiará como sendo segura, daí que não possam haver modificações da memória entre a submissão e conclusão dos pedidos.
+
+===== Libaio
+
+De forma semelhante à interface anterior, esta também funcionar de modo assíncrono e permite a submissão de pedidos em batch, no entanto apenas atua com #link(<io>)[*I/O*] direto, conseguido através da flag `O_DIRECT`, e portanto torna-se muito limitada para os sistemas de ficheiros atuais.
+
+Além disso, uma vez que são utilizadas syscalls AIO do kernel, os pedidos continuam a passar através da stack tradicional de #link(<io>)[*I/O*], o que origina as penalizações de performance mencionadas anteriormente e das quais todas as interfaces referidas até ao momento sofrem.
+
+===== SPDK
+
+Com o objetivo de dar bypass ao kernel, esta interface possibilita acesso direto ao hardware a partir do user space, deste modo evita por completo as penalizações das system calls e interrupções que normalmente lhes estão associadas.
+
+Ao utilizar um mecanismo de polling ativo, a latência entre pedidos é diminuída ao máximo em detrimento da utilização dos cores da #link(<cpu>)[*Central Processing Unit (CPU)*]. Deste modo, um runtime assíncrono é estabelecido às custas de um reactor, sendo depois submetidas operações de #link(<io>)[*I/O*] que o escalonador atribuiu aos cores corretos. Quando a operação é dada por terminada, o escalonador volta a atribuir um callback para execução, sendo que este contém o resultado da operação de #link(<io>)[*I/O*].
+
+Por fim, esta interface disponibiliza uma #link(<bdev>)[*bdev*] #link(<api>)[*API*] que abstrai as operações orientadas ao bloco, tornando-se por isso bastante conveniente para a implementação do protótipo, no entanto o modelo de concorrência entre threads acarreta algumas dificuldades de gestão comparativamente ao modelo tradicional em stack. Por estas razões, apenas sistemas onde a performance seja um fator crítico devem utilizar #link(<spdk>)[*SPDK*], caso contrário estaremos a tornar a aplicação menos portável sem necessidade.
