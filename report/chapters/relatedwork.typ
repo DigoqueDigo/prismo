@@ -44,51 +44,60 @@ Apesar desta versatilidade, a impossibilidade de simular traces e falta de supor
 
 Por outro lado, a própria distribuição de duplicados resulta numa limitação das workloads, uma vez que esta é definida em termos absolutos, ao ser atingido o limite de blocos únicos e respetivas cópias torna-se impossível continuar a escrever mais blocos, afinal não conseguimos depreender o grupo a que estes pertenceriam. Além disso, uma workload inferior àquela estabelecida pela distribuição resulta numa infração da taxa de duplicados, daí que a única forma de respeitar os limites seja não estender nem diminuir a distribuição.
 
-
-
-
 ==== DEDISbench++
 
-Os sistemas de armazenamento moderanos combinam tecnicas de deduplicação e compressão para obter melhor desempenho, no entanto o DEDISbench não tem em conta as taxas de compressão no momento da geração de conteudo, consequentemente as workloads tornam-se irrealista e não permitem uma avaliação fiel do sistema.
+Os sistemas de armazenamento modernos combinam técnicas de deduplicação e compressão para obter melhor desempenho, no entanto o DEDISbench não tem em conta as taxas de compressão no momento da geração de conteúdo, consequentemente as workloads tornam-se irrealista e não permitem uma avaliação fiel do sistema.
 
-Face a este problema, o DEDISbench++ surge com o objetivo de permitir um controlo explicito sobre as taxas de compressibilidade intra e intre-bloco, sem que isso se reflita numa perda de performance, dado que a geração de conteudo torna-se evidentemente mais custosa.
+Face a este problema, o DEDISbench++ surge com o objetivo de permitir um controlo explícito sobre as taxas de compressibilidade intra e inter-bloco, sem que isso se reflita numa perda de performance, dado que a geração de conteúdo torna-se evidentemente mais custosa.
 
-Posto isto, o DEDISgen foi alterado para captar as taxas de duplicados e compressibilidade em simultâneo, resultando numa grelha que indica, para cada grupo de cópias, a percentagem total de blocos atribuidos e repetiva distribuição das taxas de compressão.
+Posto isto, o DEDISgen foi alterado para capturar as taxas de duplicados e compressibilidade em simultâneo, resultando numa grelha que indica, para cada grupo de cópias, a percentagem total de blocos atribuídos e respetiva distribuição das taxas de compressão.
 
-#let emptycell = table.cell(
+#let ecell = table.cell(
   fill: gray.lighten(60%),
   align: center,
-)[*X*]
+)[*x*]
 
 #figure(
- table(
-   columns: (1fr, auto, auto, auto, auto, auto, auto, auto, auto, auto, auto, auto),
-   inset: 6pt,
-   align: horizon + left,
-   fill: (x, y) => if y == 0 { gray.lighten(60%) },
-   table.header(
-     [*Cópias*], [*Total*],
-     [*10%*], [*20%*], [*30%*], [*40%*], [*50%*], [*60%*], [*70%*], [*80%*], [*90%*], [*100%*],
-   ),
-   [0], [22.73%], [15], emptycell, emptycell, [20], emptycell, emptycell, emptycell, [65], emptycell, emptycell,
-   [1], [22.73%], emptycell, emptycell, emptycell, emptycell, [100], emptycell, emptycell, emptycell, emptycell, emptycell,
-   [3], [27.27%], emptycell, emptycell, emptycell, emptycell, emptycell, emptycell, [80], emptycell, [20], emptycell,
-   [5], [27.27%], emptycell, emptycell, [30], emptycell, emptycell, emptycell, emptycell, [70], emptycell, emptycell,
- ),
- caption: [Distribuição de duplicados e taxas de compressão]
+  table(
+    columns: (1fr, auto, auto, auto, auto, auto, auto, auto, auto, auto, auto, auto),
+    inset: 6pt,
+    align: horizon + left,
+    fill: (x, y) => if y == 0 { gray.lighten(60%) },
+    table.header(
+      [*Cópias*], [*Total*],
+      [*10%*], [*20%*], [*30%*], [*40%*], [*50%*], [*60%*], [*70%*], [*80%*], [*90%*], [*100%*],
+    ),
+    [0], [22.73%], [15%], ecell, ecell, [20%], ecell, ecell, ecell, [65%], ecell, ecell,
+    [1], [22.73%], ecell, ecell, ecell, ecell, [100%], ecell, ecell, ecell, ecell, ecell,
+    [3], [27.27%], ecell, ecell, ecell, ecell, ecell, ecell, [80%], ecell, [20%], ecell,
+    [5], [27.27%], ecell, ecell, [30%], ecell, ecell, ecell, ecell, [70%], ecell, ecell,
+  ),
+  caption: [Distribuição de duplicados e taxas de compressão]
 ) <dedisbenchplusplusdedup>
 
-esplicar conforme a tabela anteiror, deizer o que mudou
+Ao contrário da distribuição gerada pela primeira versão do DEDISgen, desta vez os duplicados são definidos à custa de percentagens, como tal as limitações anteriormente referidas deixam de ser aplicável, pois os valores relativos são totalmente independentes do tamanho da workload, e portanto esta pode ser estendida indefinidamente.
+
+Por outro lado, vemos que na @dedisbenchplusplusdedup as taxas de compressão intra-bloco são definidas à custa de setores percentuais, ou seja, no caso dos blocos com três cópias, inferimos que 80% deles comprime 70%, enquanto os restantes comprimem 90%. Na verdade, esta forma de representação é bastante inflexível, dado somente permitir a identificação de taxas múltiplas de dez.
+
+Para cumprir os propósitos da compressão inter-bloco, o DEDISbench++ estabelece a existência de modelos que têm por base um buffer completamente aleatório, sendo este mais tarde replicado noutros buffers que comprimem 10%, 20%, 30%, .... Tendo isto em mente, o máximo de compressão inter-bloco é atingido quando dois blocos pertencem ao mesmo modelo, afinal ambos partilham o buffer de base.
+
+Consequentemente, a criação de uma matriz com 100 modelos permite manipular a compressibilidade inter-bloco entre o seu mínimo e máximo, para isso basta encontrar o número de blocos que devem ser alocados ao primeiro modelo e distribuir de forma igualitária os restantes pelos outros modelos.
+
+$
+  P = (frac(n_1, N))^2
+  arrow.l.r.double
+  n_1 = sqrt(P) dot N
+$
+
+Se considerarmos $P$ como sendo a taxa de compreensão inter-bloco, isso implica que $P = 1$ corresponde ao máximo e portanto todos os blocos estão associados ao primeiro modelo, no entanto esta fórmula assume que o número total de blocos é conhecido à priori, o que nem sempre é verdade, especialmente em workloads que executam baseadas no tempo em vez do número de operações.
+
+Em suma, apesar de incorporar a geração de conteúdo sintético com propriedades realistas de compressibilidade, o DEDISbench++ continua a sofrer das mesmas fragilidades apontadas ao seu antecessor, nomeadamente a replicação de traces e suporte a múltiplas interfaces de #link(<io>)[*I/O*], no entanto até a definição das taxas de compressão revela debilidades, quer por exigir conhecer o número total de blocos, quer por limitar a sua especificação a múltiplos de dez.
 
 
 
-// dizer que o dedisbench naão repesenta compressão real -------------------
 
-// mencionar o que o dedisbench++ apresenta como melhorias ao dedisbench, mostras a nova distribuição atraves de uma tabela
 
-// mencionar muito brevemente como são calculadas as copmressões
 
-// espeficicar que isso só funciona se souber ẁ partida o numero total de blocos que vou utilizar durante o benchmark, o que se torna muito complicado nas workloads onde isso não é especificado
 
 ==== FIO
 
