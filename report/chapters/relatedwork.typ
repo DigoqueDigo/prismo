@@ -49,6 +49,41 @@ Por outro lado, a própria distribuição de duplicados resulta numa limitação
 
 ==== DEDISbench++
 
+Os sistemas de armazenamento moderanos combinam tecnicas de deduplicação e compressão para obter melhor desempenho, no entanto o DEDISbench não tem em conta as taxas de compressão no momento da geração de conteudo, consequentemente as workloads tornam-se irrealista e não permitem uma avaliação fiel do sistema.
+
+Face a este problema, o DEDISbench++ surge com o objetivo de permitir um controlo explicito sobre as taxas de compressibilidade intra e intre-bloco, sem que isso se reflita numa perda de performance, dado que a geração de conteudo torna-se evidentemente mais custosa.
+
+Posto isto, o DEDISgen foi alterado para captar as taxas de duplicados e compressibilidade em simultâneo, resultando numa grelha que indica, para cada grupo de cópias, a percentagem total de blocos atribuidos e repetiva distribuição das taxas de compressão.
+
+#let emptycell = table.cell(
+  fill: gray.lighten(60%),
+  align: center,
+)[*X*]
+
+#figure(
+ table(
+   columns: (1fr, auto, auto, auto, auto, auto, auto, auto, auto, auto, auto, auto),
+   inset: 6pt,
+   align: horizon + left,
+   fill: (x, y) => if y == 0 { gray.lighten(60%) },
+   table.header(
+     [*Cópias*], [*Total*],
+     [*10%*], [*20%*], [*30%*], [*40%*], [*50%*], [*60%*], [*70%*], [*80%*], [*90%*], [*100%*],
+   ),
+   [0], [22.73%], [15], emptycell, emptycell, [20], emptycell, emptycell, emptycell, [65], emptycell, emptycell,
+   [1], [22.73%], emptycell, emptycell, emptycell, emptycell, [100], emptycell, emptycell, emptycell, emptycell, emptycell,
+   [3], [27.27%], emptycell, emptycell, emptycell, emptycell, emptycell, emptycell, [80], emptycell, [20], emptycell,
+   [5], [27.27%], emptycell, emptycell, [30], emptycell, emptycell, emptycell, emptycell, [70], emptycell, emptycell,
+ ),
+ caption: [Distribuição de duplicados e taxas de compressão]
+) <dedisbenchplusplusdedup>
+
+esplicar conforme a tabela anteiror, deizer o que mudou
+
+
+
+// dizer que o dedisbench naão repesenta compressão real -------------------
+
 // mencionar o que o dedisbench++ apresenta como melhorias ao dedisbench, mostras a nova distribuição atraves de uma tabela
 
 // mencionar muito brevemente como são calculadas as copmressões
@@ -56,6 +91,8 @@ Por outro lado, a própria distribuição de duplicados resulta numa limitação
 // espeficicar que isso só funciona se souber ẁ partida o numero total de blocos que vou utilizar durante o benchmark, o que se torna muito complicado nas workloads onde isso não é especificado
 
 ==== FIO
+
+// é o estado da arte e bla bla
 
 // mencionar que o fio é o estado da arte relativamente a benchmark para sistemas de armazenamento
 
