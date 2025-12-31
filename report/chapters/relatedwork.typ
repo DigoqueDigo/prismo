@@ -1,3 +1,5 @@
+#import "../utils/functions.typ" : raw_code_block
+
 === Trabalho Relacionado
 
 A fim de explorar ferramentas que solucionem problemas semelhantes aos abordados na dissertação, esta secção procura explicar algumas das técnicas utilizadas para obter workloads mais realistas e assim avaliar com maior critério os sistemas de armazenamento.
@@ -93,27 +95,47 @@ Se considerarmos $P$ como sendo a taxa de compreensão inter-bloco, isso implica
 
 Em suma, apesar de incorporar a geração de conteúdo sintético com propriedades realistas de compressibilidade, o DEDISbench++ continua a sofrer das mesmas fragilidades apontadas ao seu antecessor, nomeadamente a replicação de traces e suporte a múltiplas interfaces de #link(<io>)[*I/O*], no entanto até a definição das taxas de compressão revela debilidades, quer por exigir conhecer o número total de blocos, quer por limitar a sua especificação a múltiplos de dez.
 
-
-
-
-
-
-
 ==== FIO
 
-// é o estado da arte e bla bla
+No que se refere ao estado da arte da avaliação de sistemas de armazenamento, o #link(<fio>)[*FIO*] é a ferramenta mais avançada e amplamente utilizada pela comunidade. Além de permitir a manipulação duma infinidade de parâmetros relativos à workload, que vão desde os padrões de acesso, distribuição das operações, escolha da interface de #link(<io>)[*I/O*] e definição de barreiras, as métricas obtidas são de fácil compreensão e um bom indicador das capacidades do sistema de armazenamento.
 
-// mencionar que o fio é o estado da arte relativamente a benchmark para sistemas de armazenamento
+#raw_code_block[
+```
+seqwrite: (groupid=0, jobs=1): err= 0: pid=144197: Wed Dec 31 00:02:02 2025
+ write: IOPS=108k, BW=421MiB/s (442MB/s)(1024MiB/2432msec); 0 zone resets
+   clat (usec): min=2, max=19254, avg= 8.73, stdev=232.88
+    lat (usec): min=2, max=19254, avg= 8.79, stdev=232.89
+  iops        : min=53222, max=210414, avg=97548.50, stdev=75543.88, samples=4
+ lat (usec)   : 4=58.64%, 10=35.29%, 20=5.15%, 50=0.83%, 100=0.03%
+ lat (usec)   : 250=0.02%, 500=0.01%
+ cpu          : usr=6.29%, sys=49.77%, ctx=94, majf=0, minf=9
+ IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+    submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+    complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+    issued rwts: total=0,262144,0,0 short=0,0,0,0 dropped=0,0,0,0
+```
+]
 
-// suporte a vaŕias interfaces, no entanto o spdk tem a desvantagem de ser através de um plugin cuja utilização não é completamente trivial
+Numa breve análise dos resultados obtidos através de uma execução do #link(<fio>)[*FIO*] com os parâmetros default, reparamos que a workload em questão foi executada por uma única thread, sendo o trabalho sequencial e de escritas constantes, o que resultou num débito de 421MiB/s e 108k #link(<iops>)[*IOPS*].
 
-// dizer que permite várias opções para manipular as workloads, no entanto os requisitos para um benchmark de deduplicação são muito superiores aqueles que o fio permite
+Por outro lado, uma vez que a engine utilizada é síncrona, todas as operações foram realizadas com uma #link(<io>)[*IO*] depth igual a um, no entanto a submissão foi realizada em grupos de quatro para reduzir o impacto das system calls e extrair maior proveito do sistema de armazenamento, algo que na verdade tornou-se escusado, visto 50% do tempo de #link(<cpu>)[*CPU*] ter sido consumido a resolver syscalls.
 
-// a taxa de copmressão e deduplicação é obtida de modo muito simplesta
+Por fim, a latência das operações manteve-se significativamente baixa, com 58% dos pedidos a serem respondidos em menos de quatro microsegundos e somente 0.03% a demorarem entre 250 e 500 microssegundos, no fundo isto indica uma utilização eficiente da cache ou então de um #link(<nvme>)[*NVMe*] deveras performante.
 
-// é possivel seguir traces, no entanto não existe uma distinção clara entre processos, algo que os traces do FIU especificam claramente como visto nos exemplos anteirores
+Apesar desta diversidade de configurações, os requisitos para obter workloads realistas são um pouco mais complexos do que as ofertas do #link(<fio>)[*FIO*], por exemplo, a geração de duplicados é obtida através da flag `dedupe_percentage=int`, que tal como o nome indica, estabelece a percentagem de blocos duplicados, no entanto isto é conseguido repetindo X vezes o mesmo bloco, o que não reflete minimamente as situações encontradas em ambientes reais.
+
+Por outro lado, a compressão é alcançada com a flag `buffer_compress_chunk=int`, assim uma determinada zona do bloco é repetida para atingir uma compressibilidade de X%, porém isso significa que todos os blocos irão comprimir na mesma taxa, algo que o DEDISbench++ resolvia ao atribuir distribuições diferentes por grupo de cópias.
+
+Em suma, estes fatores contribuem para que a geração de conteúdo do #link(<fio>)[*FIO*] não respeite os critérios de duplicados e compressibilidade que gostaríamos de ver nas workloads, além disso os traces do #link(<fiu>)[*FIU*] vêm acompanhados com a identificação do processo responsável pela operação de #link(<io>)[*I/O*], algo que o #link(<fio>)[*FIO*] não é capaz de reproduzir por as workloads não serem partilhadas entre processos, quando muito dívidas.
+
+
+
+
+
+
 
 === Discussão
+
 
 // após experimentar todas as ferramentas mencionadas anteirormente, podemos concluir que os requisitos para um benchmark de deduplicação são cumpridos parcilamente, faltando alguns pontos que o meu benchmark tentará melhorar
 
