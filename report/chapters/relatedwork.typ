@@ -128,21 +128,12 @@ Por outro lado, a compressão é alcançada com a flag `buffer_compress_chunk=in
 
 Em suma, estes fatores contribuem para que a geração de conteúdo do #link(<fio>)[*FIO*] não respeite os critérios de duplicados e compressibilidade que gostaríamos de ver nas workloads, além disso os traces do #link(<fiu>)[*FIU*] vêm acompanhados com a identificação do processo responsável pela operação de #link(<io>)[*I/O*], algo que o #link(<fio>)[*FIO*] não é capaz de reproduzir por as workloads não serem partilhadas entre processos, quando muito dívidas.
 
-
-
-
-
-
-
 === Discussão
 
+Após a experienciação das ferramentas anteriormente mencionadas, destaca-se que os requisitos para workloads realistas são cumpridos apenas parcialmente, contudo a combinação das configurações que cada uma oferece aproxima-nos no objetivo final, ou seja, se o #link(<io>)[*FIO*] conseguisse replicar a estratégia de duplicados e compressão do DEDISbench++ e ao mesmo tempo manter o suporte a múltiplas #link(<api>)[*APIs*] de #link(<io>)[*I/O*], somente ficava por resolver a questão da simulação de traces do #link(<fiu>)[*FIU*].
 
-// após experimentar todas as ferramentas mencionadas anteirormente, podemos concluir que os requisitos para um benchmark de deduplicação são cumpridos parcilamente, faltando alguns pontos que o meu benchmark tentará melhorar
+Ademais, a integração entre workloads geradas sinteticamente e traces obtidos em ambiente de produção, é algo totalmente inovador e que soluciona os problemas resultantes de traces incompletos, deste modo as informações em falta seriam geradas artificialmente através de uma distribuição escolhida pelo utilizador ou então conforme um padrão.
 
-// a integração direta com o spdk
+Numa outra perspectiva, os traces tendem a ser bastante limitados pelo seu tempo de duração, daí que estender o próprio trace após a sua conclusão permitiria continuar a avaliar o sistema sobre condições reais de funcionamento, algo que nenhum dos benchmark é capaz de fazer em tempo de execução e sem prejudicar a performance da workload.
 
-// controlo maior sobre os parametros das as workloads
-
-// seguir traces com a especificação de processos
-
-// combinar traces realista com sisnteticos quando o trace não apresenta todos os dados necessários à realização da operação de io
+Por fim, apesar do #link(<fio>)[*FIO*] suportar imensas interfaces de #link(<io>)[*I/O*], a utilização do #link(<spdk>)[*SPDK*] é conseguida através de um plugin cuja utilização é extremamente complicada, nesse sentido o suporte direto de #link(<spdk>)[*SPDK*] no benchmark seria uma melhoria considerável em termos da facilidade de uso.
