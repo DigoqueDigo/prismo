@@ -18,52 +18,124 @@ Do outro lado, um consumidor está constantemente à escuta na queue com o objet
 
 
 
-==== Geração de Conteúdo Sintético
 
+
+
+
+
+
+==== Geração de Conteúdo Sintético
 
 // explicar que aqui dentro ainda podemos fazer outra divisão, no caso dos offset, conteudo, operação
 
-// meter exepmlos de codigo para motrar a interface em confionamento, ou seja,
-// Access sequentialaccess = new SequentialAcces
-// Acess randomaccess = new RandomAccess
-//
-// explicar por bullet points cada uma das implementações contretas
-//
-// // DIAGRAMA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#figure(
+    image("../images/producer.png", width: 60%),
+    caption: [Interação do produtor com a interface de geração de conteúdo]
+)
+
+// explicar muito bravemente o diagrama
 
 ===== Acesso
 
+// explicar por abstrato em que consiste a interface e o metodo disponibilizado
+// explicar por bullet points cada uma das implementações contretas
+
+#figure(
+    image("../images/access.png", width: 60%),
+    caption: [Hierarquia da interface de acessos]
+)
+
 ===== Operação
 
-===== Conteúdo
+#figure(
+    image("../images/operation.png", width: 60%),
+    caption: [Hierarquia da interface de operações]
+)
+
+===== Geração de Blocos
+
+#figure(
+    image("../images/block.png", width: 60%),
+    caption: [Hierarquia da interface de geração de blocos]
+)
+
+====== Geração de Duplicados e Compressão
+
+// apresentar a estrutura do fxeito de confiuração para cada um dos casos
+// espetar o json como code block
+
+// explicar o algoritmo de sliding window
+// dizer como é realizada a seleção da taxa de compressão
+
+#grid(
+    columns: 2,
+    gutter: 10pt,
+    figure(
+        image("../images/deduplication.png", width: 100%),
+        caption: [Mapa de duplicados]
+    ),
+    figure(
+        image("../images/deduplication.png", width: 100%),
+        caption: [Mapa das taxas de compressão]
+    ),
+)
+
+// dizer que esta estratégia é bastante eficiente e o único problema seria eventualmente a escolha de um número aleatório, no entanto isso é atenuado pelo buffer que utiliza o shishua
+
+
 
 
 
 
 ==== Integração de Interfaces de I/O
 
-// dizer que também seguem uma interface
+// dar uma brave introdução da dificulta de combinar interfaces sincronas e assincronas
+// explicar por bullet points os metodos disponibilizados
 
-// explicar cada um dos metodos e dizer que o reap leaft completions não faz nada no caso das interfaces sincronas
 
-// DIAGRAMA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#figure(
+    image("../images/consumer.png", width: 60%),
+    caption: [Interação do consumidor com a interface de engine]
+)
+
+// explicar muito brevemente o diagrama
 
 ===== POSIX
 
-// para cada uma, meter um diagrama que explica o que acontece em backgrounf
-// DIAGRAMA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// apresentar a estrutura do ficheiro de configuração e realçar os parametros mais relevantes
+
+#figure(
+    image("../images/flow_posix.png", width: 60%),
+    caption: [Funcionamento interno da POSIX Engine]
+)
+
+// expicar o diagrama
 
 ===== Uring
 
-// DIAGRAMA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+#figure(
+    image("../images/flow_uring.png", width: 60%),
+    caption: [Funcionamento interno da Uring Engine]
+)
 
 ===== SPDK
 
-// DIAGRAMA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+#figure(
+    image("../images/flow_uring.png", width: 60%),
+    caption: [Funcionamento interno da SPDK Engine]
+)
 
 
 ==== Flow de Execução
 
-// explicar a questão do producer consumer e meter um diagrama
+// explicar novamente a questão do producer consumer e dizer que isto pode ser estendido para multiplica consumer caso a geração de conteudo esteja muito avança em relação que consumer
 
-// DIAGRAMA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// como é uma queue é realizado buffering dos pedidos e ao mesmo tempo backpressure para não saturar o consumidor
+
+
+
+=== Resultados Permilinares
+
+=== Próximas Etapas

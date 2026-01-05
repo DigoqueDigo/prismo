@@ -21,7 +21,7 @@ Convém mencionar que a proposta de solução funciona ao nível do bloco, porta
 A deduplicação caracteriza-se por poupar espaço de armazenamento ao não escrever conteúdos redundantes, sendo aplicada numa grande variedade de contextos, que vão desde backup, archival e primary storage até à #link(<ram>)[*RAM*]. Uma visão geral do funcionamento deste processo está apresentada na @dedup.
 
 #figure(
- image("../images/dedup.png", width: 80%),
+ image("../images/view.png", width: 80%),
  caption: [Visão geral do funcionamento da deduplicação]
 ) <dedup>
 
