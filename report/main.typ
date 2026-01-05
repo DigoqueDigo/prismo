@@ -51,6 +51,7 @@
 #include "chapters/introduction.typ"
 #include "chapters/background.typ"
 #include "chapters/relatedwork.typ"
+#include "chapters/architecture.typ"
 
 /*
 
