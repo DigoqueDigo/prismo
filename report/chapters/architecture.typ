@@ -18,9 +18,6 @@ Com o estabelecimento destes componentes, um produtor é responsável para invoc
 
 Do outro lado, um consumidor está constantemente à escuta na queue com o objetivo de receber pedidos, mal isto ocorra, é realizada uma submissão na interface de #link(<io>)[*I/O*], sendo mais tarde a estrutura do pedido libertada e transmitida ao produtor para nova utilização.
 
-
-
-
 ==== Geração de Conteúdo Sintético
 
 Na generalidade das interfaces, os pedidos de #link(<io>)[*I/O*] são caracterizados pelo tipo de operação, conteúdo e posição do disco onde o pedido será satisfeito, consequentemente o gerador de conteúdo sintético pode ser desacoplado nestas três funcionalidades, dando origem a interfaces que visam fornecer os parâmetros dos pedidos.
@@ -53,26 +50,26 @@ Dado que os acessos são realizados ao nível do bloco, todas as implementaçõe
    columns: 3,
    gutter: 5pt,
    raw_code_block[
-       ```yaml
-       type: sequential
-       blocksize: 4096
-       limit: 65536
-       ```
+        ```yaml
+        type: sequential
+        blocksize: 4096
+        limit: 65536
+        ```
    ],
    raw_code_block[
-       ```yaml
-       type: random
-       blocksize: 4096
-       limit: 65536
-       ```
+        ```yaml
+        type: random
+        blocksize: 4096
+        limit: 65536
+        ```
    ],
    raw_code_block[
-       ```yaml
-       type: zipfian
-       blocksize: 4096
-       limit: 65536
-       skew: 0.99
-       ```
+        ```yaml
+        type: zipfian
+        blocksize: 4096
+        limit: 65536
+        skew: 0.99
+        ```
    ],
 )
 
@@ -95,74 +92,155 @@ A implementação do tipo constante é a mais simples, isto porque devolve sempr
    columns: 3,
    gutter: 5pt,
    raw_code_block[
-       ```yaml
-       type: constant
-       operation: write
-       ```
+        ```yaml
+        type: constant
+        operation: write
+        ```
    ],
    raw_code_block[
-       ```yaml
-       type: percentage
-       percentages:
-           read: 50
-           write: 50
-       ```
+        ```yaml
+        type: percentage
+        percentages:
+            read: 50
+            write: 50
+        ```
    ],
    raw_code_block[
-       ```yaml
-       type: sequence
-       operations:
-           - write
-           - fsync
-       ```
+        ```yaml
+        type: sequence
+        operations:
+            - write
+            - fsync
+        ```
    ],
 )
 
 Por fim, a replicação de padrões é obtida com recurso à implementação de sequência, sendo o utilizador responsável por definir uma lista de operações que mais tarde será repetidamente devolvida, neste caso em concreto, se o método `nextOperation` fosse invocado cinco vezes, as operações seriam devolvidas pela ordem: `WRITE`, `FSYNC`, `WRITE`, `FSYNC`, `WRITE`.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 ===== Geração de Blocos
 
+A geração de blocos é sem dúvida a operação mais custosa, no entanto apenas torna-se necessária quando a operação selecionada for um `WRITE`, nesse sentido a interface de `BlockGenerator` disponibiliza o método `nextBlock` que preenche um buffer passado como argumento.
+
+Embora a implementação principal desta interface seja aquela que combina duplicados e compressão, existem outras mais rudimentares que servem para testar cenários específicos com maior eficiência, isto porque o gerador de duplicados é capaz de simular os blocos dos outros geradores, mas com uma performance significativamente menor.
 
 #figure(
-    image("../images/block.png", width: 60%),
-    caption: [Hierarquia da interface de geração de blocos]
+   image("../images/block.png", width: 60%),
+   caption: [Hierarquia da interface de geração de blocos]
 )
+
+Tal como seria expectável, os geradores necessitam de conhecer o tamanho do bloco, deste modo podem garantir que os limites dos buffers jamais serão violados. A implementação mais simplista deste gerador corresponde ao constante, que devolve sempre o mesmo buffer, resultando numa deduplicação e compressibilidade interbloco máximas. Por outro lado, o aleatório tem exatamente o comportamento oposto, pois ao devolver buffers diferentes não existem duplicados e a entropia é elevada.
+
+#grid(
+  columns: 3,
+  gutter: 5pt,
+  raw_code_block[
+       ```yaml
+       type: constant
+       blocksize: 4096
+       ```
+  ],
+  raw_code_block[
+       ```yaml
+       type: random
+       blocksize: 4096
+       ```
+  ],
+  raw_code_block[
+       ```yaml
+       type: dedup
+       blocksize: 4096
+       refill_buffers: false
+       ```
+  ],
+)
+
+Por fim, o gerador de duplicados e compressão procura seguir uma distribuição de duplicados definida pelo utilizador, esta estabelece a percentagem de blocos que terão X cópias, sendo que cada grupo de cópias tem associada uma distribuição de compressão, indicando que Y% dos blocos reduz cerca de Z%.
+
+Além disso, a opção `refill_buffers` permite a partilha do buffer base entre blocos, deste modo quando os mesmos são criados a zona de entropia máxima é obtida a partir do buffer, consequentemente todos os blocos partilham a mesma informação e portanto a compressibilidade interbloco atinge o limite.
 
 ====== Geração de Duplicados e Compressão
 
-// apresentar a estrutura do fxeito de confiuração para cada um dos casos
-// espetar o json como code block
-
-// explicar o algoritmo de sliding window
-// dizer como é realizada a seleção da taxa de compressão
+Para que o utilizador manipule a distribuição de duplicados e compressão, o benchmark oferece um ficheiro de configuração sobre o qual as informações são retiradas, bastando seguir o formato indicado.
 
 #grid(
-    columns: 2,
-    gutter: 10pt,
-    figure(
-        image("../images/deduplication.png", width: 100%),
-        caption: [Mapa de duplicados]
-    ),
-    figure(
-        image("../images/deduplication.png", width: 100%),
-        caption: [Mapa das taxas de compressão]
-    ),
+   columns: 3,
+   gutter: 5pt,
+   raw_code_block[
+       ```yaml
+       - percentage: 50
+           repeats: 1
+           compression:
+           - percentage: 50
+             reduction: 10
+           - percentage: 20
+             reduction: 20
+           - percentage: 10
+             reduction: 30
+           - percentage: 15
+             reduction: 25
+           - percentage: 5
+             reduction: 5
+       ```
+   ],
+   raw_code_block[
+       ```yaml
+       - percentage: 30
+           repeats: 2
+           compression:
+           - percentage: 20
+             reduction: 20
+           - percentage: 40
+             reduction: 10
+           - percentage: 40
+             reduction: 0
+       ```
+   ],
+   raw_code_block[
+       ```yaml
+       - percentage: 20
+           repeats: 3
+           compression:
+           - percentage: 40
+             reduction: 30
+           - percentage: 60
+             reduction: 0
+       ```
+   ],
 )
 
-// dizer que esta estratégia é bastante eficiente e o único problema seria eventualmente a escolha de um número aleatório, no entanto isso é atenuado pelo buffer que utiliza o shishua
+A distribuição de duplicados e compressão é definida de modo particular, inicialmente é realizada uma associação entre o número de cópias e a respetiva probabilidade, sendo mais tarde definidas as taxas de compressão dentro de cada grupo.
+
+#grid(
+   columns: 2,
+   gutter: 5pt,
+   [
+       #figure(
+           image("../images/compression.png", width: 100%),
+           caption: [Mapa das taxas de compressão],
+       ) <compression-map>
+   ],
+   [
+       #figure(
+           image("../images/deduplication.png", width: 100%),
+           caption: [Mapa dos duplicados],
+       ) <dedup-map>
+   ],
+)
+
+A @compression-map representa a estrutura sobre a qual as taxas de compressão são armazenadas para cada grupo, sendo basicamente um mapa que associa o número de repetições a uma lista formada por tuplos de percentagem cumulativa e respetiva redução.
+
+Por outro lado, a @dedup-map é responsável por gerir os blocos duplicados e tem um funcionamento semelhante ao de uma sliding window, onde os tuplos da lista são constituídos pelo identificador de bloco e cópias que faltam efetuar.
+
+O funcionamento do algoritmo é bastante simples, inicialmente uma entrada do mapa é selecionada conforme as probabilidades do ficheiro de configuração, a partir daí, caso a lista não tenha atingido o limite de elementos, um novo é adicionado com o número de cópias igual ao de repetições.
+
+Na situação em que a lista encontra-se completa, um dos elementos é selecionado aleatoriamente e o valor das cópias em falta é decrementado uma unidade, ao ser atingido o valor zero a entrada é definitivamente retirada da lista, pois o bloco já foi repetido as vezes necessárias.
+
+Por fim, depois de selecionado o identificador do bloco, volta a ser sorteado um número aleatório para descobrir a taxa de compressão a aplicar, de relembrar que a distribuição é obtida pela entrada do mapa selecionada inicialmente.
+
+Apesar de bastante eficiente, esta abordagem acarreta o problema da geração pseudo aleatória, algo que tende a ser bastante custoso relativamente às restantes operações, no entanto esta implementação faz uso de um buffer gerido pelo SHISHUA, deste modo gerações massivas são realizadas periodicamente enquanto a aplicação limita-se a recolher dados do buffer.
+
+
+
 
 
 
@@ -197,7 +275,7 @@ Por fim, a replicação de padrões é obtida com recurso à implementação de 
 
 
 #figure(
-    image("../images/flow_uring.png", width: 60%),
+    image("../images/flow_uring.png", width: 75%),
     caption: [Funcionamento interno da Uring Engine]
 )
 
@@ -205,7 +283,7 @@ Por fim, a replicação de padrões é obtida com recurso à implementação de 
 
 
 #figure(
-    image("../images/flow_uring.png", width: 60%),
+    image("../images/flow_spdk.png", width: 85%),
     caption: [Funcionamento interno da SPDK Engine]
 )
 
