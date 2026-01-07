@@ -239,26 +239,57 @@ Por fim, depois de selecionado o identificador do bloco, volta a ser sorteado um
 
 Apesar de bastante eficiente, esta abordagem acarreta o problema da geração pseudo aleatória, algo que tende a ser bastante custoso relativamente às restantes operações, no entanto esta implementação faz uso de um buffer gerido pelo SHISHUA, deste modo gerações massivas são realizadas periodicamente enquanto a aplicação limita-se a recolher dados do buffer.
 
-
-
-
-
-
-
-
-
 ==== Integração de Interfaces de I/O
 
-// dar uma brave introdução da dificulta de combinar interfaces sincronas e assincronas
-// explicar por bullet points os metodos disponibilizados
+Sabendo que o consumidor está à escuta de pedidos enviados pelo produtor, quando os mesmos são recebidos procede-se de imediato ao desencapsulamento para compreender o tipo de operação em questão e assim facilitar o acesso aos restantes parâmetros, como offset e conteúdo.
 
+A interface `Engine` disponibiliza o método `submit` que aceita operações de qualquer tipo, assim o consumidor não é responsável por definir as alterações de comportamento associadas. Mal o pedido seja dado por concluído, a struct é devolvida pela interface, permitindo ao consumidor fazer dequeue para que a zona de memória seja reutilizada pelo produtor.
 
 #figure(
-    image("../images/consumer.png", width: 60%),
-    caption: [Interação do consumidor com a interface de engine]
+   image("../images/consumer.png", width: 60%),
+   caption: [Interação do consumidor com a interface de engine]
 )
 
-// explicar muito brevemente o diagrama
+Um pedido obtido a partir da queue pode ser de três tipos distintos, onde as structs de abertura e fecho são caracterizadas pelos argumentos encontrados nas syscalls de `open` e `close`, importa realçar que tais estruturas não fazem sentido para a engine de #link(<spdk>)[*SPDK*], visto esta funcionar diretamente sobre o dispositivo de armazenamento e portanto não existir uma abstração do sistema de ficheiros.
+
+#grid(
+ columns: 3,
+ gutter: 5pt,
+ raw_code_block[
+   ```c
+   struct CloseRequest {
+       int fd;
+   };
+   ```
+ ],
+ raw_code_block[
+   ```c
+   struct OpenRequest {
+     int flags;
+     mode_t mode;
+     char* filename;
+   };
+   ```
+ ],
+ raw_code_block[
+   ```c
+   struct CommonRequest {
+       int fd;
+       size_t size;
+       uint64_t offset;
+       uint8_t* buffer;
+       Metadata metadata;
+       OperationType op;
+   };
+   ```
+ ]
+)
+
+Perante a combinação de interfaces síncronas e assíncronas, o método `submit` nem sempre devolve uma struct para reutilização, pois, no caso das interfaces assíncronas nunca sabemos exatamente quando o pedido será dado por concluído e além disso não é possível esperar até que tal aconteça, caso contrário estaria a ser dado comportamento síncrono e as vantagens de paralelismo seriam perdidas.
+
+Tendo isto em mente, o método `reap_left_completions` possibilita a espera forçosa dos  pedidos pendentes, algo que deve ser utilizado entre a última submissão e a operação de `close`.
+
+
 
 ===== POSIX
 
