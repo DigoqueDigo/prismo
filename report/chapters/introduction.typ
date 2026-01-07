@@ -50,4 +50,4 @@ Este documento encontra-se dividido em três capítulos, o #link(<chapter1>)[*Ca
 
 Já o #link(<chapter2>)[*Capítulo 2*] apresenta o background relativo à deduplicação e compressão, em particular as técnicas aplicadas para gerar conteúdo com estas propriedades, além disso a stack de #link(<io>)[*I/O*] é explorada para justificar as diferenças entre #link(<api>)[*APIs*] e perceber os pontos de melhoria em soluções de benchmark já estabelecidas (DEDISbench e DEDISbench++).
 
-Por fim, o #link(<chapter1>)[*Capitulo 3*] corresponde a uma visão geral da arquitetura da solução, especificando os fluxos entre componentes e configurações necessárias à descrição da workload por parte do utilizador, concluindo-se com a descrição do plano para o restante da dissertação.
+Por fim, o #link(<chapter3>)[*Capitulo 3*] corresponde a uma visão geral da arquitetura da solução, especificando os fluxos entre componentes e configurações necessárias à descrição da workload por parte do utilizador, concluindo-se com a descrição do plano para o restante da dissertação.

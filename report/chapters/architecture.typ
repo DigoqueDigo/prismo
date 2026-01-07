@@ -1,6 +1,7 @@
+#import "@preview/wrap-it:0.1.1": wrap-content
 #import "../utils/functions.typ" : raw_code_block
 
-== Abordagem e Planeamento
+== Abordagem e Planeamento <chapter3>
 
 Depois de esclarecido o problema da avaliação realista dos sistemas de armazenamento e compreendidos os conceitos em seu redor, este capítulo visa abordar a arquitetura do protótipo de benchmark, passando pela identificação dos respetivos componentes, estratégias adotadas para geração de conteúdo e integração com #link(<api>)[*APIs*] de #link(<io>)[*I/O*] cuja natureza é bastante diversa, isto fundamentalmente porque algumas são síncronas e outras assíncronas.
 
@@ -285,6 +286,8 @@ Um pedido obtido a partir da queue pode ser de três tipos distintos, onde as st
  ]
 )
 
+
+
 Perante a combinação de interfaces síncronas e assíncronas, o método `submit` nem sempre devolve uma struct para reutilização, pois, no caso das interfaces assíncronas nunca sabemos exatamente quando o pedido será dado por concluído e além disso não é possível esperar até que tal aconteça, caso contrário estaria a ser dado comportamento síncrono e as vantagens de paralelismo seriam perdidas.
 
 Tendo isto em mente, o método `reap_left_completions` possibilita a espera forçosa dos  pedidos pendentes, algo que deve ser utilizado entre a última submissão e a operação de `close`.
@@ -293,16 +296,70 @@ Tendo isto em mente, o método `reap_left_completions` possibilita a espera for�
 
 ===== POSIX
 
-// apresentar a estrutura do ficheiro de configuração e realçar os parametros mais relevantes
+
+
+
+
+#let posix_config = raw_code_block(width: auto)[
+  ```yaml
+  engine:
+    type: posix
+    openflags:
+      - O_CREAT
+      - O_TRUNC
+      - O_RDONLY
+      - O_DIRECT
+  ```
+]
+
+#let posix_body = [#lorem(100)]
+
+#wrap-content(
+  posix_config,
+  posix_body,
+  align: top + right,
+)
+
 
 #figure(
-    image("../images/flow_posix.png", width: 60%),
-    caption: [Funcionamento interno da POSIX Engine]
+  image("../images/flow_posix.png", width: 65%),
+  caption: [Funcionamento interno da POSIX Engine]
 )
+
+// apresentar a estrutura do ficheiro de configuração e realçar os parametros mais relevantes
+
 
 // expicar o diagrama
 
 ===== Uring
+
+#let uring_config = raw_code_block(width: auto)[
+  ```yaml
+  engine:
+    type: uring
+    openflags:
+      - O_CREAT
+      - O_RDWR
+    entries: 128
+    params:
+      cq_entries: 128
+      sq_thread_cpu: 0
+      sq_thread_idle: 0
+      flags:
+        - IORING_SETUP_SQPOLL
+        - IORING_SETUP_IOPOLL
+        - IORING_SETUP_SQ_AFF
+  ```
+]
+
+#let uring_body = [#lorem(100)]
+
+#wrap-content(
+  uring_config,
+  uring_body,
+  align: top + right
+)
+
 
 
 #figure(
@@ -312,6 +369,24 @@ Tendo isto em mente, o método `reap_left_completions` possibilita a espera for�
 
 ===== SPDK
 
+#let spdk_config = raw_code_block(width: auto)[
+  ```yaml
+  engine:
+    type: spdk
+    spdk_threads: 1
+    bdev_name: Malloc0
+    reactor_mask: "0xF"
+    json_config_file: spdk_bdev.json
+  ```
+]
+
+#let spdk_body = [#lorem(100)]
+
+#wrap-content(
+  spdk_config,
+  spdk_body,
+  align: top + right
+)
 
 #figure(
     image("../images/flow_spdk.png", width: 85%),
@@ -323,7 +398,7 @@ Tendo isto em mente, o método `reap_left_completions` possibilita a espera for�
 
 // explicar novamente a questão do producer consumer e dizer que isto pode ser estendido para multiplica consumer caso a geração de conteudo esteja muito avança em relação que consumer
 
-// como é uma queue é realizado buffering dos pedidos e ao mesmo tempo backpressure para não saturar o consumidor
+// explicar a questão do speed up e slow down que é basicamente a cadencia com que o conteudo é colocado na queue (produtor -> consumidor)
 
 
 
