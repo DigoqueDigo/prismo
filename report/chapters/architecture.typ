@@ -323,31 +323,6 @@ Tendo isto em mente, o método `reap_left_completions` possibilita a espera for�
 
 Por ostentar comportamento síncrono, o método `reap_left_completions` não tem relevância prática, destarte a receção de pedidos é seguida da syscall associada ao tipo de operação, sendo mais tarde devolvido o código de erro, bem como a estrutura do pedido.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ===== Uring
 
 #let uring_config = raw_code_block(width: auto)[
@@ -361,7 +336,7 @@ Por ostentar comportamento síncrono, o método `reap_left_completions` não tem
     params:
       cq_entries: 128
       sq_thread_cpu: 0
-      sq_thread_idle: 0
+      sq_thread_idle: 100
       flags:
         - IORING_SETUP_SQPOLL
         - IORING_SETUP_IOPOLL
@@ -370,7 +345,11 @@ Por ostentar comportamento síncrono, o método `reap_left_completions` não tem
 ]
 
 #let uring_body = [
+  Ao fazer uso do sistema de ficheiros, os argumentos de abertura são semelhantes aos previamente referidos, portanto a configuração da `UringEngine` apresenta uma lista das mesmas flags.
 
+  Em relação aos demais parâmetros, `entries` e `cq_entries` definem a profundidade da #link(<sq>)[*SQ*] e #link(<cq>)[*CQ*] respetivamente, por norma estes valores são potências de dois entre 64 e 256, isto porque valores pequenos diminuem o paralelismo, enquanto o contrário resulta num aumento do consumo de memória e desperdício da localidade da cache.
+
+  Relativamente às flags para controlo do anel e processamento de #link(<io>)[*I/O*], o utilizador usufruir de total liberdade de escolha, sendo de realçar a flag `IORING_SETUP_SQPOLL` que cria uma thread no kernel para pollar a #link(<sq>)[*SQ*] e assim os pedidos serem submetidos sem a necessidade de invocar a syscall `io_uring_enter`. Por outro lado, a flag `IORING_SETUP_SQ_AFF` estabelece a afinidade da thread do kernel, neste caso em particular, a mesma será fixada no core 0 e após de 100 milissegundos de inatividade entrará no estado de sleep.
 ]
 
 #wrap-content(
@@ -379,12 +358,36 @@ Por ostentar comportamento síncrono, o método `reap_left_completions` não tem
   align: top + right
 )
 
-
-
 #figure(
     image("../images/flow_uring.png", width: 75%),
     caption: [Funcionamento interno da Uring Engine]
 )
+
+Tratando-se de uma interface assíncrona, o seu bom uso passa por diminuir a invocação de syscalls e manter os pedidos in-flight no máximo permitido, o que corresponde à capacidade da #link(<sq>)[*SQ*]. Tendo isto em consideração, a `UringEngine` não executa os pedidos mal estes sejam recebidos, procura sim formar um batch para submeter vários em simultâneo.
+
+Depois do primeiro batch ser submetido, a estratégia é alterada para preservar a quantidade de pedidos in-flight, portanto mal seja encontrada uma #link(<sqe>)[*SQE*] dísponivel, a mesma é preparada e submetida independentemente de haver ou não um batch. É certo que esta abordagem aumenta as syscalls, porém quando combinada com a thread de polling do kernel, permite atingir débitos e #link(<iops>)[*IOPS*] deveras elevados.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ===== SPDK
 
@@ -399,7 +402,9 @@ Por ostentar comportamento síncrono, o método `reap_left_completions` não tem
   ```
 ]
 
-#let spdk_body = [#lorem(100)]
+#let spdk_body = [
+
+]
 
 #wrap-content(
   spdk_config,
