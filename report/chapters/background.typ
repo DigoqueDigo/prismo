@@ -21,8 +21,8 @@ Convém mencionar que a proposta de solução funciona ao nível do bloco, porta
 A deduplicação caracteriza-se por poupar espaço de armazenamento ao não escrever conteúdos redundantes, sendo aplicada numa grande variedade de contextos, que vão desde backup, archival e primary storage até à #link(<ram>)[*RAM*]. Uma visão geral do funcionamento deste processo está apresentada na @dedup.
 
 #figure(
- image("../images/view.png", width: 80%),
- caption: [Visão geral do funcionamento da deduplicação]
+  image("../images/view.png", width: 80%),
+  caption: [Visão geral do funcionamento da deduplicação]
 ) <dedup>
 
 Sempre que um pedido de #link(<io>)[*I/O*] é submetido ao sistema, a stack de #link(<io>)[*I/O*] calcula a assinatura do bloco e consulta um índice responsável por estabelecer um mapeamento entre endereços físicos e lógicos, verificando assim a existência de duplicados. Caso a entrada já se encontre no índice, o bloco em questão é duplicado, como tal simplesmente será criado um apontador para a sua posição no disco, evitando uma escrita de conteúdo repetido. Consequentemente, nenhuma cópia será escrita, diminuindo os requisitos de armazenamento da aplicação.

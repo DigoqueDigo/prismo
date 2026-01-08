@@ -26,8 +26,8 @@ Na generalidade das interfaces, os pedidos de #link(<io>)[*I/O*] são caracteriz
 Como fruto desta abordagem, e uma vez que os geradores são definidos ao nível dos parâmetros, a combinação entre geradores sintéticos e reais torna-se bastante simples, isto porque o produtor apenas conhece uma interface que é independente da implementação concreta, assim podemos ter acessos reais e operações sintéticas, sendo o contrário igualmente válido.
 
 #figure(
-   image("../images/producer.png", width: 60%),
-   caption: [Interação do produtor com a interface de geração de conteúdo]
+  image("../images/producer.png", width: 60%),
+  caption: [Interação do produtor com a interface de geração de conteúdo]
 )
 
 Enquanto medida para reutilização de memória, produtor e consumidor partilham duas queues, uma direcionada ao envio de pedidos (produtor para consumidor) e outra responsável por identificar as structs cujo pedido já foi concluído (consumidor para produtor), e como tal podem ser reutilizadas pelo produtor.
@@ -41,37 +41,37 @@ Uma vez que as queues apresentam capacidade limitada, e tendo em consideração 
 Os pedidos de `READ` e `WRITE` necessitam de ser identificados pela zona do disco onde a operação irá ocorrer, neste sentido a interface `AccessGenerator` disponibiliza o método `nextAccess` que devolve o offset da próxima operação a realizar, sendo de realçar que nem todas as implementações concretas apresentam a mesma performance, pois algumas seguem distribuições enquanto outras utilizam aritmética simples.
 
 #figure(
-   image("../images/access.png", width: 60%),
-   caption: [Hierarquia da interface de acessos]
+  image("../images/access.png", width: 60%),
+  caption: [Hierarquia da interface de acessos]
 )
 
 Dado que os acessos são realizados ao nível do bloco, todas as implementações devem conhecer o tamanho do bloco e o limite da zona do disco até onde é permitido ler ou escrever, deste modo os offsets devolvidos serão inferiores ou iguais ao limite e acima de tudo múltiplos do tamanho do bloco.
 
 #grid(
-   columns: 3,
-   gutter: 5pt,
-   raw_code_block[
-        ```yaml
-        type: sequential
-        blocksize: 4096
-        limit: 65536
-        ```
-   ],
-   raw_code_block[
-        ```yaml
-        type: random
-        blocksize: 4096
-        limit: 65536
-        ```
-   ],
-   raw_code_block[
-        ```yaml
-        type: zipfian
-        blocksize: 4096
-        limit: 65536
-        skew: 0.99
-        ```
-   ],
+  columns: 3,
+  gutter: 5pt,
+  raw_code_block[
+    ```yaml
+    type: sequential
+    blocksize: 4096
+    limit: 65536
+    ```
+  ],
+  raw_code_block[
+    ```yaml
+    type: random
+    blocksize: 4096
+    limit: 65536
+    ```
+  ],
+  raw_code_block[
+    ```yaml
+    type: zipfian
+    blocksize: 4096
+    limit: 65536
+    skew: 0.99
+    ```
+  ],
 )
 
 A implementação do tipo sequencial é responsável por devolver os offsets num padrão contínuo, sendo que o alcance do limite implica o reposicionamento no offset zero, esta estratégia beneficia claramente a localidade espacial, pois as zonas do disco são acedidas num padrão favorável.
@@ -83,37 +83,37 @@ Por outro lado, os acessos totalmente aleatórios não favorecem quaisquer propr
 Os sistemas de armazenamento suportam uma infinidade de operações, no entanto o gerador de operações apenas disponibiliza `READ`, `WRITE`, `FSYNC`, `FDATASYNC` e `NOP` por serem as mais comuns e portanto adotadas pela maioria das #link(<api>)[*APIs*] de #link(<io>)[*I/O*]. Embora a operação `NOP` não faça rigorosamente nada, a mesma é útil para testar a performance do benchmark independente da capacidade do disco, permitindo identificar o débito máximo que o sistema de armazenamento pode almejar.
 
 #figure(
-   image("../images/operation.png", width: 60%),
-   caption: [Hierarquia da interface de operações]
+  image("../images/operation.png", width: 60%),
+  caption: [Hierarquia da interface de operações]
 )
 
 A implementação do tipo constante é a mais simples, isto porque devolve sempre a mesma operação que foi definida previamente pelo utilizador. Em contrapartida, as operações percentuais são obtidas à custa de uma distribuição cujo somatório das probabilidade deve resultar em 100, exemplificando com a configuração abaixo, metade das operações serão `READs` e as restantes `WRITES`.
 
 #grid(
-   columns: 3,
-   gutter: 5pt,
-   raw_code_block[
-        ```yaml
-        type: constant
-        operation: write
-        ```
-   ],
-   raw_code_block[
-        ```yaml
-        type: percentage
-        percentages:
-            read: 50
-            write: 50
-        ```
-   ],
-   raw_code_block[
-        ```yaml
-        type: sequence
-        operations:
-            - write
-            - fsync
-        ```
-   ],
+  columns: 3,
+  gutter: 5pt,
+  raw_code_block[
+    ```yaml
+    type: constant
+    operation: write
+    ```
+  ],
+  raw_code_block[
+    ```yaml
+    type: percentage
+    percentages:
+        read: 50
+        write: 50
+    ```
+  ],
+  raw_code_block[
+    ```yaml
+    type: sequence
+    operations:
+        - write
+        - fsync
+    ```
+  ],
 )
 
 Por fim, a replicação de padrões é obtida com recurso à implementação de sequência, sendo o utilizador responsável por definir uma lista de operações que mais tarde será repetidamente devolvida, neste caso em concreto, se o método `nextOperation` fosse invocado cinco vezes, as operações seriam devolvidas pela ordem: `WRITE`, `FSYNC`, `WRITE`, `FSYNC`, `WRITE`.
@@ -125,8 +125,8 @@ A geração de blocos é sem dúvida a operação mais custosa, no entanto apena
 Embora a implementação principal desta interface seja aquela que combina duplicados e compressão, existem outras mais rudimentares que servem para testar cenários específicos com maior eficiência, isto porque o gerador de duplicados é capaz de simular os blocos dos outros geradores, mas com uma performance significativamente menor.
 
 #figure(
-   image("../images/block.png", width: 60%),
-   caption: [Hierarquia da interface de geração de blocos]
+  image("../images/block.png", width: 60%),
+  caption: [Hierarquia da interface de geração de blocos]
 )
 
 Tal como seria expectável, os geradores necessitam de conhecer o tamanho do bloco, deste modo podem garantir que os limites dos buffers jamais serão violados. A implementação mais simplista deste gerador corresponde ao constante, que devolve sempre o mesmo buffer, resultando numa deduplicação e compressibilidade interbloco máximas. Por outro lado, o aleatório tem exatamente o comportamento oposto, pois ao devolver buffers diferentes não existem duplicados e a entropia é elevada.
@@ -135,23 +135,23 @@ Tal como seria expectável, os geradores necessitam de conhecer o tamanho do blo
   columns: 3,
   gutter: 5pt,
   raw_code_block[
-       ```yaml
-       type: constant
-       blocksize: 4096
-       ```
+    ```yaml
+    type: constant
+    blocksize: 4096
+    ```
   ],
   raw_code_block[
-       ```yaml
-       type: random
-       blocksize: 4096
-       ```
+    ```yaml
+    type: random
+    blocksize: 4096
+    ```
   ],
   raw_code_block[
-       ```yaml
-       type: dedup
-       blocksize: 4096
-       refill_buffers: false
-       ```
+    ```yaml
+    type: dedup
+    blocksize: 4096
+    refill_buffers: false
+    ```
   ],
 )
 
@@ -164,68 +164,68 @@ Além disso, a opção `refill_buffers` permite a partilha do buffer base entre 
 Para que o utilizador manipule a distribuição de duplicados e compressão, o benchmark oferece um ficheiro de configuração sobre o qual as informações são retiradas, bastando seguir o formato indicado.
 
 #grid(
-   columns: 3,
-   gutter: 5pt,
-   raw_code_block[
-       ```yaml
-       - percentage: 50
-           repeats: 1
-           compression:
-           - percentage: 50
-             reduction: 10
-           - percentage: 20
-             reduction: 20
-           - percentage: 10
-             reduction: 30
-           - percentage: 15
-             reduction: 25
-           - percentage: 5
-             reduction: 5
-       ```
-   ],
-   raw_code_block[
-       ```yaml
-       - percentage: 30
-           repeats: 2
-           compression:
-           - percentage: 20
-             reduction: 20
-           - percentage: 40
-             reduction: 10
-           - percentage: 40
-             reduction: 0
-       ```
-   ],
-   raw_code_block[
-       ```yaml
-       - percentage: 20
-           repeats: 3
-           compression:
-           - percentage: 40
-             reduction: 30
-           - percentage: 60
-             reduction: 0
-       ```
-   ],
+  columns: 3,
+  gutter: 5pt,
+  raw_code_block[
+    ```yaml
+    - percentage: 50
+        repeats: 1
+        compression:
+        - percentage: 50
+          reduction: 10
+        - percentage: 20
+          reduction: 20
+        - percentage: 10
+          reduction: 30
+        - percentage: 15
+          reduction: 25
+        - percentage: 5
+          reduction: 5
+    ```
+  ],
+  raw_code_block[
+    ```yaml
+    - percentage: 30
+        repeats: 2
+        compression:
+        - percentage: 20
+          reduction: 20
+        - percentage: 40
+          reduction: 10
+        - percentage: 40
+          reduction: 0
+    ```
+  ],
+  raw_code_block[
+    ```yaml
+    - percentage: 20
+        repeats: 3
+        compression:
+        - percentage: 40
+          reduction: 30
+        - percentage: 60
+          reduction: 0
+    ```
+  ],
 )
 
 A distribuição de duplicados e compressão é definida de modo particular, inicialmente é realizada uma associação entre o número de cópias e a respetiva probabilidade, sendo mais tarde definidas as taxas de compressão dentro de cada grupo.
 
 #grid(
-   columns: 2,
-   gutter: 5pt,
-   [
-       #figure(
-           image("../images/compression.png", width: 100%),
-           caption: [Mapa das taxas de compressão],
-       ) <compression-map>
-   ],
-   [
-       #figure(
-           image("../images/deduplication.png", width: 100%),
-           caption: [Mapa dos duplicados],
-       ) <dedup-map>
-   ],
+  columns: 2,
+  gutter: 5pt,
+  [
+    #figure(
+      image("../images/compression.png", width: 100%),
+      caption: [Mapa das taxas de compressão],
+    ) <compression-map>
+  ],
+  [
+    #figure(
+      image("../images/deduplication.png", width: 100%),
+      caption: [Mapa dos duplicados],
+    ) <dedup-map>
+  ],
 )
 
 A @compression-map representa a estrutura sobre a qual as taxas de compressão são armazenadas para cada grupo, sendo basicamente um mapa que associa o número de repetições a uma lista formada por tuplos de percentagem cumulativa e respetiva redução.
@@ -244,61 +244,53 @@ Apesar de bastante eficiente, esta abordagem acarreta o problema da geração ps
 
 Sabendo que o consumidor está à escuta de pedidos enviados pelo produtor, quando os mesmos são recebidos procede-se de imediato ao desencapsulamento para compreender o tipo de operação em questão e assim facilitar o acesso aos restantes parâmetros, como offset e conteúdo.
 
-A interface `Engine` disponibiliza o método `submit` que aceita operações de qualquer tipo, assim o consumidor não é responsável por definir as alterações de comportamento associadas. Mal o pedido seja dado por concluído, a struct é devolvida pela interface, permitindo ao consumidor fazer dequeue para que a zona de memória seja reutilizada pelo produtor.
+A interface `Engine` disponibiliza o método `submit` que aceita operações de qualquer tipo, assim o consumidor não é responsável por definir as alterações de comportamento associadas. Mal o pedido seja dado por concluído, a struct é devolvida pela interface, permitindo ao consumidor fazer dequeue para que a zona de memória seja reutilizada mais tarde.
 
 #figure(
-   image("../images/consumer.png", width: 60%),
-   caption: [Interação do consumidor com a interface de engine]
+  image("../images/consumer.png", width: 60%),
+  caption: [Interação do consumidor com a interface de engine]
 )
 
 Um pedido obtido a partir da queue pode ser de três tipos distintos, onde as structs de abertura e fecho são caracterizadas pelos argumentos encontrados nas syscalls de `open` e `close`, importa realçar que tais estruturas não fazem sentido para a engine de #link(<spdk>)[*SPDK*], visto esta funcionar diretamente sobre o dispositivo de armazenamento e portanto não existir uma abstração do sistema de ficheiros.
 
 #grid(
- columns: 3,
- gutter: 5pt,
- raw_code_block[
-   ```c
-   struct CloseRequest {
-       int fd;
-   };
-   ```
- ],
- raw_code_block[
-   ```c
-   struct OpenRequest {
-     int flags;
-     mode_t mode;
-     char* filename;
-   };
-   ```
- ],
- raw_code_block[
-   ```c
-   struct CommonRequest {
-       int fd;
-       size_t size;
-       uint64_t offset;
-       uint8_t* buffer;
-       Metadata metadata;
-       OperationType op;
-   };
-   ```
- ]
+  columns: 3,
+  gutter: 5pt,
+  raw_code_block[
+    ```c
+    struct CloseRequest {
+        int fd;
+    };
+    ```
+  ],
+  raw_code_block[
+    ```c
+    struct OpenRequest {
+      int flags;
+      mode_t mode;
+      char* filename;
+    };
+    ```
+  ],
+  raw_code_block[
+    ```c
+    struct CommonRequest {
+        int fd;
+        size_t size;
+        uint64_t offset;
+        uint8_t* buffer;
+        Metadata metadata;
+        OperationType op;
+    };
+    ```
+  ]
 )
-
-
 
 Perante a combinação de interfaces síncronas e assíncronas, o método `submit` nem sempre devolve uma struct para reutilização, pois, no caso das interfaces assíncronas nunca sabemos exatamente quando o pedido será dado por concluído e além disso não é possível esperar até que tal aconteça, caso contrário estaria a ser dado comportamento síncrono e as vantagens de paralelismo seriam perdidas.
 
 Tendo isto em mente, o método `reap_left_completions` possibilita a espera forçosa dos  pedidos pendentes, algo que deve ser utilizado entre a última submissão e a operação de `close`.
 
-
-
 ===== POSIX
-
-
-
-
 
 #let posix_config = raw_code_block(width: auto)[
   ```yaml
@@ -312,24 +304,49 @@ Tendo isto em mente, o método `reap_left_completions` possibilita a espera for�
   ```
 ]
 
-#let posix_body = [#lorem(100)]
+#let posix_body = [
+  Com o objetivo de flexibilizar o benchmark, todas as implementações de `Engine` possuem uma configuração para manipulação dos parâmetros e respetivo comportamento, neste caso em concreto, ao tratar-se de uma interface bastante simplista, a única configuração possível ocorre na syscall `open` através das flags passadas como argumento.
+
+  Posto isto, a estrutura de configuração indica o tipo de `Engine` selecionada, bem como uma lista das flags que o utilizador considera relevantes para a execução da workload, por questões de comodidade na implementação, somente as flags mais relevantes são suportadas.
+]
 
 #wrap-content(
-  posix_config,
-  posix_body,
-  align: top + right,
+ posix_config,
+ posix_body,
+ align: top + right,
 )
-
 
 #figure(
-  image("../images/flow_posix.png", width: 65%),
-  caption: [Funcionamento interno da POSIX Engine]
+ image("../images/flow_posix.png", width: 65%),
+ caption: [Funcionamento interno da POSIX Engine]
 )
 
-// apresentar a estrutura do ficheiro de configuração e realçar os parametros mais relevantes
+Por ostentar comportamento síncrono, o método `reap_left_completions` não tem relevância prática, destarte a receção de pedidos é seguida da syscall associada ao tipo de operação, sendo mais tarde devolvido o código de erro, bem como a estrutura do pedido.
 
 
-// expicar o diagrama
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ===== Uring
 
@@ -352,7 +369,9 @@ Tendo isto em mente, o método `reap_left_completions` possibilita a espera for�
   ```
 ]
 
-#let uring_body = [#lorem(100)]
+#let uring_body = [
+
+]
 
 #wrap-content(
   uring_config,
@@ -392,6 +411,8 @@ Tendo isto em mente, o método `reap_left_completions` possibilita a espera for�
     image("../images/flow_spdk.png", width: 85%),
     caption: [Funcionamento interno da SPDK Engine]
 )
+
+==== Recolha de Métricas
 
 
 ==== Flow de Execução
