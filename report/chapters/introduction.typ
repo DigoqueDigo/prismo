@@ -44,8 +44,6 @@ Tendo um protótipo com estas características, contribuímos para que a avalia�
 
 === Estrutura do Documento
 
-#text(stroke: 0.5pt + red)[Os capítulos estão com o link errado, não esquecer de trocar]
-
 Este documento encontra-se dividido em três capítulos, o #link(<chapter1>)[*Capitulo 1*] serve de introdução ao problema abordado na dissertação, procurando desvendar os desafios inerentes ao mesmo, sendo ainda apontadas as contribuições que se pretendem alcançar.
 
 Já o #link(<chapter2>)[*Capítulo 2*] apresenta o background relativo à deduplicação e compressão, em particular as técnicas aplicadas para gerar conteúdo com estas propriedades, além disso a stack de #link(<io>)[*I/O*] é explorada para justificar as diferenças entre #link(<api>)[*APIs*] e perceber os pontos de melhoria em soluções de benchmark já estabelecidas (DEDISbench e DEDISbench++).

@@ -367,28 +367,6 @@ Tratando-se de uma interface assíncrona, o seu bom uso passa por diminuir a inv
 
 Depois do primeiro batch ser submetido, a estratégia é alterada para preservar a quantidade de pedidos in-flight, portanto mal seja encontrada uma #link(<sqe>)[*SQE*] dísponivel, a mesma é preparada e submetida independentemente de haver ou não um batch. É certo que esta abordagem aumenta as syscalls, porém quando combinada com a thread de polling do kernel, permite atingir débitos e #link(<iops>)[*IOPS*] deveras elevados.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ===== SPDK
 
 #let spdk_config = raw_code_block(width: auto)[
@@ -403,7 +381,13 @@ Depois do primeiro batch ser submetido, a estratégia é alterada para preservar
 ]
 
 #let spdk_body = [
+  Uma vez que o #link(<spdk>)[*SPDK*] possui um ficheiro de configuração próprio, utilizado para definir os #link(<bdev>)[*bdevs*], controladores de disco, tamanho dos blocos e afins, os parâmetros manipuláveis pelo benchmark a nível aplicacional são limitados.
 
+  Posto isto, `spdk_threads` indica o número de threads lógicas que serão criadas e pelas quais os pedidos de #link(<io>)[*I/O*] serão distribuídos em round-robin, importa realçar que tais threads funcionam como uma abstração sobre o reactor, o qual é responsável por escalonar as tarefas e direcioná-las para que sejam executadas nos cores corretos.
+
+  Desta feita, o número de cores realmente utilizados pelo runtime do #link(<spdk>)[*SPDK*] é identificado por `reactor_mask`, neste caso em particular, `0XF` convertido para binário equivale a `1111`, assim os quatro primeiros cores do sistema estão disponíveis para escalonamento de tarefas.
+
+  Embora as threads lógicas possam ser fixadas em qualquer core, o componente `SPDKRuntime` está fixado no primeiro core e em espera ativa por pedidos de #link(<io>)[*I/O*] vindos da aplicação, portanto qualquer outra thread fixada no mesmo core nunca será capaz de executar, afinal o runtime é interminável no consumo de recursos.
 ]
 
 #wrap-content(
@@ -413,20 +397,57 @@ Depois do primeiro batch ser submetido, a estratégia é alterada para preservar
 )
 
 #figure(
-    image("../images/flow_spdk.png", width: 85%),
-    caption: [Funcionamento interno da SPDK Engine]
+  image("../images/flow_spdk.png", width: 85%),
+  caption: [Funcionamento interno da SPDK Engine]
 )
+
+Ao iniciar o runtime do #link(<spdk>)[*SPDK*], o ambiente de execução muda completamente e torna-se difícil comunicar com os restante componentes do nível aplicacional, deste modo `SPDKEngine` serve essencialmente para transmitir os pedidos de #link(<io>)[*I/O*] através de um trigger partilhado pelo runtime.
+
+No momento em que este recebe um pedido, é necessário aguardar por uma zona de memória disponível, isto porque um buffer foi inicialmente alocado para propósitos de #link(<dma>)[*DMA*]. De seguida, o pedido é encapsulado numa mensagem própria do #link(<spdk>)[*SPDK*] e transmitido a uma thread lógica, sendo esta responsável por submeter ao #link(<bdev>)[*bdev*] e executar a operação de callback quando o pedido estiver concluído.
+
+Por fim, como os pedidos vão acompanhados de um trigger, a `SPDKEngine` é notificada acerca da conclusão e portanto percebe que é seguro devolver a struct ao produtor.
+
+
+
+
+
+
 
 ==== Recolha de Métricas
 
-
-==== Flow de Execução
-
-// explicar novamente a questão do producer consumer e dizer que isto pode ser estendido para multiplica consumer caso a geração de conteudo esteja muito avança em relação que consumer
-
-// explicar a questão do speed up e slow down que é basicamente a cadencia com que o conteudo é colocado na queue (produtor -> consumidor)
-
-
+#grid(
+  columns: 3,
+  gutter: 5pt,
+  raw_code_block[
+    ```c
+    struct BaseMetric : Metric {
+      int64_t sts;
+      int64_t ets;
+      uint64_t block_id;
+      uint32_t compression;
+    };
+    ```
+  ],
+  raw_code_block[
+    ```c
+    struct StandardMetric : BaseMetric {
+      pid_t pid;
+      uint64_t tid;
+    };
+    ```
+  ],
+  raw_code_block[
+    ```c
+    struct FullMetric : StandardMetric {
+      uint64_t offset;
+      size_t req_bytes;
+      size_t proc_bytes;
+      int32_t error_no;
+      int32_t return_code;
+    };
+    ```
+  ],
+)
 
 === Resultados Permilinares
 
