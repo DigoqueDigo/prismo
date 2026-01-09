@@ -184,7 +184,7 @@ Para que o utilizador manipule a distribuição de duplicados e compressão, o b
           - percentage: 40
             reduction: 10
           - percentage: 60
-            reduction: 5
+            reduction: 50
       ```
     ],
     raw_code_block[
@@ -220,15 +220,15 @@ A distribuição de duplicados e compressão é definida de modo particular, ini
   gutter: 5pt,
   [
     #figure(
-      image("../images/compression.png", width: 100%),
-      caption: [Mapa das taxas de compressão],
-    ) <compression-map>
-  ],
-  [
-    #figure(
       image("../images/deduplication.png", width: 100%),
       caption: [Mapa dos duplicados],
     ) <dedup-map>
+  ],
+  [
+    #figure(
+      image("../images/compression.png", width: 100%),
+      caption: [Mapa das taxas de compressão],
+    ) <compression-map>
   ],
 )
 
