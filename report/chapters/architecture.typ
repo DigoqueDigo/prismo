@@ -407,13 +407,9 @@ No momento em que este recebe um pedido, é necessário aguardar por uma zona de
 
 Por fim, como os pedidos vão acompanhados de um trigger, a `SPDKEngine` é notificada acerca da conclusão e portanto percebe que é seguro devolver a struct ao produtor.
 
-
-
-
-
-
-
 ==== Recolha de Métricas
+
+Durante a execução de workloads, o benchmark é responsável por recolher métricas sobre cada uma das operações de #link(<io>)[*I/O*] realizadas, algo fundamental na caracterização e posterior avaliação do sistema de armazenamento, isto porque scripts estatísticos podem analisar o ficheiro de log resultante das métricas.
 
 #grid(
   columns: 3,
@@ -425,6 +421,7 @@ Por fim, como os pedidos vão acompanhados de um trigger, a `SPDKEngine` é noti
       int64_t ets;
       uint64_t block_id;
       uint32_t compression;
+      OperationType op;
     };
     ```
   ],
@@ -448,6 +445,30 @@ Por fim, como os pedidos vão acompanhados de um trigger, a `SPDKEngine` é noti
     ```
   ],
 )
+
+Tendo isto em consideração, o utilizador escolhe entre três pacotes de métricas que são progressivamente mais completos e suportam todos os parâmetros do pacote anterior. Assim sendo, `BaseMetric` corresponde à estrutura mais simples, contendo apenas os timestamp de início e fim, bem como o identificador do bloco utilizado e respetiva taxa de compressão, importa realçar que somente as operações de `WRITE` levam à geração de blocos, como tal qualquer outra operação apresenta um `block_id` igual a zero.
+
+#raw_code_block[
+```
+[prismo] [info] [type=1 block=1 cpr=0 sts=3480446313169 ets=3480446319309]
+[prismo] [info] [type=1 block=2 cpr=100 sts=3480446320554 ets=3480446323543]
+[prismo] [info] [type=1 block=3 cpr=100 sts=3480446324413 ets=3480446326723]
+[prismo] [info] [type=1 block=4 cpr=0 sts=3480446327460 ets=3480446329981]
+[prismo] [info] [type=1 block=5 cpr=100 sts=3480446330781 ets=3480446332925]
+[prismo] [info] [type=1 block=6 cpr=50 sts=3480446333681 ets=3480446336316]
+```
+]
+
+A estrutura do ficheiro de logging onde as métricas são armazenadas é de simples interpretação, neste caso em particular o pacote de métricas selecionado foi o `BasicMetric`, portanto os parâmetros presentes são idênticos aos da struct.
+
+Por fim, quanto mais detalhadas forem as métricas recolhidas, pior será o desempenho do benchmark, daí que exista uma opção de desativação de métricas para atingir o máximo de performance. Ademais, como as métricas são escritas num ficheiro de logging, o sistema de armazenamento é sobrecarregado para além da execução do benchmark, algo que pode originar o enviesamento de resultados.
+
+
+
+
+
+
+
 
 === Resultados Permilinares
 
