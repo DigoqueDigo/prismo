@@ -115,17 +115,20 @@ Idealmente os traces são obtidos em ambiente de produção, dado que somente a�
 
 Infelizmente existem pouquíssimos traces disponíveis, e os do #link(<fiu>)[*FIU*] já contam com imensos anos, não sendo a sua replicação viável em máquinas modernas, isto por terem sido obtidos em dispositivos obsoletos aos dias de hoje.
 
-#raw_code_block[
-```
-<timestamp> <file_id> <process> <offset> <size> <op> <version> <0> <hash>
-89967404265337 4253 nfsd 508516672 8 W 6 0 88b93b628d84082186026d9da044f173
-89967404311353 4253 nfsd 508516680 8 W 6 0 b5e9f4e5ab62a4fff5313a606b0ad4e3
-89967404359328 4253 nfsd 508516688 8 W 6 0 e6434714a2358bc5f55005d6c5502d80
-89968195447404 20782 gzip 283193112 8 R 6 0 ef58ea75660587908a49b83a338bff34
-89968195487477 20782 gzip 283193120 8 R 6 0 980f03b2810fd0267bea07bc4f0c78fa
-89968195487477 20782 gzip 283193120 8 R 6 0 980f03b2810fd0267bea07bc4f0c78fa
-```
-]
+#figure(
+  raw_code_block[
+  ```
+  <timestamp> <file_id> <process> <offset> <size> <op> <version> <0> <hash>
+  89967404265337 4253 nfsd 508516672 8 W 6 0 88b93b628d84082186026d9da044f173
+  89967404311353 4253 nfsd 508516680 8 W 6 0 b5e9f4e5ab62a4fff5313a606b0ad4e3
+  89967404359328 4253 nfsd 508516688 8 W 6 0 e6434714a2358bc5f55005d6c5502d80
+  89968195447404 20782 gzip 283193112 8 R 6 0 ef58ea75660587908a49b83a338bff34
+  89968195487477 20782 gzip 283193120 8 R 6 0 980f03b2810fd0267bea07bc4f0c78fa
+  89968195487477 20782 gzip 283193120 8 R 6 0 980f03b2810fd0267bea07bc4f0c78fa
+  ```
+  ],
+  caption: [Estrutura do trace]
+)
 
 A estrutura do trace é descritiva das operações efetuadas, sendo para cada uma identificado o timestamp, processo responsável e dados da operação de #link(<io>)[*I/O*], como offset, tamanho e tipo de operação. Por fim, cada registo conta com uma assinatura, pois sendo este um trace de deduplicação, é necessário conhecer o bloco alvo da operação, o que permite posteriormente identificar duplicados.
 
@@ -135,12 +138,12 @@ Sempre que uma aplicação solicita operações de #link(<io>)[*I/O*], as mesmas
 
 Posto isto, ao ser invocada uma system call, por exemplo `READ` ou `WRITE`, o kernel é notificado da existência de uma operação de #link(<io>)[*I/O*], havendo assim uma transição de user para kernel space. Já dentro do kernel, o pedido é recebido pelo #link(<vfs>)[*Virtual File System (VFS)*], que fornece uma interface independente do sistema de ficheiros, sendo este último responsável por traduzir a operação em acessos a blocos lógicos e verificar se os dados encontram-se em cache, em caso afirmativo o pedido é satisfeito imediatamente e sem aceder ao disco.
 
+Perante a necessidade de aceder ao disco, o pedido é encaminhado para a camada de blocos, de modo a agrupar e escalonar os pedidos de #link(<io>)[*I/O*] o mais eficientemente possível. Por fim, o pedido é transmitido ao driver do dispositivo, que conhece os detalhes específicos do hardware e por isso converte o pedido em instruções claras ao controlador de disco.
+
 #figure(
   image("../images/stack.png", width: 60%),
   caption: [Visão alto nível da stack de I/O em linux]
 ) <iostack>
-
-Perante a necessidade de aceder ao disco, o pedido é encaminhado para a camada de blocos, de modo a agrupar e escalonar os pedidos de #link(<io>)[*I/O*] o mais eficientemente possível. Por fim, o pedido é transmitido ao driver do dispositivo, que conhece os detalhes específicos do hardware e por isso converte o pedido em instruções claras ao controlador de disco.
 
 Em suma, este fluxo permite que as aplicações realizem operações de #link(<io>)[*I/O*] de modo transparente, enquanto o sistema operativo gere a complexidade, desempenho e segurança dos acessos ao dispositivo de armazenamento.
 

@@ -47,31 +47,34 @@ Os pedidos de `READ` e `WRITE` necessitam de ser identificados pela zona do disc
 
 Dado que os acessos são realizados ao nível do bloco, todas as implementações devem conhecer o tamanho do bloco e o limite da zona do disco até onde é permitido ler ou escrever, deste modo os offsets devolvidos serão inferiores ou iguais ao limite e acima de tudo múltiplos do tamanho do bloco.
 
-#grid(
-  columns: 3,
-  gutter: 5pt,
-  raw_code_block[
-    ```yaml
-    type: sequential
-    blocksize: 4096
-    limit: 65536
-    ```
-  ],
-  raw_code_block[
-    ```yaml
-    type: random
-    blocksize: 4096
-    limit: 65536
-    ```
-  ],
-  raw_code_block[
-    ```yaml
-    type: zipfian
-    blocksize: 4096
-    limit: 65536
-    skew: 0.99
-    ```
-  ],
+#figure(
+  grid(
+    columns: 3,
+    gutter: 5pt,
+    raw_code_block[
+      ```yaml
+      type: sequential
+      blocksize: 4096
+      limit: 65536
+      ```
+    ],
+    raw_code_block[
+      ```yaml
+      type: random
+      blocksize: 4096
+      limit: 65536
+      ```
+    ],
+    raw_code_block[
+      ```yaml
+      type: zipfian
+      blocksize: 4096
+      limit: 65536
+      skew: 0.99
+      ```
+    ],
+  ),
+  caption: [Configuração dos geradores de acesso]
 )
 
 A implementação do tipo sequencial é responsável por devolver os offsets num padrão contínuo, sendo que o alcance do limite implica o reposicionamento no offset zero, esta estratégia beneficia claramente a localidade espacial, pois as zonas do disco são acedidas num padrão favorável.
@@ -89,31 +92,34 @@ Os sistemas de armazenamento suportam uma infinidade de operações, no entanto 
 
 A implementação do tipo constante é a mais simples, isto porque devolve sempre a mesma operação que foi definida previamente pelo utilizador. Em contrapartida, as operações percentuais são obtidas à custa de uma distribuição cujo somatório das probabilidade deve resultar em 100, exemplificando com a configuração abaixo, metade das operações serão `READs` e as restantes `WRITES`.
 
-#grid(
-  columns: 3,
-  gutter: 5pt,
-  raw_code_block[
-    ```yaml
-    type: constant
-    operation: write
-    ```
-  ],
-  raw_code_block[
-    ```yaml
-    type: percentage
-    percentages:
-        read: 50
-        write: 50
-    ```
-  ],
-  raw_code_block[
-    ```yaml
-    type: sequence
-    operations:
-        - write
-        - fsync
-    ```
-  ],
+#figure(
+  grid(
+    columns: 3,
+    gutter: 5pt,
+    raw_code_block[
+      ```yaml
+      type: constant
+      operation: write
+      ```
+    ],
+    raw_code_block[
+      ```yaml
+      type: percentage
+      percentages:
+          read: 50
+          write: 50
+      ```
+    ],
+    raw_code_block[
+      ```yaml
+      type: sequence
+      operations:
+          - write
+          - fsync
+      ```
+    ],
+  ),
+  caption: [Configuração dos geradores de operações]
 )
 
 Por fim, a replicação de padrões é obtida com recurso à implementação de sequência, sendo o utilizador responsável por definir uma lista de operações que mais tarde será repetidamente devolvida, neste caso em concreto, se o método `nextOperation` fosse invocado cinco vezes, as operações seriam devolvidas pela ordem: `WRITE`, `FSYNC`, `WRITE`, `FSYNC`, `WRITE`.
@@ -131,28 +137,31 @@ Embora a implementação principal desta interface seja aquela que combina dupli
 
 Tal como seria expectável, os geradores necessitam de conhecer o tamanho do bloco, deste modo podem garantir que os limites dos buffers jamais serão violados. A implementação mais simplista deste gerador corresponde ao constante, que devolve sempre o mesmo buffer, resultando numa deduplicação e compressibilidade interbloco máximas. Por outro lado, o aleatório tem exatamente o comportamento oposto, pois ao devolver buffers diferentes não existem duplicados e a entropia é elevada.
 
-#grid(
-  columns: 3,
-  gutter: 5pt,
-  raw_code_block[
-    ```yaml
-    type: constant
-    blocksize: 4096
-    ```
-  ],
-  raw_code_block[
-    ```yaml
-    type: random
-    blocksize: 4096
-    ```
-  ],
-  raw_code_block[
-    ```yaml
-    type: dedup
-    blocksize: 4096
-    refill_buffers: false
-    ```
-  ],
+#figure(
+  grid(
+    columns: 3,
+    gutter: 5pt,
+    raw_code_block[
+      ```yaml
+      type: constant
+      blocksize: 4096
+      ```
+    ],
+    raw_code_block[
+      ```yaml
+      type: random
+      blocksize: 4096
+      ```
+    ],
+    raw_code_block[
+      ```yaml
+      type: dedup
+      blocksize: 4096
+      refill_buffers: false
+      ```
+    ],
+  ),
+  caption: [Configuração dos geradores de blocos]
 )
 
 Por fim, o gerador de duplicados e compressão procura seguir uma distribuição de duplicados definida pelo utilizador, esta estabelece a percentagem de blocos que terão X cópias, sendo que cada grupo de cópias tem associada uma distribuição de compressão, indicando que Y% dos blocos reduz cerca de Z%.
@@ -163,50 +172,45 @@ Além disso, a opção `refill_buffers` permite a partilha do buffer base entre 
 
 Para que o utilizador manipule a distribuição de duplicados e compressão, o benchmark oferece um ficheiro de configuração sobre o qual as informações são retiradas, bastando seguir o formato indicado.
 
-#grid(
-  columns: 3,
-  gutter: 5pt,
-  raw_code_block[
-    ```yaml
-    - percentage: 50
-        repeats: 1
-        compression:
-        - percentage: 50
-          reduction: 10
-        - percentage: 20
-          reduction: 20
-        - percentage: 10
-          reduction: 30
-        - percentage: 15
-          reduction: 25
-        - percentage: 5
-          reduction: 5
-    ```
-  ],
-  raw_code_block[
-    ```yaml
-    - percentage: 30
-        repeats: 2
-        compression:
-        - percentage: 20
-          reduction: 20
-        - percentage: 40
-          reduction: 10
-        - percentage: 40
-          reduction: 0
-    ```
-  ],
-  raw_code_block[
-    ```yaml
-    - percentage: 20
-        repeats: 3
-        compression:
-        - percentage: 40
-          reduction: 30
-        - percentage: 60
-          reduction: 0
-    ```
-  ],
+#figure(
+  grid(
+    columns: 3,
+    gutter: 5pt,
+    raw_code_block[
+      ```yaml
+      - percentage: 50
+          repeats: 1
+          compression:
+          - percentage: 40
+            reduction: 10
+          - percentage: 60
+            reduction: 5
+      ```
+    ],
+    raw_code_block[
+      ```yaml
+      - percentage: 30
+          repeats: 2
+          compression:
+          - percentage: 20
+            reduction: 20
+          - percentage: 80
+            reduction: 10
+      ```
+    ],
+    raw_code_block[
+      ```yaml
+      - percentage: 20
+          repeats: 3
+          compression:
+          - percentage: 40
+            reduction: 30
+          - percentage: 60
+            reduction: 0
+      ```
+    ],
+  ),
+  caption: [Especificação da distribuição de duplicados e compressão]
 )
 
 A distribuição de duplicados e compressão é definida de modo particular, inicialmente é realizada uma associação entre o número de cópias e a respetiva probabilidade, sendo mais tarde definidas as taxas de compressão dentro de cada grupo.
@@ -253,56 +257,62 @@ A interface `Engine` disponibiliza o método `submit` que aceita operações de 
 
 Um pedido obtido a partir da queue pode ser de três tipos distintos, onde as structs de abertura e fecho são caracterizadas pelos argumentos encontrados nas syscalls de `open` e `close`, importa realçar que tais estruturas não fazem sentido para a engine de #link(<spdk>)[*SPDK*], visto esta funcionar diretamente sobre o dispositivo de armazenamento e portanto não existir uma abstração do sistema de ficheiros.
 
-#grid(
-  columns: 3,
-  gutter: 5pt,
-  raw_code_block[
-    ```c
-    struct CloseRequest {
-        int fd;
-    };
-    ```
-  ],
-  raw_code_block[
-    ```c
-    struct OpenRequest {
-      int flags;
-      mode_t mode;
-      char* filename;
-    };
-    ```
-  ],
-  raw_code_block[
-    ```c
-    struct CommonRequest {
-        int fd;
-        size_t size;
-        uint64_t offset;
-        uint8_t* buffer;
-        Metadata metadata;
-        OperationType op;
-    };
-    ```
-  ]
+#figure(
+  grid(
+    columns: 3,
+    gutter: 5pt,
+    raw_code_block[
+      ```c
+      struct CloseRequest {
+          int fd;
+      };
+      ```
+    ],
+    raw_code_block[
+      ```c
+      struct OpenRequest {
+        int flags;
+        mode_t mode;
+        char* filename;
+      };
+      ```
+    ],
+    raw_code_block[
+      ```c
+      struct CommonRequest {
+          int fd;
+          size_t size;
+          uint64_t offset;
+          uint8_t* buffer;
+          Metadata metadata;
+          OperationType op;
+      };
+      ```
+    ]
+  ),
+  caption: [Estrutura dos vários tipos de pedidos]
 )
 
 Perante a combinação de interfaces síncronas e assíncronas, o método `submit` nem sempre devolve uma struct para reutilização, pois, no caso das interfaces assíncronas nunca sabemos exatamente quando o pedido será dado por concluído e além disso não é possível esperar até que tal aconteça, caso contrário estaria a ser dado comportamento síncrono e as vantagens de paralelismo seriam perdidas.
 
-Tendo isto em mente, o método `reap_left_completions` possibilita a espera forçosa dos  pedidos pendentes, algo que deve ser utilizado entre a última submissão e a operação de `close`.
+/// Tendo isto em mente, o método `reap_left_completions` possibilita a espera forçosa dos  pedidos pendentes, algo que deve ser utilizado entre a última submissão e a operação de `close`.
 
 ===== POSIX
 
-#let posix_config = raw_code_block(width: auto)[
-  ```yaml
-  engine:
-    type: posix
-    openflags:
-      - O_CREAT
-      - O_TRUNC
-      - O_RDONLY
-      - O_DIRECT
-  ```
-]
+#let posix_config = figure(
+  raw_code_block[
+    ```yaml
+    engine:
+      type: posix
+      openflags:
+        - O_CREAT
+        - O_TRUNC
+        - O_RDONLY
+        - O_DIRECT
+    ```
+  ],
+  caption: [Configuração de `PosixEngine`]
+)
 
 #let posix_body = [
   Com o objetivo de flexibilizar o benchmark, todas as implementações de `Engine` possuem uma configuração para manipulação dos parâmetros e respetivo comportamento, neste caso em concreto, ao tratar-se de uma interface bastante simplista, a única configuração possível ocorre na syscall `open` através das flags passadas como argumento.
@@ -311,9 +321,10 @@ Tendo isto em mente, o método `reap_left_completions` possibilita a espera for�
 ]
 
 #wrap-content(
- posix_config,
- posix_body,
- align: top + right,
+  posix_config,
+  posix_body,
+  align: top + right,
+  columns: (2fr, 1.4fr),
 )
 
 #figure(
@@ -325,24 +336,27 @@ Por ostentar comportamento síncrono, o método `reap_left_completions` não tem
 
 ===== Uring
 
-#let uring_config = raw_code_block(width: auto)[
+#let uring_config = figure(
+  raw_code_block[
   ```yaml
-  engine:
-    type: uring
-    openflags:
-      - O_CREAT
-      - O_RDWR
-    entries: 128
-    params:
-      cq_entries: 128
-      sq_thread_cpu: 0
-      sq_thread_idle: 100
-      flags:
-        - IORING_SETUP_SQPOLL
-        - IORING_SETUP_IOPOLL
-        - IORING_SETUP_SQ_AFF
-  ```
-]
+    engine:
+      type: uring
+      openflags:
+        - O_CREAT
+        - O_RDWR
+      entries: 128
+      params:
+        cq_entries: 128
+        sq_thread_cpu: 0
+        sq_thread_idle: 100
+        flags:
+          - IORING_SETUP_SQPOLL
+          - IORING_SETUP_IOPOLL
+          - IORING_SETUP_SQ_AFF
+    ```
+  ],
+  caption: [Configuração de `UringEngine`]
+)
 
 #let uring_body = [
   Ao fazer uso do sistema de ficheiros, os argumentos de abertura são semelhantes aos previamente referidos, portanto a configuração da `UringEngine` apresenta uma lista das mesmas flags.
@@ -355,7 +369,8 @@ Por ostentar comportamento síncrono, o método `reap_left_completions` não tem
 #wrap-content(
   uring_config,
   uring_body,
-  align: top + right
+  align: top + right,
+  columns: (2fr, 1.4fr),
 )
 
 #figure(
@@ -369,16 +384,19 @@ Depois do primeiro batch ser submetido, a estratégia é alterada para preservar
 
 ===== SPDK
 
-#let spdk_config = raw_code_block(width: auto)[
-  ```yaml
-  engine:
-    type: spdk
-    spdk_threads: 1
-    bdev_name: Malloc0
-    reactor_mask: "0xF"
-    json_config_file: spdk_bdev.json
-  ```
-]
+#let spdk_config = figure(
+  raw_code_block[
+    ```yaml
+    engine:
+      type: spdk
+      spdk_threads: 1
+      bdev_name: Malloc0
+      reactor_mask: "0xF"
+      json_config_file: spdk_bdev.json
+    ```
+  ],
+  caption: [Configuração de `SPDKEngine`]
+)
 
 #let spdk_body = [
   Uma vez que o #link(<spdk>)[*SPDK*] possui um ficheiro de configuração próprio, utilizado para definir os #link(<bdev>)[*bdevs*], controladores de disco, tamanho dos blocos e afins, os parâmetros manipuláveis pelo benchmark a nível aplicacional são limitados.
@@ -393,7 +411,8 @@ Depois do primeiro batch ser submetido, a estratégia é alterada para preservar
 #wrap-content(
   spdk_config,
   spdk_body,
-  align: top + right
+  align: top + right,
+  columns: (2fr, 1.6fr),
 )
 
 #figure(
@@ -411,53 +430,59 @@ Por fim, como os pedidos vão acompanhados de um trigger, a `SPDKEngine` é noti
 
 Durante a execução de workloads, o benchmark é responsável por recolher métricas sobre cada uma das operações de #link(<io>)[*I/O*] realizadas, algo fundamental na caracterização e posterior avaliação do sistema de armazenamento, isto porque scripts estatísticos podem analisar o ficheiro de log resultante das métricas.
 
-#grid(
-  columns: 3,
-  gutter: 5pt,
-  raw_code_block[
-    ```c
-    struct BaseMetric : Metric {
-      int64_t sts;
-      int64_t ets;
-      uint64_t block_id;
-      uint32_t compression;
-      OperationType op;
-    };
-    ```
-  ],
-  raw_code_block[
-    ```c
-    struct StandardMetric : BaseMetric {
-      pid_t pid;
-      uint64_t tid;
-    };
-    ```
-  ],
-  raw_code_block[
-    ```c
-    struct FullMetric : StandardMetric {
-      uint64_t offset;
-      size_t req_bytes;
-      size_t proc_bytes;
-      int32_t error_no;
-      int32_t return_code;
-    };
-    ```
-  ],
+#figure(
+  grid(
+    columns: 3,
+    gutter: 5pt,
+    raw_code_block[
+      ```c
+      struct BaseMetric : Metric {
+        int64_t sts;
+        int64_t ets;
+        uint64_t block_id;
+        uint32_t compression;
+        OperationType op;
+      };
+      ```
+    ],
+    raw_code_block[
+      ```c
+      struct StandardMetric : BaseMetric {
+        pid_t pid;
+        uint64_t tid;
+      };
+      ```
+    ],
+    raw_code_block[
+      ```c
+      struct FullMetric : StandardMetric {
+        uint64_t offset;
+        size_t req_bytes;
+        size_t proc_bytes;
+        int32_t error_no;
+        int32_t return_code;
+      };
+      ```
+    ],
+  ),
+  caption: [Estrutura dos pacotes de métricas]
 )
 
 Tendo isto em consideração, o utilizador escolhe entre três pacotes de métricas que são progressivamente mais completos e suportam todos os parâmetros do pacote anterior. Assim sendo, `BaseMetric` corresponde à estrutura mais simples, contendo apenas os timestamp de início e fim, bem como o identificador do bloco utilizado e respetiva taxa de compressão, importa realçar que somente as operações de `WRITE` levam à geração de blocos, como tal qualquer outra operação apresenta um `block_id` igual a zero.
 
-#raw_code_block[
-```
-[prismo] [info] [type=1 block=1 cpr=0 sts=3480446313169 ets=3480446319309]
-[prismo] [info] [type=1 block=2 cpr=100 sts=3480446320554 ets=3480446323543]
-[prismo] [info] [type=1 block=3 cpr=100 sts=3480446324413 ets=3480446326723]
-[prismo] [info] [type=1 block=4 cpr=0 sts=3480446327460 ets=3480446329981]
-[prismo] [info] [type=1 block=5 cpr=100 sts=3480446330781 ets=3480446332925]
-[prismo] [info] [type=1 block=6 cpr=50 sts=3480446333681 ets=3480446336316]
-```
-]
+#figure(
+  raw_code_block[
+  ```
+  [prismo] [info] [type=1 block=1 cpr=0 sts=3480446313169 ets=3480446319309]
+  [prismo] [info] [type=1 block=2 cpr=100 sts=3480446320554 ets=3480446323543]
+  [prismo] [info] [type=1 block=3 cpr=100 sts=3480446324413 ets=3480446326723]
+  [prismo] [info] [type=1 block=4 cpr=0 sts=3480446327460 ets=3480446329981]
+  [prismo] [info] [type=1 block=5 cpr=100 sts=3480446330781 ets=3480446332925]
+  [prismo] [info] [type=1 block=6 cpr=50 sts=3480446333681 ets=3480446336316]
+  ```
+  ],
+  caption: [Estrutura do ficherio de log]
+)
 
 A estrutura do ficheiro de logging onde as métricas são armazenadas é de simples interpretação, neste caso em particular o pacote de métricas selecionado foi o `BasicMetric`, portanto os parâmetros presentes são idênticos aos da struct.
 

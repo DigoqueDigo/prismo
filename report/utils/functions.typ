@@ -6,6 +6,6 @@
     radius: 5pt,
     stroke: 1pt,
     width: width,
-    [#body],
+    align(left)[#body]
   )
 }

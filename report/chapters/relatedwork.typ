@@ -99,22 +99,24 @@ Em suma, apesar de incorporar a geração de conteúdo sintético com propriedad
 
 No que se refere ao estado da arte da avaliação de sistemas de armazenamento, o #link(<fio>)[*FIO*] é a ferramenta mais avançada e amplamente utilizada pela comunidade. Além de permitir a manipulação duma infinidade de parâmetros relativos à workload, que vão desde os padrões de acesso, distribuição das operações, escolha da interface de #link(<io>)[*I/O*] e definição de barreiras, as métricas obtidas são de fácil compreensão e um bom indicador das capacidades do sistema de armazenamento.
 
-#raw_code_block[
-```
-seqwrite: (groupid=0, jobs=1): err= 0: pid=144197: Wed Dec 31 00:02:02 2025
- write: IOPS=108k, BW=421MiB/s (442MB/s)(1024MiB/2432msec); 0 zone resets
-   clat (usec): min=2, max=19254, avg= 8.73, stdev=232.88
-    lat (usec): min=2, max=19254, avg= 8.79, stdev=232.89
-  iops        : min=53222, max=210414, avg=97548.50, stdev=75543.88, samples=4
- lat (usec)   : 4=58.64%, 10=35.29%, 20=5.15%, 50=0.83%, 100=0.03%
- lat (usec)   : 250=0.02%, 500=0.01%
- cpu          : usr=6.29%, sys=49.77%, ctx=94, majf=0, minf=9
- IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
-    submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
-    complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
-    issued rwts: total=0,262144,0,0 short=0,0,0,0 dropped=0,0,0,0
-```
-]
+#figure(
+  raw_code_block[
+  ```
+  seqwrite: (groupid=0, jobs=1): err= 0: pid=144197: Wed Dec 31 00:02:02 2025
+   write: IOPS=108k, BW=421MiB/s (442MB/s)(1024MiB/2432msec); 0 zone resets
+     clat (usec): min=2, max=19254, avg= 8.73, stdev=232.88
+      lat (usec): min=2, max=19254, avg= 8.79, stdev=232.89
+    iops        : min=53222, max=210414, avg=97548.50, stdev=75543.88, samples=4
+   lat (usec)   : 4=58.64%, 10=35.29%, 20=5.15%, 50=0.83%, 100=0.03%
+   lat (usec)   : 250=0.02%, 500=0.01%
+   cpu          : usr=6.29%, sys=49.77%, ctx=94, majf=0, minf=9
+   IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+      submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+      complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+  ```
+  ],
+  caption: [Métricas recolhidas pelo FIO]
+)
 
 Numa breve análise dos resultados obtidos através de uma execução do #link(<fio>)[*FIO*] com os parâmetros default, reparamos que a workload em questão foi executada por uma única thread, sendo o trabalho sequencial e de escritas constantes, o que resultou num débito de 421MiB/s e 108k #link(<iops>)[*IOPS*].
 
