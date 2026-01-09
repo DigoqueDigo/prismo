@@ -1,3 +1,4 @@
+#import "@preview/timeliney:0.4.0"
 #import "@preview/wrap-it:0.1.1": wrap-content
 #import "../utils/functions.typ" : raw_code_block
 
@@ -497,4 +498,70 @@ Por fim, quanto mais detalhadas forem as métricas recolhidas, pior será o dese
 
 === Resultados Permilinares
 
+
+
+
+
 === Próximas Etapas
+
+Embora o protótipo possua imensas funcionalidades, tendo inclusive finalizado alguns componentes, dos quais se destacam as implementações de backends de #link(<io>)[*I/O*] e geração de conteúdo sintético, ainda restam pontos diferenciadores relativamente aos demais benchmarks.
+
+#figure(
+  timeliney.timeline(
+    show-grid: true,
+    {
+      import timeliney: *
+
+      headerline(group(([*2026*], 6)))
+      headerline(
+        group(
+          [*Feb*],
+          [*Mar*],
+          [*Apr*],
+          [*May*],
+          [*Jun*],
+          [*Jul*],
+        ),
+      )
+
+      taskgroup(
+        title: [*Research*],
+        style: (stroke: 5pt + black), {
+          task("Realistic content generation", (0, 1), style: (stroke: 5pt + gray))
+          task("Trace-based and synthetic workloads", (0, 2), style: (stroke: 5pt + gray))
+          task("Temporal and spatial locality", (1, 2), style: (stroke: 5pt + gray))
+        }
+      )
+
+      taskgroup(
+        title: [*Development*],
+        style: (stroke: 5pt + black), {
+          task("FIU trace parser", (2, 3), style: (stroke: 5pt + gray))
+          task("Hybrid workload generator", (3, 4), style: (stroke: 5pt + gray))
+          task("Thread and process parallelism", (3, 4), style: (stroke: 5pt + gray))
+        }
+      )
+
+      taskgroup(
+        title: [*Evaluation*],
+        style: (stroke: 5pt + black), {
+          task("Workload validation", (4, 5), style: (stroke: 5pt + gray))
+          task("Storage systems evaluation", (4, 6), style: (stroke: 5pt + gray))
+          task("Performance metrics analysis", (4, 6), style: (stroke: 5pt + gray))
+        }
+      )
+
+      taskgroup(
+        title: [*Thesis*],
+        style: (stroke: 5pt + black), {
+          task("Writing of the dissertation", (2, 6), style: (stroke: 5pt + gray))
+        }
+      )
+    }
+  ),
+  caption: [Calendarização das próximas tarefas]
+)
+
+Deste modo, antes de partir para a implementação das workloads híbridas que partilham a geração de conteúdo sintético e realista, é necessário realizar um estudo sobre a melhor forma de atingir isso sem penalizar significativamente a performance do benhcmark ao ponto de não conseguir saturar o disco.
+
+Tendo isso alcançado, resta a avaliação intensiva do benchmark através das múltiplas combinações entre backends, geradores de conteúdo e parâmetros gerais da workload, sendo isto tudo desenvolvido em paralelo com a escrita da dissertação.
