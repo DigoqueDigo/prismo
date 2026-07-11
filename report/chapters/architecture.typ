@@ -125,6 +125,29 @@ A implementação do tipo constante é a mais simples, isto porque devolve sempr
 
 Por fim, a replicação de padrões é obtida com recurso à implementação de sequência, sendo o utilizador responsável por definir uma lista de operações que mais tarde será repetidamente devolvida, neste caso em concreto, se o método `nextOperation` fosse invocado cinco vezes, as operações seriam devolvidas pela ordem: `WRITE`, `FSYNC`, `WRITE`, `FSYNC`, `WRITE` @ren2023.
 
+====== Barreiras
+
+Em determinados cenários, torna-se necessário injetar operações de sincronização após a execução de um número definido de escritas, algo particularmente relevante na simulação de workloads reais onde os sistemas de ficheiros periodicamente forçam a persistência dos dados em disco @ren2023.
+
+Para tal, o benchmark disponibiliza um mecanismo de barreiras que interceta o fluxo de operações e substitui a operação corrente por outra previamente definida, sendo esta injeção despoletada quando o número de operações monitorizadas atinge um limiar configurável @didona2022. Por exemplo, uma barreira com threshold de 1024 e trigger do tipo `WRITE` injeta uma operação de `FSYNC` a cada 1024 escritas, independentemente da lógica do gerador de operações subjacente.
+
+#figure(
+  raw_code_block[
+    ```yaml
+    barrier:
+      - threshold: 1024
+        trigger: write
+        operation: fsync
+      - threshold: 512
+        trigger: read
+        operation: fdatasync
+    ```
+  ],
+  caption: [Configuração de múltiplas barreiras]
+)
+
+A composição de múltiplas barreiras é igualmente suportada, sendo estas ordenadas pelo critério de proximidade ao respetivo limiar, deste modo a barreira com menor número de operações em falta é avaliada prioritariamente @ren2023. Importa realçar que após cada injeção, a reordenação dinâmica é realizada para garantir que o escalonamento reflete o estado atualizado dos contadores, evitando assim situações de starvation entre barreiras com limiares distintos.
+
 ===== Geração de Blocos
 
 A geração de blocos é sem dúvida a operação mais custosa, no entanto apenas torna-se necessária quando a operação selecionada for um `WRITE`, nesse sentido a interface de `BlockGenerator` disponibiliza o método `nextBlock` que preenche um buffer passado como argumento @constantinescu2011 @meyer2012.
