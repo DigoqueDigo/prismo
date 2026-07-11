@@ -266,7 +266,168 @@ Na situação em que a lista encontra-se completa, um dos elementos é seleciona
 
 Por fim, depois de selecionado o identificador do bloco, volta a ser sorteado um número aleatório para descobrir a taxa de compressão a aplicar, de relembrar que a distribuição é obtida pela entrada do mapa selecionada inicialmente @constantinescu2011 @paulo2014.
 
-Apesar de bastante eficiente, esta abordagem acarreta o problema da geração pseudo aleatória, algo que tende a ser bastante custoso relativamente às restantes operações, no entanto esta implementação faz uso de um buffer gerido pelo SHISHUA, deste modo gerações massivas são realizadas periodicamente enquanto a aplicação limita-se a recolher dados do buffer @rust_iouring_async.
+Apesar de ser bastante eficiente, esta abordagem acarreta o custo associado à geração pseudoaleatória, uma operação que tende a ser mais exigente computacionalmente do que as restantes envolvidas na geração de conteúdo. No entanto, este custo permanece negligenciável quando comparado com o tempo das operações de @io, não constituindo, por isso, um gargalo na avaliação do sistema de armazenamento.
+
+==== Workloads Baseadas em Traces <trace-workloads>
+
+Embora os geradores sintéticos ofereçam elevada flexibilidade na parametrização das workloads, a reprodução de comportamentos observados em ambientes de produção exige a utilização de traces reais, os quais capturam a sequência temporal de operações de @io executadas por sistemas em funcionamento @gracia-tinedo2015 @tracegen2024.
+
+Neste sentido, cada um dos três geradores previamente descritos (acesso, operação e conteúdo) disponibiliza uma implementação do tipo `trace`, sendo esta responsável por consumir registos de um ficheiro binário e extrair a dimensão correspondente, nomeadamente o offset, tipo de operação e identificador de bloco @tracegen2024 @pang2026.
+
+#figure(
+  raw_code_block[
+    ```cpp
+    struct Record {
+        uint64_t timestamp;
+        uint32_t pid;
+        uint64_t process;
+        uint64_t offset;
+        uint32_t size;
+        uint32_t major;
+        uint32_t minor;
+        uint64_t block_id;
+        Operation::OperationType operation;
+    };
+    ```
+  ],
+  caption: [Estrutura de um registo do trace]
+)
+
+A leitura dos traces é realizada por um componente partilhado entre todas as implementações `trace-based`, o qual mantém um buffer de leitura configurável pelo utilizador através do parâmetro `memory`, evitando assim carregamentos excessivos em memória quando o trace excede a capacidade disponível.
+
+===== Workloads Híbridas
+
+Uma vez que os geradores são definidos ao nível dos parâmetros individuais e o produtor conhece apenas a interface abstrata de cada um, a combinação entre geradores sintéticos e trace-based torna-se trivial @gracia-tinedo2015 @pang2026. Exemplificando, é possível utilizar acessos provenientes de um trace real enquanto as operações seguem uma distribuição percentual sintética e o conteúdo é gerado pelo modelo de deduplicação e compressão.
+
+#figure(
+  grid(
+    columns: 2,
+    gutter: 10pt,
+    raw_code_block[
+      ```yaml
+      access:
+        type: trace
+        trace: homes.prismo
+        extension: sample
+        memory: 16384
+      operation:
+        type: percentage
+        percentages:
+          read: 70
+          write: 30
+      content:
+        type: dedup
+        refill_buffers: true
+        distribution: [...]
+      ```
+    ],
+    raw_code_block[
+      ```yaml
+      access:
+        type: zipfian
+        skew: 0.9
+      operation:
+        type: trace
+        trace: homes.prismo
+        extension: repeat
+        memory: 16384
+      content:
+        type: trace
+        trace: homes.prismo
+        extension: regression
+        memory: 16384
+      ```
+    ],
+  ),
+  caption: [Exemplos de configuração de workloads híbridas]
+)
+
+Esta abordagem constitui uma das principais contribuições do benchmark, pois permite colmatar as limitações temporais dos traces com a extensibilidade dos geradores sintéticos, resultando em workloads que preservam as propriedades estatísticas do ambiente real sem estarem confinadas à duração original da captura @tracegen2024 @pang2026.
+
+===== Extensões de Trace <trace-extensions>
+
+O problema fundamental da utilização de traces prende-se com a sua natureza finita, pois ao atingir o final do ficheiro torna-se necessário decidir como prosseguir com a geração de pedidos @tracegen2024. Para resolver esta limitação, o benchmark implementa três estratégias de extensão que diferem no grau de sofisticação e fidelidade ao trace original.
+
+====== Repetição
+
+A extensão mais elementar consiste na repetição cíclica do trace, onde ao atingir o final do ficheiro o leitor é reposicionado no início e os registos são novamente devolvidos pela mesma ordem @tracegen2024. Embora esta abordagem preserve perfeitamente a sequência original, a mesma não introduz variabilidade e portanto a workload resultante é estritamente periódica, algo que pode não refletir o comportamento real de um sistema em produção continuada.
+
+====== Amostragem
+
+A segunda estratégia opera em duas fases distintas, sendo a primeira dedicada à recolha de amostras representativas do trace através de reservoir sampling, garantindo que cada registo do trace tem igual probabilidade de ser incluído independentemente do tamanho do ficheiro @tracegen2024.
+
+Ao atingir o final do trace, a segunda fase é iniciada com a construção de alias tables para cada dimensão, sendo esta estrutura de dados capaz de gerar amostras em tempo constante $O(1)$ a partir das distribuições marginais observadas @tracegen2024. Desta forma, os registos sintéticos gerados após o trace preservam as frequências relativas de cada offset, operação e identificador de bloco, embora a correlação entre dimensões não seja mantida por estas serem amostradas de forma independente.
+
+====== Regressão
+
+A extensão mais sofisticada procura capturar não apenas as distribuições marginais mas também as correlações entre as várias dimensões do trace, recorrendo para isso a um modelo de regressão linear bivariada @tracegen2024.
+
+À semelhança da amostragem, a primeira fase é dedicada à recolha de dados, sendo acumulados até `max_samples` registos nos vetores de offsets, operações e identificadores de bloco. Seguidamente, na transição para a segunda fase, dois modelos lineares acoplados são ajustados por mínimos quadrados:
+
+$
+"operation" = a_0 + a_1 dot "offset" + a_2 dot "block_id"
+$
+
+$
+"block_id" = b_0 + b_1 dot "offset" + b_2 dot "operation"
+$
+
+A resolução é realizada através de decomposição ortogonal completa, garantindo estabilidade numérica mesmo perante sistemas mal condicionados. Para a geração de novos registos, os dois modelos são resolvidos em simultâneo como um sistema $2 times 2$, onde o offset é extrapolado linearmente a partir do último valor observado no trace e do passo médio entre registos consecutivos @tracegen2024.
+$
+y = a_0 + a_1 x + a_2 z
+$
+
+$
+z = b_0 + b_1 x + b_2 y
+$
+
+Reorganizando:
+
+$
+y - a_2 z = a_0 + a_1 x
+$
+
+$
+-b_2 y + z = b_0 + b_1 x
+$
+
+Na forma matricial:
+
+$
+mat(
+  1, -a_2;
+  -b_2, 1
+)
+mat(
+  y;
+  z
+)
+=
+mat(
+  a_0 + a_1 x;
+  b_0 + b_1 x
+)
+$
+
+#figure(
+  table(
+    columns: (1fr, 1fr, 1.5fr, 1.5fr),
+    inset: 8pt,
+    align: horizon + left,
+    fill: (x, y) => if y == 0 { gray.lighten(60%) },
+    table.header(
+      [*Propriedade*], [*Repetição*], [*Amostragem*], [*Regressão*]
+    ),
+    [Extrapolação], [Cíclica], [Limitada ao reservatório], [Linear além do trace],
+    [Correlações], [Preservadas], [Perdidas (independência)], [Capturadas (modelo linear)],
+    [Memória], [$O(n_"buffer")$], [$O(n_"reservoir")$], [$O(1)$ (matrizes pequenas)],
+    [Complexidade], [$O(1)$], [$O(1)$], [$O(1)$],
+    [Variabilidade], [Nenhuma], [Elevada], [Moderada],
+  ),
+  caption: [Comparação entre as estratégias de extensão de traces]
+)
+
+Desta forma, a extensão por regressão é particularmente adequada quando se pretende prolongar a workload para além da duração do trace mantendo as dependências estruturais entre as dimensões, algo que a amostragem independente não consegue garantir @tracegen2024 @pang2026.
 
 ==== Integração de Interfaces de I/O
 
