@@ -45,12 +45,12 @@ jobs:
         uses: actions/cache@v5.0.5
         with:
           path: ${{ env.SPDK_ROOT }}
-          key: spdk-v24.09
+          key: spdk-v26.05
 
       - name: Setup SPDK
         if: steps.cache-spdk.outputs.cache-hit != 'true'
         run: |
-          sudo git clone --depth 1 --branch v24.09 https://github.com/spdk/spdk $SPDK_ROOT
+          sudo git clone --depth 1 --branch v26.05 https://github.com/spdk/spdk $SPDK_ROOT
           cd $SPDK_ROOT
           sudo git submodule update --init --depth 1
           sudo ./scripts/pkgdep.sh
