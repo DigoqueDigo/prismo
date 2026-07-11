@@ -519,6 +519,39 @@ Perante a combinação de interfaces síncronas e assíncronas, o método `submi
 
 Por ostentar comportamento síncrono, o método `reap_left_completions` não tem relevância prática, destarte a receção de pedidos é seguida da syscall associada ao tipo de operação, sendo mais tarde devolvido o código de erro, bem como a estrutura do pedido @didona2022.
 
+===== AIO
+
+#let aio_config = figure(
+  raw_code_block[
+    ```yaml
+    engine:
+      type: aio
+      entries: 128
+      openflags:
+        - O_CREAT
+        - O_RDWR
+        - O_DIRECT
+    ```
+  ],
+  caption: [Configuração de `AioEngine`]
+)
+
+#let aio_body = [
+  Relativamente à interface libaio, a configuração é relativamente simples, sendo o parâmetro `entries` responsável por definir a profundidade máxima da fila de pedidos in-flight, o que corresponde ao número de buffers alinhados pré-alocados durante a inicialização do contexto através da syscall `io_queue_init` @didona2022.
+
+  A estratégia de submissão da `AioEngine` baseia-se na acumulação de pedidos num batch até que a capacidade máxima seja atingida, sendo nesse momento submetidos atomicamente através de `io_submit` @didona2022. As conclusões são recolhidas de forma bloqueante por `io_getevents`, que espera pela disponibilidade de pelo menos um resultado antes de retornar, processando até `entries` completions em simultâneo.
+]
+
+#wrap-content(
+  aio_config,
+  aio_body,
+  align: top + right,
+  columns: (2fr, 1.7fr),
+)
+
+
+Para cada pedido in-flight, é mantido um buffer independente alinhado ao tamanho do bloco, garantindo compatibilidade com `O_DIRECT` e evitando cópias adicionais durante a submissão @didona2022. Um pool de índices disponíveis controla a reutilização segura dos buffers, sendo que quando não existem posições livres, a engine força a recolha de completions antes de aceitar novos pedidos, prevenindo assim a saturação do contexto.
+
 ===== Uring
 
 #let uring_config = figure(
