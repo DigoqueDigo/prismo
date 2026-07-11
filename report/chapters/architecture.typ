@@ -706,6 +706,107 @@ A estrutura do ficheiro de logging onde as métricas são armazenadas é de simp
 
 Por fim, quanto mais detalhadas forem as métricas recolhidas, pior será o desempenho do benchmark, daí que exista uma opção de desativação de métricas para atingir o máximo de performance @ren2023. Ademais, como as métricas são escritas num ficheiro de logging, o sistema de armazenamento é sobrecarregado para além da execução do benchmark, algo que pode originar o enviesamento de resultados @didona2022.
 
+===== Estatísticas e Relatório Final
+
+Além do registo individual de métricas por operação, o benchmark agrega as observações recolhidas durante a execução e produz um relatório final com indicadores estatísticos para cada tipo de operação @ren2023 @didona2022.
+
+As latências são registadas num histograma HDR capaz de calcular percentis com elevada precisão e baixo consumo de memória, disponibilizando os valores p50, p90, p95, p99, p99.9 e p99.99, métricas particularmente relevantes na caracterização da cauda da distribuição de latências @ren2023.
+
+Adicionalmente, três séries temporais são mantidas com granularidade ao segundo: número de operações, largura de banda e latência média, sendo estas obtidas por agregadores que acumulam os valores por janela temporal @didona2022.
+
+#figure(
+  raw_code_block[
+    ```json
+    {
+      "total_operations": 1000000,
+      "runtime_sec": 123.45,
+      "overall_iops": 8102.37,
+      "overall_bandwidth_bytes_per_sec": 33187308,
+      "overall_percentiles_ns": {
+        "p50": 10000, "p90": 25000,
+        "p95": 35000, "p99": 65000,
+        "p99_9": 120000, "p99_99": 850000
+      },
+      "operations": [
+        { "operation": "read", "count": 500000, ... },
+        { "operation": "write", "count": 500000, ... }
+      ]
+    }
+    ```
+  ],
+  caption: [Estrutura simplificada do relatório final]
+)
+
+Quando múltiplos jobs são executados em paralelo, o relatório contém os resultados individuais de cada job e um registo adicional resultante da fusão de todas as estatísticas, onde os histogramas de latência são combinados e os timestamps de início e fim são ajustados para refletir o intervalo global de execução @ren2023.
+
+==== Modelo de Execução <execution-model>
+
+A execução de uma workload envolve a orquestração de múltiplos componentes que cooperam entre si, desde a configuração inicial dos geradores até à terminação controlada e recolha de resultados @didona2022 @ren2023.
+
+===== Canais de Comunicação
+
+A comunicação entre produtor e consumidor é realizada através de duas filas concorrentes lock-free, a primeira fila transporta os pedidos preenchidos do produtor para o consumidor, enquanto a segunda devolve as estruturas cujo pedido já foi concluído, possibilitando a sua reutilização sem alocações dinâmicas durante a execução.
+
+O benchmark disponibiliza dois modos de operação para os canais: bloqueante e não-bloqueante. No modo bloqueante, a operação de dequeue suspende a thread caso a fila esteja vazia, sendo esta retomada quando um novo elemento é inserido, resultando num consumo energético reduzido @didona2022. Em contrapartida, o modo não-bloqueante mantém a thread em busy-wait até que um elemento esteja disponível, sacrificando ciclos de @cpu em troca de menor latência de resposta @ren2023.
+
+Para maximizar o débito, as operações de enqueue e dequeue são realizadas em bulk, transferindo até 64 pacotes por invocação, o que amortiza o custo de sincronização entre threads e melhora a utilização da cache do processador @ren2023. Além disso, um pool de 1024 pacotes é pré-alocado durante a inicialização do canal, eliminando a necessidade de alocação de memória no caminho crítico de execução @didona2022.
+
+===== Terminação
+
+O controlo de terminação define o critério de paragem da workload, sendo suportadas duas estratégias configuráveis @ren2023. A terminação por iterações encerra a execução após a geração de um número fixo de pedidos, enquanto a terminação por tempo de execução impõe um limite temporal em milissegundos.
+
+#figure(
+  grid(
+    columns: 2,
+    gutter: 10pt,
+    raw_code_block[
+      ```yaml
+      termination:
+        type: iterations
+        value: 10000000
+      ```
+    ],
+    raw_code_block[
+      ```yaml
+      termination:
+        type: runtime
+        value: 900000
+      ```
+    ],
+  ),
+  caption: [Configuração das estratégias de terminação]
+)
+
+A verificação da condição de terminação temporal é otimizada para evitar o custo excessivo de invocações ao relógio do sistema, sendo a consulta real do tempo realizada apenas a cada 4096 iterações @ren2023. Esta técnica de lazy time check reduz significativamente o overhead em workloads de alta frequência sem comprometer a precisão do limite temporal estabelecido.
+
+===== Paralelismo
+
+O benchmark suporta a execução paralela de múltiplos jobs sobre o mesmo dispositivo, sendo cada job constituído por um par produtor-consumidor independente que opera sobre canais dedicados @ren2023 @didona2022. O número de jobs é definido pelo parâmetro `numjobs`, resultando na criação de $2 times n$ threads, ou seja, uma de produção e outra de consumo.
+
+Cada job instancia os seus próprios geradores de acesso, operação e conteúdo, sendo o espaço de endereçamento automaticamente particionado entre os workers para evitar colisões de offset @ren2023. Deste modo, o gerador de acessos recebe o identificador do worker e o número total de jobs, dividindo o espaço disponível em partições equitativas.
+
+Esta abordagem permite avaliar o comportamento do sistema de armazenamento sob carga concorrente, algo fundamental na caracterização de cenários multi-tenant e na identificação de contenção entre threads de @io @didona2022.
+
+===== Rampa de Aquecimento
+
+Em determinadas avaliações, é desejável que a carga de trabalho aumente progressivamente até atingir o débito máximo, evitando assim o enviesamento dos resultados iniciais causado pela inicialização de caches e estruturas internas do sistema de armazenamento @ren2023.
+
+Para este efeito, o benchmark disponibiliza uma rampa de aquecimento configurável que realiza interpolação linear entre um rácio inicial e final ao longo de uma duração especificada em milissegundos. Quando o rácio corrente é inferior a 1.0, o produtor introduz um atraso proporcional à duração do batch, regulando assim o débito de submissão sem alterar a lógica dos geradores @ren2023.
+
+#figure(
+  raw_code_block[
+    ```yaml
+    ramp:
+      start_ratio: 0.1
+      end_ratio: 1.0
+      duration: 60000
+    ```
+  ],
+  caption: [Configuração da rampa de aquecimento]
+)
+
+Por esta lógica, quando o rácio inicial é inferior ao final, a rampa de aquecimento aumenta gradualmente o débito de submissão, sendo o contrário inverso igualmente válido, oferecendo ao utilizador a flexibilidade de acelerar ou desacelerar a carga de trabalho conforme necessário @ren2023.
+
 === Resultados Preliminares
 
 Com o objetivo de testar o protótipo, em particular o desempenho das várias interface de @io, foram desenvolvidas workloads de características distintas, projetadas para avaliar o sistema de armazenamento sob diferentes padrões de acesso, leituras e escritas intensivas, bem como cenários de alta concorrência @didona2022.
