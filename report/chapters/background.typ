@@ -70,17 +70,17 @@ Assim sendo, este fluxo permite que as aplicações realizem operações de @io 
 
 Devido aos imensos passos realizados no interior de stack de @io, a execução dos pedidos tende a ser bastante demorada, o que contribui para uma penalização da performance das aplicações. Tendo isto em mente, surgiram diversas @api:pl que trazem otimizações para cenários específicos, e como tal estabelecem compromissos entre simplicidade, desempenho e controlo.
 
-===== Posix
+===== POSIX
 
 De todas a mais simplista, esta interface funciona através das system calls `OPEN`, `READ`, `WRITE` e `CLOSE`, o que a torna bastante portável e amplamente utilizada entre os sistemas UNIX. Por outro lado, acarreta a desvantagem das chamadas serem síncronas e realizar cópias entre user e kernel space, consequentemente penaliza aplicações com workloads intensivas.
 
-===== Uring
+===== io_uring
 
 Recentemente as interfaces assíncronas têm ganho popularidade por conseguirem submeter novos pedidos enquanto os anteriores ainda não foram concluídos, além disso possibilitam a execução de pedidos em batch como meio para diminuir as system calls, afinal o custo da mudança de contexto entre user para kernel space é deveras elevado.
 
 #figure(
   image("../images/uring.png", width: 70%),
-  caption: [Visão alto nível das queues circulares do uring @rust_iouring_async]
+  caption: [Visão alto nível das queues circulares do io_uring @rust_iouring_async]
 ) <uring>
 
 Inicialmente  a @sq encontra-se vazia e por isso disponível para receber @sqe, quando a aplicação julgar conveniente ou a @sq ficar cheia é necessário realizar uma syscall de `submit`, informando o kernel sobre a existência de @sqe disponíveis para submissão, neste momento ocorre uma mudança de contexto, no entanto a aplicação pode continuar a submeter novos pedidos caso encontre espaço disponível na @sq @rust_iouring_async.

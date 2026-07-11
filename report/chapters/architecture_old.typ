@@ -1,84 +1,21 @@
+#import "@preview/wrap-it:0.1.1": wrap-content
 #import "../utils/functions.typ" : raw_code_block
 
 == Arquitetura <chapter3>
 
-Depois de esclarecido o problema da avaliação realista dos sistemas de armazenamento e compreendidos os conceitos em seu redor, este capítulo visa abordar a arquitetura do benchmark, passando pelo modelo de execução que fundamenta a interação entre componentes, as estratégias adotadas para geração de workloads sintéticas e baseadas em traces, a integração com @api:pl de @io de natureza diversa e o sistema de recolha de métricas @didona2022 @ren2023 @rust_iouring_async.
+Depois de esclarecido o problema da avaliação realista dos sistemas de armazenamento e compreendidos os conceitos em seu redor, este capítulo visa abordar a arquitetura do benchmark, passando pela identificação dos respetivos componentes, estratégias adotadas para geração de conteúdo sintético e baseado em traces, integração com @api:pl de @io cuja natureza é bastante diversa e respetivo modelo de execução @didona2022 @ren2023 @rust_iouring_async.
 
-Numa primeira abordagem ao problema, a geração de conteúdo é facilmente dissociável das operações solicitadas ao sistema de armazenamento, sendo estas realizadas por meio das @api:pl de @io. Deste modo, a arquitetura pode ser dividida em dois grandes componentes que estabelecem cada um interfaces para manipulação da conduta: a geração de parâmetros da workload e a submissão de pedidos ao dispositivo @didona2022 @ren2023. A interface de geração abstrai as implementações concretas, daí que a sua utilização não implique desvios de padrão caso o utilizador escolha usufruir de dados sintéticos ou reais obtidos através de traces, do mesmo modo esta lógica é aplicável para a interface de abstração do disco @tracegen2024 @gracia-tinedo2018.
+Numa primeira abordagem ao problema, percebemos que a geração de conteúdo é facilmente dissociável das operações solicitadas ao sistema de armazenamento, sendo estas realizadas por meio das @api:pl de @io. Deste modo, a arquitetura pode ser dividida em dois grandes componentes que estabelecem cada um interfaces para manipulação da conduta @didona2022 @ren2023.
 
-=== Modelo de Execução <execution-model>
+Posto isto, a interface para geração de conteúdo abstrai as implementações concretas, daí que a sua utilização não implique desvios de padrão caso o utilizador escolha usufruir de dados sintéticos ou reais obtidos através de traces, do mesmo modo esta lógica é aplicável para a interface de abstração do disco @tracegen2024 @gracia-tinedo2018.
 
-A execução de uma workload envolve a orquestração de múltiplos componentes que cooperam segundo um modelo produtor-consumidor @didona2022 @ren2023. Um produtor é responsável por invocar os métodos da interface de geração de conteúdo e encapsular os resultados num pedido de @io, sendo este colocado numa fila concorrente como forma de solicitação de execução. Do outro lado, um consumidor está constantemente à escuta na fila com o objetivo de receber pedidos, mal isto ocorra, é realizada uma submissão na interface de @io, sendo mais tarde a estrutura do pedido libertada e transmitida ao produtor para nova utilização.
+Com o estabelecimento destes componentes, um produtor é responsável para invocar os métodos da interface de geração de conteúdo e encapsular os resultados num pedido de @io, sendo este colocado numa blocking queue como forma de solicitação de execução.
 
-==== Canais de Comunicação
+Do outro lado, um consumidor está constantemente à escuta na queue com o objetivo de receber pedidos, mal isto ocorra, é realizada uma submissão na interface de @io, sendo mais tarde a estrutura do pedido libertada e transmitida ao produtor para nova utilização.
 
-A comunicação entre produtor e consumidor é realizada através de duas filas concorrentes lock-free: a primeira transporta os pedidos preenchidos do produtor para o consumidor, enquanto a segunda devolve as estruturas cujo pedido já foi concluído, possibilitando a sua reutilização sem alocações dinâmicas durante a execução.
+=== Geração de Conteúdo Sintético
 
-Uma vez que as filas apresentam capacidade limitada, e tendo em consideração que à partida o produtor será mais performante que o consumidor, este mecanismo permite alcançar buffering e backpressure em simultâneo, pois quando a capacidade limite for atingida, o produtor irá bloquear e portanto o consumidor jamais será sobrecarregado com uma quantidade infindável de pedidos, o que contribui para um uso eficiente da memória disponível.
-
-O benchmark disponibiliza dois modos de operação para os canais: bloqueante e não-bloqueante. No modo bloqueante, a operação de dequeue suspende a thread caso a fila esteja vazia, sendo esta retomada quando um novo elemento é inserido, resultando num consumo energético reduzido @didona2022. Em contrapartida, o modo não-bloqueante mantém a thread em busy-wait até que um elemento esteja disponível, sacrificando ciclos de @cpu em troca de menor latência de resposta @ren2023.
-
-Para maximizar o débito, as operações de enqueue e dequeue são realizadas em bulk, transferindo até 64 pacotes por invocação, o que amortiza o custo de sincronização entre threads e melhora a utilização da cache do processador @ren2023. Além disso, um pool de 1024 pacotes é pré-alocado durante a inicialização do canal, eliminando a necessidade de alocação de memória no caminho crítico de execução @didona2022.
-
-==== Terminação
-
-O controlo de terminação define o critério de paragem da workload, sendo suportadas duas estratégias configuráveis @ren2023. A terminação por iterações encerra a execução após a geração de um número fixo de pedidos, enquanto a terminação por tempo de execução impõe um limite temporal em milissegundos.
-
-#figure(
-  grid(
-    columns: 2,
-    gutter: 10pt,
-    raw_code_block[
-      ```yaml
-      termination:
-        type: iterations
-        value: 10000000
-      ```
-    ],
-    raw_code_block[
-      ```yaml
-      termination:
-        type: runtime
-        value: 900000
-      ```
-    ],
-  ),
-  caption: [Configuração das estratégias de terminação]
-)
-
-A verificação da condição de terminação temporal é otimizada para evitar o custo excessivo de invocações ao relógio do sistema, sendo a consulta real do tempo realizada apenas a cada 4096 iterações @ren2023. Esta técnica de lazy time check reduz significativamente o overhead em workloads de alta frequência sem comprometer a precisão do limite temporal estabelecido.
-
-==== Paralelismo
-
-O benchmark suporta a execução paralela de múltiplos jobs sobre o mesmo dispositivo, sendo cada job constituído por um par produtor-consumidor independente que opera sobre canais dedicados @ren2023 @didona2022. O número de jobs é definido pelo parâmetro `numjobs`, resultando na criação de $2 times n$ threads, ou seja, uma de produção e outra de consumo.
-
-Cada job instancia os seus próprios geradores de acesso, operação e conteúdo, sendo o espaço de endereçamento automaticamente particionado entre os workers para evitar colisões de offset @ren2023. Deste modo, o gerador de acessos recebe o identificador do worker e o número total de jobs, dividindo o espaço disponível em partições equitativas.
-
-Esta abordagem permite avaliar o comportamento do sistema de armazenamento sob carga concorrente, algo fundamental na caracterização de cenários multi-tenant e na identificação de contenção entre threads de @io @didona2022.
-
-==== Rampa de Aquecimento
-
-Em determinadas avaliações, é desejável que a carga de trabalho aumente progressivamente até atingir o débito máximo, evitando assim o enviesamento dos resultados iniciais causado pela inicialização de caches e estruturas internas do sistema de armazenamento @ren2023.
-
-Para este efeito, o benchmark disponibiliza uma rampa de aquecimento configurável que realiza interpolação linear entre um rácio inicial e final ao longo de uma duração especificada em milissegundos. Quando o rácio corrente é inferior a 1.0, o produtor introduz um atraso proporcional à duração do batch, regulando assim o débito de submissão sem alterar a lógica dos geradores @ren2023.
-
-#figure(
-  raw_code_block[
-    ```yaml
-    ramp:
-      start_ratio: 0.1
-      end_ratio: 1.0
-      duration: 60000
-    ```
-  ],
-  caption: [Configuração da rampa de aquecimento]
-)
-
-Por esta lógica, quando o rácio inicial é inferior ao final, a rampa de aquecimento aumenta gradualmente o débito de submissão, sendo o contrário inverso igualmente válido, oferecendo ao utilizador a flexibilidade de acelerar ou desacelerar a carga de trabalho conforme necessário @ren2023.
-
-=== Geração de Workloads
-
-Na generalidade das interfaces, os pedidos de @io são caracterizados pelo tipo de operação, conteúdo e posição do disco onde o pedido será satisfeito, consequentemente a geração de workloads pode ser desacoplada nestas três funcionalidades, dando origem a interfaces independentes para cada dimensão dos pedidos @gracia-tinedo2015 @talwadker2014.
+Na generalidade das interfaces, os pedidos de @io são caracterizados pelo tipo de operação, conteúdo e posição do disco onde o pedido será satisfeito, consequentemente o gerador de conteúdo sintético pode ser desacoplado nestas três funcionalidades, dando origem a interfaces que visam fornecer os parâmetros dos pedidos @gracia-tinedo2015 @talwadker2014.
 
 Como fruto desta abordagem, e uma vez que os geradores são definidos ao nível dos parâmetros, a combinação entre geradores sintéticos e reais torna-se bastante simples, isto porque o produtor apenas conhece uma interface que é independente da implementação concreta, assim podemos ter acessos reais e operações sintéticas, sendo o contrário igualmente válido @gracia-tinedo2015 @pang2026.
 
@@ -87,7 +24,11 @@ Como fruto desta abordagem, e uma vez que os geradores são definidos ao nível 
   caption: [Interação do produtor com a interface de geração de conteúdo]
 )
 
-Ao recolher uma struct através da operação de dequeue, o produtor invoca os métodos disponibilizados por cada uma das interfaces, de relembrar que o conteúdo do bloco apenas é gerado quando a operação solicitada for um `WRITE`. De seguida, e tendo os parâmetros devidamente identificados, os mesmos são encapsulados num pedido que é inserido na fila para futura execução por parte do consumidor.
+Enquanto medida para reutilização de memória, produtor e consumidor partilham duas queues, uma direcionada ao envio de pedidos (produtor para consumidor) e outra responsável por identificar as structs cujo pedido já foi concluído (consumidor para produtor), e como tal podem ser reutilizadas pelo produtor.
+
+Ao recolher uma struct, através da operação de dequeue, o produtor invoca os métodos disponibilizados por cada uma das interfaces, de relembrar que o conteúdo do bloco apenas é gerado quando a operação solicitada for um `WRITE`. De seguida, e tendo os parâmetros devidamente identificados, o mesmos são encapsulados num pedido que é inserido na queue para futura execução por parte do consumidor.
+
+Uma vez que as queues apresentam capacidade limitada, e tendo em consideração que à partida o produtor será mais performante que o consumidor, isto permite alcançar buffering e backpressure em simultâneo, pois quando a capacidade limite for atingida, o produtor irá bloquear e portanto o consumidor jamais será sobrecarregado com uma quantidade infindável de pedidos, o que contribui para um uso eficiente da memória disponível.
 
 ==== Acesso
 
@@ -200,9 +141,9 @@ Para tal, o benchmark disponibiliza um mecanismo de barreiras que interceta o fl
 
 A composição de múltiplas barreiras é igualmente suportada, sendo estas ordenadas pelo critério de proximidade ao respetivo limiar, deste modo a barreira com menor número de operações em falta é avaliada prioritariamente @ren2023. Importa realçar que após cada injeção, a reordenação dinâmica é realizada para garantir que o escalonamento reflete o estado atualizado dos contadores, evitando assim situações de starvation entre barreiras com limiares distintos.
 
-==== Conteúdo
+==== Geração de Blocos
 
-A geração de conteúdo é sem dúvida a operação mais custosa, no entanto apenas torna-se necessária quando a operação selecionada for um `WRITE`, nesse sentido a interface `BlockGenerator` disponibiliza o método `nextBlock` que preenche um buffer passado como argumento @constantinescu2011 @meyer2012.
+A geração de blocos é sem dúvida a operação mais custosa, no entanto apenas torna-se necessária quando a operação selecionada for um `WRITE`, nesse sentido a interface de `BlockGenerator` disponibiliza o método `nextBlock` que preenche um buffer passado como argumento @constantinescu2011 @meyer2012.
 
 Embora a implementação principal desta interface seja aquela que combina duplicados e compressão, existem outras mais rudimentares que servem para testar cenários específicos com maior eficiência, isto porque o gerador de duplicados é capaz de simular os blocos dos outros geradores, mas com uma performance significativamente menor @koller2010 @zhu2008 @talasila2019.
 
@@ -244,7 +185,7 @@ Por fim, o gerador de duplicados e compressão procura seguir uma distribuição
 
 Além disso, a opção `refill_buffers` permite a partilha do buffer base entre blocos, deste modo quando os mesmos são criados a zona de entropia máxima é obtida a partir do buffer, consequentemente todos os blocos partilham a mesma informação e portanto a compressibilidade interbloco atinge o limite @constantinescu2011 @paulo2014.
 
-===== Deduplicação e Compressão
+===== Geração de Duplicados e Compressão
 
 Para que o utilizador manipule a distribuição de duplicados e compressão, o benchmark oferece um ficheiro de configuração sobre o qual as informações são retiradas, bastando seguir o formato indicado @dedisbench @dedisbenchpp @paulo2013.
 
@@ -320,7 +261,7 @@ Por fim, depois de selecionado o identificador do bloco, volta a ser sorteado um
 
 Apesar de ser bastante eficiente, esta abordagem acarreta o custo associado à geração pseudoaleatória, uma operação que tende a ser mais exigente computacionalmente do que as restantes envolvidas na geração de conteúdo. No entanto, este custo permanece negligenciável quando comparado com o tempo das operações de @io, não constituindo, por isso, um gargalo na avaliação do sistema de armazenamento.
 
-==== Workloads Baseadas em Traces <trace-workloads>
+=== Workloads Baseadas em Traces <trace-workloads>
 
 Embora os geradores sintéticos ofereçam elevada flexibilidade na parametrização das workloads, a reprodução de comportamentos observados em ambientes de produção exige a utilização de traces reais, os quais capturam a sequência temporal de operações de @io executadas por sistemas em funcionamento @gracia-tinedo2015 @tracegen2024.
 
@@ -346,6 +287,8 @@ Neste sentido, cada um dos três geradores previamente descritos (acesso, opera�
 )
 
 A leitura dos traces é realizada por um componente partilhado entre todas as implementações `trace-based`, o qual mantém um buffer de leitura configurável pelo utilizador através do parâmetro `memory`, evitando assim carregamentos excessivos em memória quando o trace excede a capacidade disponível.
+
+==== Workloads Híbridas
 
 Uma vez que os geradores são definidos ao nível dos parâmetros individuais e o produtor conhece apenas a interface abstrata de cada um, a combinação entre geradores sintéticos e trace-based torna-se trivial @gracia-tinedo2015 @pang2026. Exemplificando, é possível utilizar acessos provenientes de um trace real enquanto as operações seguem uma distribuição percentual sintética e o conteúdo é gerado pelo modelo de deduplicação e compressão.
 
@@ -479,9 +422,9 @@ $
 
 Desta forma, a extensão por regressão é particularmente adequada quando se pretende prolongar a workload para além da duração do trace mantendo as dependências estruturais entre as dimensões, algo que a amostragem independente não consegue garantir @tracegen2024 @pang2026.
 
-=== Interfaces de I/O
+=== Integração de Interfaces de I/O
 
-Tendo em consideração o modelo de execução previamente descrito, o consumidor recebe os pedidos do produtor e procede de imediato ao desencapsulamento para compreender o tipo de operação em questão e assim facilitar o acesso aos restantes parâmetros, como offset e conteúdo @didona2022.
+Sabendo que o consumidor está à escuta de pedidos enviados pelo produtor, quando os mesmos são recebidos procede-se de imediato ao desencapsulamento para compreender o tipo de operação em questão e assim facilitar o acesso aos restantes parâmetros, como offset e conteúdo @didona2022.
 
 A interface `Engine` disponibiliza o método `submit` que aceita operações de qualquer tipo, assim o consumidor não é responsável por definir as alterações de comportamento associadas @ren2023. Mal o pedido seja dado por concluído, a struct é devolvida pela interface, permitindo ao consumidor fazer dequeue para que a zona de memória seja reutilizada mais tarde.
 
@@ -490,7 +433,7 @@ A interface `Engine` disponibiliza o método `submit` que aceita operações de 
   caption: [Interação do consumidor com a interface de engine]
 )
 
-Um pedido obtido a partir da fila pode ser de três tipos distintos, onde as structs de abertura e fecho são caracterizadas pelos argumentos encontrados nas syscalls de `open` e `close`, importa realçar que tais estruturas não fazem sentido para a engine de @spdk, visto esta funcionar diretamente sobre o dispositivo de armazenamento e portanto não existir uma abstração do sistema de ficheiros @spdk_docs.
+Um pedido obtido a partir da queue pode ser de três tipos distintos, onde as structs de abertura e fecho são caracterizadas pelos argumentos encontrados nas syscalls de `open` e `close`, importa realçar que tais estruturas não fazem sentido para a engine de @spdk, visto esta funcionar diretamente sobre o dispositivo de armazenamento e portanto não existir uma abstração do sistema de ficheiros @spdk_docs.
 
 #figure(
   grid(
@@ -534,11 +477,7 @@ Perante a combinação de interfaces síncronas e assíncronas, o método `submi
 
 ==== POSIX
 
-Com o objetivo de flexibilizar o benchmark, todas as implementações de `Engine` possuem uma configuração para manipulação dos parâmetros e respetivo comportamento, neste caso em concreto, ao tratar-se de uma interface bastante simplista, a única configuração possível ocorre na syscall `open` através das flags passadas como argumento @didona2022.
-
-Posto isto, a estrutura de configuração indica o tipo de `Engine` selecionada, bem como uma lista das flags que o utilizador considera relevantes para a execução da workload, por questões de comodidade na implementação, somente as flags mais relevantes são suportadas.
-
-#figure(
+#let posix_config = figure(
   raw_code_block[
     ```yaml
     engine:
@@ -553,6 +492,19 @@ Posto isto, a estrutura de configuração indica o tipo de `Engine` selecionada,
   caption: [Configuração de `PosixEngine`]
 )
 
+#let posix_body = [
+  Com o objetivo de flexibilizar o benchmark, todas as implementações de `Engine` possuem uma configuração para manipulação dos parâmetros e respetivo comportamento, neste caso em concreto, ao tratar-se de uma interface bastante simplista, a única configuração possível ocorre na syscall `open` através das flags passadas como argumento @didona2022.
+
+  Posto isto, a estrutura de configuração indica o tipo de `Engine` selecionada, bem como uma lista das flags que o utilizador considera relevantes para a execução da workload, por questões de comodidade na implementação, somente as flags mais relevantes são suportadas.
+]
+
+#wrap-content(
+  posix_config,
+  posix_body,
+  align: top + right,
+  columns: (2fr, 1.7fr),
+)
+
 #figure(
   image("../images/flow_posix.png", width: 65%),
   caption: [Funcionamento interno da POSIX Engine]
@@ -562,11 +514,7 @@ Por ostentar comportamento síncrono, o método `reap_left_completions` não tem
 
 ==== AIO
 
-Relativamente à interface libaio, a configuração é relativamente simples, sendo o parâmetro `entries` responsável por definir a profundidade máxima da fila de pedidos in-flight, o que corresponde ao número de buffers alinhados pré-alocados durante a inicialização do contexto através da syscall `io_queue_init` @didona2022.
-
-A estratégia de submissão da `AioEngine` baseia-se na acumulação de pedidos num batch até que a capacidade máxima seja atingida, sendo nesse momento submetidos atomicamente através de `io_submit` @didona2022. As conclusões são recolhidas de forma bloqueante por `io_getevents`, que espera pela disponibilidade de pelo menos um resultado antes de retornar, processando até `entries` completions em simultâneo.
-
-#figure(
+#let aio_config = figure(
   raw_code_block[
     ```yaml
     engine:
@@ -581,17 +529,25 @@ A estratégia de submissão da `AioEngine` baseia-se na acumulação de pedidos 
   caption: [Configuração de `AioEngine`]
 )
 
+#let aio_body = [
+  Relativamente à interface libaio, a configuração é relativamente simples, sendo o parâmetro `entries` responsável por definir a profundidade máxima da fila de pedidos in-flight, o que corresponde ao número de buffers alinhados pré-alocados durante a inicialização do contexto através da syscall `io_queue_init` @didona2022.
+
+  A estratégia de submissão da `AioEngine` baseia-se na acumulação de pedidos num batch até que a capacidade máxima seja atingida, sendo nesse momento submetidos atomicamente através de `io_submit` @didona2022. As conclusões são recolhidas de forma bloqueante por `io_getevents`, que espera pela disponibilidade de pelo menos um resultado antes de retornar, processando até `entries` completions em simultâneo.
+]
+
+#wrap-content(
+  aio_config,
+  aio_body,
+  align: top + right,
+  columns: (2fr, 1.7fr),
+)
+
+
 Para cada pedido in-flight, é mantido um buffer independente alinhado ao tamanho do bloco, garantindo compatibilidade com `O_DIRECT` e evitando cópias adicionais durante a submissão @didona2022. Um pool de índices disponíveis controla a reutilização segura dos buffers, sendo que quando não existem posições livres, a engine força a recolha de completions antes de aceitar novos pedidos, prevenindo assim a saturação do contexto.
 
-==== io_uring
+==== Uring
 
-Ao fazer uso do sistema de ficheiros, os argumentos de abertura são semelhantes aos previamente referidos, portanto a configuração da `UringEngine` apresenta uma lista das mesmas flags @uring_kernel.
-
-Em relação aos demais parâmetros, `entries` e `cq_entries` definem a profundidade da @sq e @cq respetivamente, por norma estes valores são potências de dois entre 64 e 256, isto porque valores pequenos diminuem o paralelismo, enquanto o contrário resulta num aumento do consumo de memória e desperdício da localidade da cache @didona2022.
-
-Relativamente às flags para controlo do anel e processamento de @io, o utilizador usufruir de total liberdade de escolha, sendo de realçar a flag `IORING_SETUP_SQPOLL` que cria uma thread no kernel para pollar a @sq e assim os pedidos serem submetidos sem a necessidade de invocar a syscall `io_uring_enter`. Por outro lado, a flag `IORING_SETUP_SQ_AFF` estabelece a afinidade da thread do kernel, neste caso em particular, a mesma será fixada no core 0 e após de 100 milissegundos de inatividade entrará no estado de sleep @rust_iouring_async.
-
-#figure(
+#let uring_config = figure(
   raw_code_block[
   ```yaml
     engine:
@@ -613,9 +569,24 @@ Relativamente às flags para controlo do anel e processamento de @io, o utilizad
   caption: [Configuração de `UringEngine`]
 )
 
+#let uring_body = [
+  Ao fazer uso do sistema de ficheiros, os argumentos de abertura são semelhantes aos previamente referidos, portanto a configuração da `UringEngine` apresenta uma lista das mesmas flags @uring_kernel.
+
+  Em relação aos demais parâmetros, `entries` e `cq_entries` definem a profundidade da @sq e @cq respetivamente, por norma estes valores são potências de dois entre 64 e 256, isto porque valores pequenos diminuem o paralelismo, enquanto o contrário resulta num aumento do consumo de memória e desperdício da localidade da cache @didona2022.
+
+  Relativamente às flags para controlo do anel e processamento de @io, o utilizador usufruir de total liberdade de escolha, sendo de realçar a flag `IORING_SETUP_SQPOLL` que cria uma thread no kernel para pollar a @sq e assim os pedidos serem submetidos sem a necessidade de invocar a syscall `io_uring_enter`. Por outro lado, a flag `IORING_SETUP_SQ_AFF` estabelece a afinidade da thread do kernel, neste caso em particular, a mesma será fixada no core 0 e após de 100 milissegundos de inatividade entrará no estado de sleep @rust_iouring_async.
+]
+
+#wrap-content(
+  uring_config,
+  uring_body,
+  align: top + right,
+  columns: (2fr, 1.7fr),
+)
+
 #figure(
   image("../images/flow_uring.png", width: 75%),
-  caption: [Funcionamento interno da io_uring Engine]
+  caption: [Funcionamento interno da Uring Engine]
 )
 
 Tratando-se de uma interface assíncrona, o seu bom uso passa por diminuir a invocação de syscalls e manter os pedidos in-flight no máximo permitido, o que corresponde à capacidade da @sq @uring_kernel. Tendo isto em consideração, a `UringEngine` não executa os pedidos mal estes sejam recebidos, procura sim formar um batch para submeter vários em simultâneo @rust_iouring_async.
@@ -624,15 +595,7 @@ Depois do primeiro batch ser submetido, a estratégia é alterada para preservar
 
 ==== SPDK
 
-Uma vez que o @spdk possui um ficheiro de configuração próprio, utilizado para definir os @bdev, controladores de disco, tamanho dos blocos e afins, os parâmetros manipuláveis pelo benchmark a nível aplicacional são limitados @spdk_docs.
-
-Posto isto, `spdk_threads` indica o número de threads lógicas que serão criadas e pelas quais os pedidos de @io serão distribuídos em round-robin, importa realçar que tais threads funcionam como uma abstração sobre o reactor, o qual é responsável por escalonar as tarefas e direcioná-las para que sejam executadas nos cores corretos @didona2022.
-
-Desta feita, o número de cores realmente utilizados pelo runtime do @spdk é identificado por `reactor_mask`, neste caso em particular, `0XF` convertido para binário equivale a `1111`, assim os quatro primeiros cores do sistema estão disponíveis para escalonamento de tarefas @spdk_docs.
-
-Embora as threads lógicas possam ser fixadas em qualquer core, o componente `SPDKRuntime` está fixado no primeiro core e em espera ativa por pedidos de @io vindos da aplicação, portanto qualquer outra thread fixada no mesmo core nunca será capaz de executar, afinal o runtime é interminável no consumo de recursos @didona2022.
-
-#figure(
+#let spdk_config = figure(
   raw_code_block[
     ```yaml
     engine:
@@ -646,6 +609,23 @@ Embora as threads lógicas possam ser fixadas em qualquer core, o componente `SP
   caption: [Configuração de `SPDKEngine`]
 )
 
+#let spdk_body = [
+  Uma vez que o @spdk possui um ficheiro de configuração próprio, utilizado para definir os @bdev, controladores de disco, tamanho dos blocos e afins, os parâmetros manipuláveis pelo benchmark a nível aplicacional são limitados @spdk_docs.
+
+  Posto isto, `spdk_threads` indica o número de threads lógicas que serão criadas e pelas quais os pedidos de @io serão distribuídos em round-robin, importa realçar que tais threads funcionam como uma abstração sobre o reactor, o qual é responsável por escalonar as tarefas e direcioná-las para que sejam executadas nos cores corretos @didona2022.
+
+  Desta feita, o número de cores realmente utilizados pelo runtime do @spdk é identificado por `reactor_mask`, neste caso em particular, `0XF` convertido para binário equivale a `1111`, assim os quatro primeiros cores do sistema estão disponíveis para escalonamento de tarefas @spdk_docs.
+
+  Embora as threads lógicas possam ser fixadas em qualquer core, o componente `SPDKRuntime` está fixado no primeiro core e em espera ativa por pedidos de @io vindos da aplicação, portanto qualquer outra thread fixada no mesmo core nunca será capaz de executar, afinal o runtime é interminável no consumo de recursos @didona2022.
+]
+
+#wrap-content(
+  spdk_config,
+  spdk_body,
+  align: top + right,
+  columns: (2fr, 1.7fr),
+)
+
 #figure(
   image("../images/flow_spdk.png", width: 85%),
   caption: [Funcionamento interno da SPDK Engine]
@@ -657,7 +637,7 @@ No momento em que este recebe um pedido, é necessário aguardar por uma zona de
 
 Por fim, como os pedidos vão acompanhados de um trigger, a `SPDKEngine` é notificada acerca da conclusão e portanto percebe que é seguro devolver a struct ao produtor @spdk_docs.
 
-=== Métricas e Relatório
+=== Recolha de Métricas
 
 Durante a execução de workloads, o benchmark é responsável por recolher métricas sobre cada uma das operações de @io realizadas, algo fundamental na caracterização e posterior avaliação do sistema de armazenamento, isto porque scripts estatísticos podem analisar o ficheiro de log resultante das métricas @didona2022 @ren2023.
 
@@ -751,3 +731,71 @@ Adicionalmente, três séries temporais são mantidas com granularidade ao segun
 )
 
 Quando múltiplos jobs são executados em paralelo, o relatório contém os resultados individuais de cada job e um registo adicional resultante da fusão de todas as estatísticas, onde os histogramas de latência são combinados e os timestamps de início e fim são ajustados para refletir o intervalo global de execução @ren2023.
+
+=== Modelo de Execução <execution-model>
+
+A execução de uma workload envolve a orquestração de múltiplos componentes que cooperam entre si, desde a configuração inicial dos geradores até à terminação controlada e recolha de resultados @didona2022 @ren2023.
+
+==== Canais de Comunicação
+
+A comunicação entre produtor e consumidor é realizada através de duas filas concorrentes lock-free, a primeira fila transporta os pedidos preenchidos do produtor para o consumidor, enquanto a segunda devolve as estruturas cujo pedido já foi concluído, possibilitando a sua reutilização sem alocações dinâmicas durante a execução.
+
+O benchmark disponibiliza dois modos de operação para os canais: bloqueante e não-bloqueante. No modo bloqueante, a operação de dequeue suspende a thread caso a fila esteja vazia, sendo esta retomada quando um novo elemento é inserido, resultando num consumo energético reduzido @didona2022. Em contrapartida, o modo não-bloqueante mantém a thread em busy-wait até que um elemento esteja disponível, sacrificando ciclos de @cpu em troca de menor latência de resposta @ren2023.
+
+Para maximizar o débito, as operações de enqueue e dequeue são realizadas em bulk, transferindo até 64 pacotes por invocação, o que amortiza o custo de sincronização entre threads e melhora a utilização da cache do processador @ren2023. Além disso, um pool de 1024 pacotes é pré-alocado durante a inicialização do canal, eliminando a necessidade de alocação de memória no caminho crítico de execução @didona2022.
+
+==== Terminação
+
+O controlo de terminação define o critério de paragem da workload, sendo suportadas duas estratégias configuráveis @ren2023. A terminação por iterações encerra a execução após a geração de um número fixo de pedidos, enquanto a terminação por tempo de execução impõe um limite temporal em milissegundos.
+
+#figure(
+  grid(
+    columns: 2,
+    gutter: 10pt,
+    raw_code_block[
+      ```yaml
+      termination:
+        type: iterations
+        value: 10000000
+      ```
+    ],
+    raw_code_block[
+      ```yaml
+      termination:
+        type: runtime
+        value: 900000
+      ```
+    ],
+  ),
+  caption: [Configuração das estratégias de terminação]
+)
+
+A verificação da condição de terminação temporal é otimizada para evitar o custo excessivo de invocações ao relógio do sistema, sendo a consulta real do tempo realizada apenas a cada 4096 iterações @ren2023. Esta técnica de lazy time check reduz significativamente o overhead em workloads de alta frequência sem comprometer a precisão do limite temporal estabelecido.
+
+==== Paralelismo
+
+O benchmark suporta a execução paralela de múltiplos jobs sobre o mesmo dispositivo, sendo cada job constituído por um par produtor-consumidor independente que opera sobre canais dedicados @ren2023 @didona2022. O número de jobs é definido pelo parâmetro `numjobs`, resultando na criação de $2 times n$ threads, ou seja, uma de produção e outra de consumo.
+
+Cada job instancia os seus próprios geradores de acesso, operação e conteúdo, sendo o espaço de endereçamento automaticamente particionado entre os workers para evitar colisões de offset @ren2023. Deste modo, o gerador de acessos recebe o identificador do worker e o número total de jobs, dividindo o espaço disponível em partições equitativas.
+
+Esta abordagem permite avaliar o comportamento do sistema de armazenamento sob carga concorrente, algo fundamental na caracterização de cenários multi-tenant e na identificação de contenção entre threads de @io @didona2022.
+
+==== Rampa de Aquecimento
+
+Em determinadas avaliações, é desejável que a carga de trabalho aumente progressivamente até atingir o débito máximo, evitando assim o enviesamento dos resultados iniciais causado pela inicialização de caches e estruturas internas do sistema de armazenamento @ren2023.
+
+Para este efeito, o benchmark disponibiliza uma rampa de aquecimento configurável que realiza interpolação linear entre um rácio inicial e final ao longo de uma duração especificada em milissegundos. Quando o rácio corrente é inferior a 1.0, o produtor introduz um atraso proporcional à duração do batch, regulando assim o débito de submissão sem alterar a lógica dos geradores @ren2023.
+
+#figure(
+  raw_code_block[
+    ```yaml
+    ramp:
+      start_ratio: 0.1
+      end_ratio: 1.0
+      duration: 60000
+    ```
+  ],
+  caption: [Configuração da rampa de aquecimento]
+)
+
+Por esta lógica, quando o rácio inicial é inferior ao final, a rampa de aquecimento aumenta gradualmente o débito de submissão, sendo o contrário inverso igualmente válido, oferecendo ao utilizador a flexibilidade de acelerar ou desacelerar a carga de trabalho conforme necessário @ren2023.
