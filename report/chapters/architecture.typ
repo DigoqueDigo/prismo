@@ -1,16 +1,9 @@
-#import "@preview/timeliney:0.4.0"
 #import "@preview/wrap-it:0.1.1": wrap-content
 #import "../utils/functions.typ" : raw_code_block
 
-== Abordagem e Planeamento <chapter3>
+== Arquitetura <chapter3>
 
-Depois de esclarecido o problema da avaliação realista dos sistemas de armazenamento e compreendidos os conceitos em seu redor, este capítulo visa abordar a arquitetura do protótipo de benchmark, passando pela identificação dos respetivos componentes, estratégias adotadas para geração de conteúdo e integração com @api:pl de @io cuja natureza é bastante diversa, isto fundamentalmente porque algumas são síncronas e outras assíncronas @didona2022 @ren2023 @rust_iouring_async.
-
-De seguida, serão apresentados resultados preliminares da performance do benchmark, procurando explicar as diferenças obtidas conforme as configurações e ambiente de teste, sendo isto fundamental para perceber se o overhead associado à geração de conteúdo impossibilita a saturação do sistema de armazenamento @fio_docs @spdk_docs.
-
-Por fim, e uma vez que somente o protótipo foi implementado, serão estabelecidas as próximas etapas do desenvolvimento do benchmark, algo que inevitavelmente passará pela integração com traces e extensão dos mesmos, no então outras configurações relativamente simples como speed up ou slow down seriam interessantes e contribuiriam para uma maior flexibilidade em termos de configuração @tracegen2024 @talwadker2014 @gracia-tinedo2015 @pang2026.
-
-=== Arquitetura
+Depois de esclarecido o problema da avaliação realista dos sistemas de armazenamento e compreendidos os conceitos em seu redor, este capítulo visa abordar a arquitetura do benchmark, passando pela identificação dos respetivos componentes, estratégias adotadas para geração de conteúdo sintético e baseado em traces, integração com @api:pl de @io cuja natureza é bastante diversa e respetivo modelo de execução @didona2022 @ren2023 @rust_iouring_async.
 
 Numa primeira abordagem ao problema, percebemos que a geração de conteúdo é facilmente dissociável das operações solicitadas ao sistema de armazenamento, sendo estas realizadas por meio das @api:pl de @io. Deste modo, a arquitetura pode ser dividida em dois grandes componentes que estabelecem cada um interfaces para manipulação da conduta @didona2022 @ren2023.
 
@@ -20,7 +13,7 @@ Com o estabelecimento destes componentes, um produtor é responsável para invoc
 
 Do outro lado, um consumidor está constantemente à escuta na queue com o objetivo de receber pedidos, mal isto ocorra, é realizada uma submissão na interface de @io, sendo mais tarde a estrutura do pedido libertada e transmitida ao produtor para nova utilização.
 
-==== Geração de Conteúdo Sintético
+=== Geração de Conteúdo Sintético
 
 Na generalidade das interfaces, os pedidos de @io são caracterizados pelo tipo de operação, conteúdo e posição do disco onde o pedido será satisfeito, consequentemente o gerador de conteúdo sintético pode ser desacoplado nestas três funcionalidades, dando origem a interfaces que visam fornecer os parâmetros dos pedidos @gracia-tinedo2015 @talwadker2014.
 
@@ -37,7 +30,7 @@ Ao recolher uma struct, através da operação de dequeue, o produtor invoca os 
 
 Uma vez que as queues apresentam capacidade limitada, e tendo em consideração que à partida o produtor será mais performante que o consumidor, isto permite alcançar buffering e backpressure em simultâneo, pois quando a capacidade limite for atingida, o produtor irá bloquear e portanto o consumidor jamais será sobrecarregado com uma quantidade infindável de pedidos, o que contribui para um uso eficiente da memória disponível.
 
-===== Acesso
+==== Acesso
 
 Os pedidos de `READ` e `WRITE` necessitam de ser identificados pela zona do disco onde a operação irá ocorrer, neste sentido a interface `AccessGenerator` disponibiliza o método `nextAccess` que devolve o offset da próxima operação a realizar, sendo de realçar que nem todas as implementações concretas apresentam a mesma performance, pois algumas seguem distribuições enquanto outras utilizam aritmética simples @tracegen2024 @gracia-tinedo2015.
 
@@ -82,7 +75,7 @@ A implementação do tipo sequencial é responsável por devolver os offsets num
 
 Por outro lado, os acessos totalmente aleatórios não favorecem quaisquer propriedades de localidade, daí que sejam especialmente úteis para evitar uma utilização eficiente da cache @tracegen2024. Por fim, os acessos zipfian seguem uma distribuição cuja skew pode ser manipulada pelo utilizador, neste sentido cargas de trabalho com hotspots são facilmente replicáveis por esta implementação @tracegen2024.
 
-===== Operação
+==== Operação
 
 Os sistemas de armazenamento suportam uma infinidade de operações, no entanto o gerador de operações apenas disponibiliza `READ`, `WRITE`, `FSYNC`, `FDATASYNC` e `NOP` por serem as mais comuns e portanto adotadas pela maioria das @api:pl de @io @didona2022 @ren2023. Embora a operação `NOP` não faça rigorosamente nada, a mesma é útil para testar a performance do benchmark independente da capacidade do disco, permitindo identificar o débito máximo que o sistema de armazenamento pode almejar @ren2023.
 
@@ -125,7 +118,7 @@ A implementação do tipo constante é a mais simples, isto porque devolve sempr
 
 Por fim, a replicação de padrões é obtida com recurso à implementação de sequência, sendo o utilizador responsável por definir uma lista de operações que mais tarde será repetidamente devolvida, neste caso em concreto, se o método `nextOperation` fosse invocado cinco vezes, as operações seriam devolvidas pela ordem: `WRITE`, `FSYNC`, `WRITE`, `FSYNC`, `WRITE` @ren2023.
 
-====== Barreiras
+===== Barreiras
 
 Em determinados cenários, torna-se necessário injetar operações de sincronização após a execução de um número definido de escritas, algo particularmente relevante na simulação de workloads reais onde os sistemas de ficheiros periodicamente forçam a persistência dos dados em disco @ren2023.
 
@@ -148,7 +141,7 @@ Para tal, o benchmark disponibiliza um mecanismo de barreiras que interceta o fl
 
 A composição de múltiplas barreiras é igualmente suportada, sendo estas ordenadas pelo critério de proximidade ao respetivo limiar, deste modo a barreira com menor número de operações em falta é avaliada prioritariamente @ren2023. Importa realçar que após cada injeção, a reordenação dinâmica é realizada para garantir que o escalonamento reflete o estado atualizado dos contadores, evitando assim situações de starvation entre barreiras com limiares distintos.
 
-===== Geração de Blocos
+==== Geração de Blocos
 
 A geração de blocos é sem dúvida a operação mais custosa, no entanto apenas torna-se necessária quando a operação selecionada for um `WRITE`, nesse sentido a interface de `BlockGenerator` disponibiliza o método `nextBlock` que preenche um buffer passado como argumento @constantinescu2011 @meyer2012.
 
@@ -192,7 +185,7 @@ Por fim, o gerador de duplicados e compressão procura seguir uma distribuição
 
 Além disso, a opção `refill_buffers` permite a partilha do buffer base entre blocos, deste modo quando os mesmos são criados a zona de entropia máxima é obtida a partir do buffer, consequentemente todos os blocos partilham a mesma informação e portanto a compressibilidade interbloco atinge o limite @constantinescu2011 @paulo2014.
 
-====== Geração de Duplicados e Compressão
+===== Geração de Duplicados e Compressão
 
 Para que o utilizador manipule a distribuição de duplicados e compressão, o benchmark oferece um ficheiro de configuração sobre o qual as informações são retiradas, bastando seguir o formato indicado @dedisbench @dedisbenchpp @paulo2013.
 
@@ -268,7 +261,7 @@ Por fim, depois de selecionado o identificador do bloco, volta a ser sorteado um
 
 Apesar de ser bastante eficiente, esta abordagem acarreta o custo associado à geração pseudoaleatória, uma operação que tende a ser mais exigente computacionalmente do que as restantes envolvidas na geração de conteúdo. No entanto, este custo permanece negligenciável quando comparado com o tempo das operações de @io, não constituindo, por isso, um gargalo na avaliação do sistema de armazenamento.
 
-==== Workloads Baseadas em Traces <trace-workloads>
+=== Workloads Baseadas em Traces <trace-workloads>
 
 Embora os geradores sintéticos ofereçam elevada flexibilidade na parametrização das workloads, a reprodução de comportamentos observados em ambientes de produção exige a utilização de traces reais, os quais capturam a sequência temporal de operações de @io executadas por sistemas em funcionamento @gracia-tinedo2015 @tracegen2024.
 
@@ -295,7 +288,7 @@ Neste sentido, cada um dos três geradores previamente descritos (acesso, opera�
 
 A leitura dos traces é realizada por um componente partilhado entre todas as implementações `trace-based`, o qual mantém um buffer de leitura configurável pelo utilizador através do parâmetro `memory`, evitando assim carregamentos excessivos em memória quando o trace excede a capacidade disponível.
 
-===== Workloads Híbridas
+==== Workloads Híbridas
 
 Uma vez que os geradores são definidos ao nível dos parâmetros individuais e o produtor conhece apenas a interface abstrata de cada um, a combinação entre geradores sintéticos e trace-based torna-se trivial @gracia-tinedo2015 @pang2026. Exemplificando, é possível utilizar acessos provenientes de um trace real enquanto as operações seguem uma distribuição percentual sintética e o conteúdo é gerado pelo modelo de deduplicação e compressão.
 
@@ -344,21 +337,21 @@ Uma vez que os geradores são definidos ao nível dos parâmetros individuais e 
 
 Esta abordagem constitui uma das principais contribuições do benchmark, pois permite colmatar as limitações temporais dos traces com a extensibilidade dos geradores sintéticos, resultando em workloads que preservam as propriedades estatísticas do ambiente real sem estarem confinadas à duração original da captura @tracegen2024 @pang2026.
 
-===== Extensões de Trace <trace-extensions>
+==== Extensões de Trace <trace-extensions>
 
 O problema fundamental da utilização de traces prende-se com a sua natureza finita, pois ao atingir o final do ficheiro torna-se necessário decidir como prosseguir com a geração de pedidos @tracegen2024. Para resolver esta limitação, o benchmark implementa três estratégias de extensão que diferem no grau de sofisticação e fidelidade ao trace original.
 
-====== Repetição
+===== Repetição
 
 A extensão mais elementar consiste na repetição cíclica do trace, onde ao atingir o final do ficheiro o leitor é reposicionado no início e os registos são novamente devolvidos pela mesma ordem @tracegen2024. Embora esta abordagem preserve perfeitamente a sequência original, a mesma não introduz variabilidade e portanto a workload resultante é estritamente periódica, algo que pode não refletir o comportamento real de um sistema em produção continuada.
 
-====== Amostragem
+===== Amostragem
 
 A segunda estratégia opera em duas fases distintas, sendo a primeira dedicada à recolha de amostras representativas do trace através de reservoir sampling, garantindo que cada registo do trace tem igual probabilidade de ser incluído independentemente do tamanho do ficheiro @tracegen2024.
 
 Ao atingir o final do trace, a segunda fase é iniciada com a construção de alias tables para cada dimensão, sendo esta estrutura de dados capaz de gerar amostras em tempo constante $O(1)$ a partir das distribuições marginais observadas @tracegen2024. Desta forma, os registos sintéticos gerados após o trace preservam as frequências relativas de cada offset, operação e identificador de bloco, embora a correlação entre dimensões não seja mantida por estas serem amostradas de forma independente.
 
-====== Regressão
+===== Regressão
 
 A extensão mais sofisticada procura capturar não apenas as distribuições marginais mas também as correlações entre as várias dimensões do trace, recorrendo para isso a um modelo de regressão linear bivariada @tracegen2024.
 
@@ -429,7 +422,7 @@ $
 
 Desta forma, a extensão por regressão é particularmente adequada quando se pretende prolongar a workload para além da duração do trace mantendo as dependências estruturais entre as dimensões, algo que a amostragem independente não consegue garantir @tracegen2024 @pang2026.
 
-==== Integração de Interfaces de I/O
+=== Integração de Interfaces de I/O
 
 Sabendo que o consumidor está à escuta de pedidos enviados pelo produtor, quando os mesmos são recebidos procede-se de imediato ao desencapsulamento para compreender o tipo de operação em questão e assim facilitar o acesso aos restantes parâmetros, como offset e conteúdo @didona2022.
 
@@ -482,7 +475,7 @@ Perante a combinação de interfaces síncronas e assíncronas, o método `submi
 
 /// Tendo isto em mente, o método `reap_left_completions` possibilita a espera forçosa dos pedidos pendentes, algo que deve ser utilizado entre a última submissão e a operação de `close` @didona2022.
 
-===== POSIX
+==== POSIX
 
 #let posix_config = figure(
   raw_code_block[
@@ -519,7 +512,7 @@ Perante a combinação de interfaces síncronas e assíncronas, o método `submi
 
 Por ostentar comportamento síncrono, o método `reap_left_completions` não tem relevância prática, destarte a receção de pedidos é seguida da syscall associada ao tipo de operação, sendo mais tarde devolvido o código de erro, bem como a estrutura do pedido @didona2022.
 
-===== AIO
+==== AIO
 
 #let aio_config = figure(
   raw_code_block[
@@ -552,7 +545,7 @@ Por ostentar comportamento síncrono, o método `reap_left_completions` não tem
 
 Para cada pedido in-flight, é mantido um buffer independente alinhado ao tamanho do bloco, garantindo compatibilidade com `O_DIRECT` e evitando cópias adicionais durante a submissão @didona2022. Um pool de índices disponíveis controla a reutilização segura dos buffers, sendo que quando não existem posições livres, a engine força a recolha de completions antes de aceitar novos pedidos, prevenindo assim a saturação do contexto.
 
-===== Uring
+==== Uring
 
 #let uring_config = figure(
   raw_code_block[
@@ -600,7 +593,7 @@ Tratando-se de uma interface assíncrona, o seu bom uso passa por diminuir a inv
 
 Depois do primeiro batch ser submetido, a estratégia é alterada para preservar a quantidade de pedidos in-flight, portanto mal seja encontrada uma @sqe dísponivel, a mesma é preparada e submetida independentemente de haver ou não um batch. É certo que esta abordagem aumenta as syscalls, porém quando combinada com a thread de polling do kernel, permite atingir débitos e @iops deveras elevados @uring_kernel.
 
-===== SPDK
+==== SPDK
 
 #let spdk_config = figure(
   raw_code_block[
@@ -644,7 +637,7 @@ No momento em que este recebe um pedido, é necessário aguardar por uma zona de
 
 Por fim, como os pedidos vão acompanhados de um trigger, a `SPDKEngine` é notificada acerca da conclusão e portanto percebe que é seguro devolver a struct ao produtor @spdk_docs.
 
-==== Recolha de Métricas
+=== Recolha de Métricas
 
 Durante a execução de workloads, o benchmark é responsável por recolher métricas sobre cada uma das operações de @io realizadas, algo fundamental na caracterização e posterior avaliação do sistema de armazenamento, isto porque scripts estatísticos podem analisar o ficheiro de log resultante das métricas @didona2022 @ren2023.
 
@@ -706,7 +699,7 @@ A estrutura do ficheiro de logging onde as métricas são armazenadas é de simp
 
 Por fim, quanto mais detalhadas forem as métricas recolhidas, pior será o desempenho do benchmark, daí que exista uma opção de desativação de métricas para atingir o máximo de performance @ren2023. Ademais, como as métricas são escritas num ficheiro de logging, o sistema de armazenamento é sobrecarregado para além da execução do benchmark, algo que pode originar o enviesamento de resultados @didona2022.
 
-===== Estatísticas e Relatório Final
+==== Estatísticas e Relatório Final
 
 Além do registo individual de métricas por operação, o benchmark agrega as observações recolhidas durante a execução e produz um relatório final com indicadores estatísticos para cada tipo de operação @ren2023 @didona2022.
 
@@ -739,11 +732,11 @@ Adicionalmente, três séries temporais são mantidas com granularidade ao segun
 
 Quando múltiplos jobs são executados em paralelo, o relatório contém os resultados individuais de cada job e um registo adicional resultante da fusão de todas as estatísticas, onde os histogramas de latência são combinados e os timestamps de início e fim são ajustados para refletir o intervalo global de execução @ren2023.
 
-==== Modelo de Execução <execution-model>
+=== Modelo de Execução <execution-model>
 
 A execução de uma workload envolve a orquestração de múltiplos componentes que cooperam entre si, desde a configuração inicial dos geradores até à terminação controlada e recolha de resultados @didona2022 @ren2023.
 
-===== Canais de Comunicação
+==== Canais de Comunicação
 
 A comunicação entre produtor e consumidor é realizada através de duas filas concorrentes lock-free, a primeira fila transporta os pedidos preenchidos do produtor para o consumidor, enquanto a segunda devolve as estruturas cujo pedido já foi concluído, possibilitando a sua reutilização sem alocações dinâmicas durante a execução.
 
@@ -751,7 +744,7 @@ O benchmark disponibiliza dois modos de operação para os canais: bloqueante e 
 
 Para maximizar o débito, as operações de enqueue e dequeue são realizadas em bulk, transferindo até 64 pacotes por invocação, o que amortiza o custo de sincronização entre threads e melhora a utilização da cache do processador @ren2023. Além disso, um pool de 1024 pacotes é pré-alocado durante a inicialização do canal, eliminando a necessidade de alocação de memória no caminho crítico de execução @didona2022.
 
-===== Terminação
+==== Terminação
 
 O controlo de terminação define o critério de paragem da workload, sendo suportadas duas estratégias configuráveis @ren2023. A terminação por iterações encerra a execução após a geração de um número fixo de pedidos, enquanto a terminação por tempo de execução impõe um limite temporal em milissegundos.
 
@@ -779,7 +772,7 @@ O controlo de terminação define o critério de paragem da workload, sendo supo
 
 A verificação da condição de terminação temporal é otimizada para evitar o custo excessivo de invocações ao relógio do sistema, sendo a consulta real do tempo realizada apenas a cada 4096 iterações @ren2023. Esta técnica de lazy time check reduz significativamente o overhead em workloads de alta frequência sem comprometer a precisão do limite temporal estabelecido.
 
-===== Paralelismo
+==== Paralelismo
 
 O benchmark suporta a execução paralela de múltiplos jobs sobre o mesmo dispositivo, sendo cada job constituído por um par produtor-consumidor independente que opera sobre canais dedicados @ren2023 @didona2022. O número de jobs é definido pelo parâmetro `numjobs`, resultando na criação de $2 times n$ threads, ou seja, uma de produção e outra de consumo.
 
@@ -787,7 +780,7 @@ Cada job instancia os seus próprios geradores de acesso, operação e conteúdo
 
 Esta abordagem permite avaliar o comportamento do sistema de armazenamento sob carga concorrente, algo fundamental na caracterização de cenários multi-tenant e na identificação de contenção entre threads de @io @didona2022.
 
-===== Rampa de Aquecimento
+==== Rampa de Aquecimento
 
 Em determinadas avaliações, é desejável que a carga de trabalho aumente progressivamente até atingir o débito máximo, evitando assim o enviesamento dos resultados iniciais causado pela inicialização de caches e estruturas internas do sistema de armazenamento @ren2023.
 
@@ -806,150 +799,3 @@ Para este efeito, o benchmark disponibiliza uma rampa de aquecimento configuráv
 )
 
 Por esta lógica, quando o rácio inicial é inferior ao final, a rampa de aquecimento aumenta gradualmente o débito de submissão, sendo o contrário inverso igualmente válido, oferecendo ao utilizador a flexibilidade de acelerar ou desacelerar a carga de trabalho conforme necessário @ren2023.
-
-=== Resultados Preliminares
-
-Com o objetivo de testar o protótipo, em particular o desempenho das várias interface de @io, foram desenvolvidas workloads de características distintas, projetadas para avaliar o sistema de armazenamento sob diferentes padrões de acesso, leituras e escritas intensivas, bem como cenários de alta concorrência @didona2022.
-
-+ *nop:* não são realizadas quaisquer operações ao nível do sistema de armazenamento, sendo por isso ideal na identificação do débito máximo por parte da interface de @io, consequentemente o grosso do tempo de execução é gasto em espaço de utilizador @ren2023.
-
-+ *wseq:* as escritas são realizadas do modo sequencial, seguindo o tamanho dos blocos. Ademais o conteúdo gerado é constante, como tal é frequentemente repetido o mesmo bloco e a taxa de compressão é máxima @dedisbench @dedisbenchpp.
-
-+ *rwmix:* as operações são divididas igualmente entre `READS` e `WRITES`, sem a evidência de padrões, pois a seleção é aleatória. De igual modo, os blocos e acessos são obtidos através de uma distribuição uniforme, como tal não existem duplicados e nenhuma zona do disco é particularmente popular, o que inviabiliza uma utilização eficiente da cache @paulo2014 @meyer2012.
-
-+ *zipf:* os acessos são obtidos por uma distribuição zipfian com skew de 0.9, o que aumenta a frequência dos offsets mais baixos. De resto, os blocos seguem uma determinada distribuição de duplicados e compressão, onde as operações são realizadas sob o padrão `READ`, `WRITE`, `NOP`, `WRITE` @talasila2019 @constantinescu2011.
-
-+ *zipf_fsync*: esta workload é essencialmente igual à zipf, contudo difere pelo facto de possuir uma barreira onde a cada 1024 escritas é lançado um `FSYNC` para sincronização dos conteúdos no disco @ren2023.
-
-Sabendo que a memória principal e mecanismos de cache do sistema operativo influenciam a execução do benchmark, os offsets das workloads vão até ao limite de quatro vezes a capacidade da @ram @lee2012. No entanto, por motivos de conveniência, o máximo de operações realizadas corresponde a dez milhões e a flag `O_DIRECT` foi desativada para fazer uso da page cache e assim diminuir o tempo de execução @ren2023.
-
-Tendo isto em consideração, as workloads foram replicadas num ambiente controlado para garantir a reprodutibilidade dos resultados e a comparabilidade entre os vários testes, tendo sido utilizada a seguinte especificação de hardware e software @ren2023:
-
-- *OS:* Ubuntu 22.04.5 LTS (Jammy Jellyfish) x86_64
-- *CPU:* 12th Gen Intel(R) Core(TM) i5-12500 (12) @ 4.60 GHz
-- *RAM:* 64 GiB DDR4 @ 3200 MT/s, 2 x 32 GiB modules
-- *Disco:* SSD NVMe Sandisk Corp 256 GB, non-rotational
-
-Por fim, a configuração dos backends de @io é constante entre a replicação das workloads, sendo de destacar a interface Uring com uma @sqe de profundidade 128 e ativação da flag `IORING_SETUP_SQPOLL` para criar uma thread do kernel dedicada a fazer polling na @sqe e assim evitar o custo das syscalls @uring_kernel. Por outro lado, a interface @spdk inicializa um reactor nos quatro primeiros cores e cinco threads lógicas para servir os pedidos de @io, sendo estes satisfeitos por um @bdev associado a um controlador de @nvme @spdk_docs.
-
-#let performance-table(workload_name, ..content) = figure(
-  table(
-    columns: (1fr, 1.6fr, 1fr, 1fr, 1fr, 1.2fr, 1.2fr),
-    inset: 6pt,
-    align: horizon + left,
-    fill: (x, y) => if y == 0 or x == 0 { gray.lighten(60%) },
-    table.header(
-      [*Engine*], [*Mean $plus.minus$ $sigma$ (s)*], [*Min (s)*],
-      [*Max (s)*], [*User (s)*], [*System (s)*], [*IOPS (k/s)*]
-    ),
-    ..content
-  ),
-  // kind: "performance",
-  // supplement: "Performance",
-  caption: [Execução da workload #workload_name]
-)
-
-#performance-table("nop",
-  [*POSIX*], [0.567 $plus.minus$ 0.192], [0.392], [0.801], [1.107], [0.010], [17636],
-  [*Libaio*], [2.458 $plus.minus$ 0.093], [2.089], [2.515], [2.858], [1.853], [4068],
-  [*Uring*], [1.073 $plus.minus$ 0.097], [0.925], [1.257], [1.411], [1.069], [9319],
-  [*SPDK*], [9.472 $plus.minus$ 0.045], [9.420], [9.503], [55.362], [0.153], [1055],
-)
-
-#performance-table("wsqe",
-  [*POSIX*], [20.991 $plus.minus$ 2.387], [19.527], [23.745], [24.323], [9.889], [476],
-  [*Libaio*], [22.661 $plus.minus$ 3.445], [18.688], [25.142], [27.294], [9.587], [441],
-  [*Uring*], [23.829 $plus.minus$ 2.768], [20.695], [25.941], [47.970], [84.578], [419],
-  [*SPDK*], [19.910 $plus.minus$ 0.084], [19.817], [19.981], [116.922], [0.311], [502],
-)
-
-#performance-table("rwmix",
-  [*POSIX*], [95.796 $plus.minus$ 11.202], [82.862], [102.407], [97.451], [12.140], [104],
-  [*Libaio*], [79.481 $plus.minus$ 28.754], [49.505], [106.832], [81.150], [12.664], [125],
-  [*Uring*], [53.931 $plus.minus$ 27.617], [27.578], [82.659], [108.344], [75.874], [185],
-  [*SPDK*], [19.800 $plus.minus$ 0.093], [19.706], [19.891], [116.341], [0.291], [505]
-)
-
-#performance-table("zipf",
-  [*POSIX*], [36.625 $plus.minus$ 3.801], [32.361], [39.655], [36.625], [12.039], [273],
-  [*Libaio*], [36.608 $plus.minus$ 1.372], [35.111], [37.805], [36.975], [11.971], [273],
-  [*Uring*], [27.835 $plus.minus$ 0.758], [26.974], [28.404], [49.214], [52.578], [359],
-  [*SPDK*], [21.733 $plus.minus$ 0.151], [21.636], [21.907], [116.751], [4.987], [460],
-)
-
-#performance-table("zipf_fsync",
-  [*POSIX*], [107.84 $plus.minus$ 39.384], [66.800], [145.327], [149.822], [31.932], [92],
-  [*Libaio*], [161.73 $plus.minus$ 33.294], [132.694], [198.074], [195.341], [27.219], [61],
-  [*Uring*], [159.28 $plus.minus$ 2.240], [156.999], [161.477], [314.117], [191.201], [62],
-  [*SPDK*], [21.803 $plus.minus$ 0.181], [21.672], [22.009], [117.774], [4.910], [458],
-)
-
-Numa breve análise dos resultados, percebemos que o protótipo atinge o máximo de 17 milhões @iops para a interface POSIX, isto porque a operação `NOP` não é naturalmente suportada pelo backend, sendo simulada por uma invocação vazia @didona2022. Sob outro enfoque, as restantes interfaces apresentam uma implementação de `NOP` mais complexa, daí que a performance obtida seja significativamente pior @ren2023.
-
-Embora os resultados possam estar enviesados pela desativação da flag `O_DIRECT`, constatámos que o desempenho dos backends piora quando as workloads apresentam determinadas características, nomeadamente acessos aleatórios e operações de `FSYNC`, no entanto estes aspetos são pouco visíveis em @spdk, talvez por evitar os mecanismos da stack de @io e dar bypass ao kernel @spdk_docs @didona2022.
-
-Por fim, a performance do Uring ficou abaixo das expectativas, afinal a configuração de polling na @sq permite eliminar as syscalls e aumentar o débito de submissão, supondo valores superiores a POSIX @uring_kernel @rust_iouring_async.
-
-=== Próximas Etapas
-
-Embora o protótipo possua imensas funcionalidades, tendo inclusive finalizado alguns componentes, dos quais se destacam as implementações de backends de @io e geração de conteúdo sintético, ainda restam pontos diferenciadores relativamente aos demais benchmarks @ren2023 @didona2022.
-
-#figure(
-  timeliney.timeline(
-    show-grid: true,
-    {
-      import timeliney: *
-
-      headerline(group(([*2026*], 6)))
-      headerline(
-        group(
-          [*Feb*],
-          [*Mar*],
-          [*Apr*],
-          [*May*],
-          [*Jun*],
-          [*Jul*],
-        ),
-      )
-
-      taskgroup(
-        title: [*Research*],
-        style: (stroke: 5pt + black), {
-          task("Realistic content generation", (0, 2), style: (stroke: 5pt + gray))
-          task("Trace-based and synthetic workloads", (0, 3), style: (stroke: 5pt + gray))
-          task("Temporal and spatial locality", (1, 3), style: (stroke: 5pt + gray))
-        }
-      )
-
-      taskgroup(
-        title: [*Development*],
-        style: (stroke: 5pt + black), {
-          task("FIU trace parser", (2, 3), style: (stroke: 5pt + gray))
-          task("Hybrid workload generator", (3, 5), style: (stroke: 5pt + gray))
-          task("Thread and process parallelism", (3, 5), style: (stroke: 5pt + gray))
-        }
-      )
-
-      taskgroup(
-        title: [*Evaluation*],
-        style: (stroke: 5pt + black), {
-          task("Workload validation", (3, 5), style: (stroke: 5pt + gray))
-          task("Storage systems evaluation", (4, 6), style: (stroke: 5pt + gray))
-          task("Performance metrics analysis", (4, 6), style: (stroke: 5pt + gray))
-        }
-      )
-
-      taskgroup(
-        title: [*Thesis*],
-        style: (stroke: 5pt + black), {
-          task("Writing of the dissertation", (2, 6), style: (stroke: 5pt + gray))
-        }
-      )
-    }
-  ),
-  caption: [Calendarização das próximas tarefas com sobreposição de fases]
-)
-
-Deste modo, antes de partir para a implementação das workloads híbridas que partilham a geração de conteúdo sintético e realista, é necessário realizar um estudo sobre a melhor forma de atingir isso sem penalizar significativamente a performance do benchmark ao ponto de não conseguir saturar o disco @gracia-tinedo2015 @pang2026 @tracegen2024.
-
-Tendo isso alcançado, resta a avaliação intensiva do benchmark através das múltiplas combinações entre backends, geradores de conteúdo e parâmetros gerais da workload, sendo isto tudo desenvolvido em paralelo com a escrita da dissertação @ren2023 @didona2022.
