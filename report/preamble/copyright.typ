@@ -8,6 +8,11 @@ Readers needing authorization conditions not provided for in the indicated licen
 
 == License granted to users of this work:
 
+#image("../logos/cc/CCBYNCND.png")
+*CC BY-NC-ND*\
+https://creativecommons.org/licenses/by-nc-nd/4.0/ // _[Esta é a mais restritiva das nossas seis licenças principais, só permitindo que outros façam download dos seus trabalhos e os compartilhem desde que lhe sejam atribuídos a si os devidos créditos, mas sem que possam alterá- los de nenhuma forma ou utilizá-los para fins comerciais.]_
+
+/*
 _[Caso o autor pretenda usar uma das licenças Creative Commons, deve escolher e deixar *apenas um* dos seguintes ícones e respetivo lettering e URL, eliminando o texto em itálico que se lhe segue. Contudo, é possível optar por outro tipo de licença, devendo, nesse caso, ser incluída a informação necessária adaptando devidamente esta minuta]_
 
 #image("../logos/cc/CCBY.png")
@@ -29,7 +34,4 @@ https://creativecommons.org/licenses/by-nc/4.0/ _[Esta licença permite que outr
 #image("../logos/cc/CCBYNCSA.png")
 *CC BY-NC-SA*\
 https://creativecommons.org/licenses/by-nc-sa/4.0/ _[Esta licença permite que outros remisturem, adaptem e criem a partir do seu trabalho para fins não comerciais, desde que lhe atribuam a si o devido crédito e que licenciem as novas criações ao abrigo de termos idênticos.]_
-
-#image("../logos/cc/CCBYNCND.png")
-*CC BY-NC-ND*\
-https://creativecommons.org/licenses/by-nc-nd/4.0/ _[Esta é a mais restritiva das nossas seis licenças principais, só permitindo que outros façam download dos seus trabalhos e os compartilhem desde que lhe sejam atribuídos a si os devidos créditos, mas sem que possam alterá- los de nenhuma forma ou utilizá-los para fins comerciais.]_
+*/

@@ -295,7 +295,7 @@ While reading the `.prismo` binary file, records are buffered to improve deseria
 |---------------|-----------------------------------------------------------|
 | `repeat`      | Restart from the beginning                                |
 | `sample`      | Samples records according to their observed distribution  |
-| `regression`  | Extrapolate via multivariate regression                   |
+| `regression`  | Extrapolate via bivariate regression                   |
 
 > [!NOTE]
 > Trace-based generation is available in [**operation**](#operation), [**access**](#access), and [**content**](#content) generators. This makes hybrid workloads possible, where one generator can replay traces while the others produce synthetic data.

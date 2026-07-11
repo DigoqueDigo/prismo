@@ -3,7 +3,7 @@
 #show: thesis(
   author: "Diogo Alexandre Correia Marques",
   title: [Realistic Benchmarking of Data Deduplication \ and  Compression Systems],
-  date: [january 2026],
+  date: [jully 2026],
   supervisors: (
     [João Tiago Medeiros Paulo],
     // [Co-Supervisor Name],
@@ -47,22 +47,16 @@
   description-separator: [],
 )
 
-#set par(
-  justify: true,
-  spacing: 1em,
-  first-line-indent: 1em,
-)
-
 // Setup index
 #import "@preview/in-dexter:0.7.2": *
 
 #formatting.show-preamble[
-  // #include "preamble/copyright.typ"
-  // #pagebreak()
-  // #include "preamble/acknowledgements.typ"
-  // #pagebreak()
-  // #include "preamble/integrity.typ"
-  // #pagebreak()
+  #include "preamble/copyright.typ"
+  #pagebreak()
+  #include "preamble/acknowledgements.typ"
+  #pagebreak()
+  #include "preamble/integrity.typ"
+  #pagebreak()
   #include "preamble/abstract.typ"
   #pagebreak()
   #outline()
@@ -80,6 +74,12 @@
 ]
 
 #show: formatting.show-main-content
+
+#set par(
+  justify: true,
+  spacing: 1em,
+  first-line-indent: 1em,
+)
 
 #include "chapters/introduction.typ"
 #include "chapters/background.typ"
