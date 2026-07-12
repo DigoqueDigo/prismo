@@ -130,9 +130,29 @@ Por outro lado, a compressão é alcançada com a flag `buffer_compress_chunk=in
 
 Em suma, estes fatores contribuem para que a geração de conteúdo do @fio não respeite os critérios de duplicados e compressibilidade que gostaríamos de ver nas workloads, além disso os traces do @fiu vêm acompanhados com a identificação do processo responsável pela operação de @io, algo que o @fio não é capaz de reproduzir por as workloads não serem partilhadas entre processos, quando muito dívidas @fio_docs.
 
+==== Vdbench
+
+À semelhança do @fio, o Vdbench permite a manipulação de parâmetros relativos ao padrão de acesso, distribuição das operações e profundidade de @io, oferecendo igualmente suporte à simulação de deduplicação e compressão através dos parâmetros `dedupratio` e `compratio` @vdbench.
+
+#figure(
+  raw_code_block[
+    ```
+    dedupratio=2.0,dedupunit=4k,compratio=1.25
+    sd=sd1,lun=/dev/nvme0n1,size=808435761152,openflags=o_direct
+    wd=wd1,sd=sd1,rdpct=33,seekpct=100,xfersize=4k
+    rd=rd1,wd=wd1,iorate=max,elapsed=900,interval=1,threads=1
+    ```
+  ],
+  caption: [Configuração de uma workload Vdbench com deduplicação e compressão]
+)
+
+No entanto, estes parâmetros são especificados enquanto rácios globais e não como distribuições, o que significa que não é possível definir grupos de blocos com taxas de duplicação e compressibilidade distintas, algo que o DEDISbench++ e a solução proposta nesta dissertação permitem @dedisbenchpp. Por exemplo, um `dedupratio` de 2.0 indica que metade dos blocos são duplicados, porém todos partilham a mesma taxa de compressão, o que não reflete a heterogeneidade observada em ambientes reais @gracia-tinedo2015.
+
+Ademais, o Vdbench não oferece suporte à reprodução de traces reais, sendo todas as workloads geradas sinteticamente @vdbench. A ferramenta está igualmente limitada à interface POSIX síncrona, não existindo suporte nativo para interfaces assíncronas como io_uring ou @spdk, o que restringe a capacidade de avaliar os sistemas de armazenamento modernos que beneficiam destas interfaces @didona2022 @ren2023.
+
 === Discussão
 
-Após a experienciação das ferramentas anteriormente mencionadas, destaca-se que os requisitos para workloads realistas são cumpridos apenas parcialmente, contudo a combinação das configurações que cada uma oferece aproxima-nos no objetivo final, ou seja, se o @fio conseguisse replicar a estratégia de duplicados e compressão do DEDISbench++ e ao mesmo tempo manter o suporte a múltiplas @api:pl de @io, somente ficava por resolver a questão da simulação de traces do @fiu @paulo2014 @dedisbenchpp.
+Após a experienciação das ferramentas anteriormente mencionadas, destaca-se que os requisitos para workloads realistas são cumpridos apenas parcialmente, contudo a combinação das configurações que cada uma oferece aproxima-nos no objetivo final, ou seja, se o @fio conseguisse replicar a estratégia de duplicados e compressão do DEDISbench++ e ao mesmo tempo manter o suporte a múltiplas @api:pl de @io, somente ficava por resolver a questão da simulação de traces do @fiu @paulo2014 @dedisbenchpp. Por outro lado, o Vdbench apesar de ser amplamente utilizado em ambientes empresariais, apresenta as mesmas limitações ao nível da geração de conteúdo, agravadas pela ausência de interfaces assíncronas e pelo overhead inerente à máquina virtual Java @vdbench.
 
 Ademais, a integração entre workloads geradas sinteticamente e traces obtidos em ambiente de produção, é algo totalmente inovador e que soluciona os problemas resultantes de traces incompletos, deste modo as informações em falta seriam geradas artificialmente através de uma distribuição escolhida pelo utilizador ou então conforme um padrão @ameri2016 @tracegen2024.
 

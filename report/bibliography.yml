@@ -497,3 +497,10 @@ shishua:
   author: Espadrine
   url: https://espadrine.github.io/blog/posts/shishua-the-fastest-prng-in-the-world.html
   date: 2021
+
+vdbench:
+  type: web
+  title: "Vdbench: A disk and tape I/O workload generator"
+  author: Henk Vandenbergh
+  url: https://wiki.lustre.org/images/c/c7/Vdbench_Users_Guide_50407.pdf
+  date: 2014
