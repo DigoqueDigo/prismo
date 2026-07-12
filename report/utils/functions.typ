@@ -9,3 +9,22 @@
     align(left)[#body]
   )
 }
+
+#let my_block(body, color: color, width: 100%) = {
+  block(
+    fill: color,
+    stroke: 1pt,
+    radius: 5pt,
+    inset: 8pt,
+    width: width,
+    align(left)[#body]
+  )
+}
+
+#let question_block(body) = {
+  my_block(body, color: gray.lighten(60%), width: 100%)
+}
+
+#let validation_point_block(body) = {
+  my_block(body, color: navy.lighten(80%), width: 100%)
+}

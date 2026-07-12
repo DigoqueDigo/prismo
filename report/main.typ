@@ -85,6 +85,7 @@
 #include "chapters/background.typ"
 #include "chapters/relatedwork.typ"
 #include "chapters/architecture.typ"
+#include "chapters/evaluation.typ"
 
 #formatting.show-postamble[
   // Render bibliography
