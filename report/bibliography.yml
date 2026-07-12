@@ -425,3 +425,75 @@ talwadker2014:
     publisher:
       name: USENIX Association
     location: Seattle, WA
+
+vitter1985:
+  type: article
+  title: "Random Sampling with a Reservoir"
+  author:
+    - Vitter, Jeffrey S.
+  date: 1985-03
+  serial-number:
+    doi: 10.1145/3147.3165
+  parent:
+    type: Periodical
+    title: ACM Transactions on Mathematical Software
+    publisher:
+      name: Association for Computing Machinery
+    volume: 11
+    issue: 1
+  page-range: 37-57
+
+walker1977:
+  type: article
+  title: "An Efficient Method for Generating Discrete Random Variables with General Distributions"
+  author:
+    - Walker, Alastair J.
+  date: 1977-09
+  serial-number:
+    doi: 10.1145/355744.355749
+  parent:
+    type: Periodical
+    title: ACM Transactions on Mathematical Software
+    publisher:
+      name: Association for Computing Machinery
+    volume: 3
+    issue: 3
+  page-range: 253-256
+
+vose1991:
+  type: article
+  title: "A Linear Algorithm for Generating Random Numbers with a Given Distribution"
+  author:
+    - Vose, Michael D.
+  date: 1991-09
+  serial-number:
+    doi: 10.1109/32.92917
+  parent:
+    type: Periodical
+    title: IEEE Transactions on Software Engineering
+    publisher:
+      name: IEEE
+    volume: 17
+    issue: 9
+  page-range: 972-975
+
+hdrhistogram:
+  type: web
+  title: "HdrHistogram: A High Dynamic Range Histogram"
+  author: Gil Tene
+  url: https://github.com/HdrHistogram/HdrHistogram
+  date: 2024
+
+moodycamel:
+  type: web
+  title: "moodycamel::ConcurrentQueue: An industrial-strength lock-free queue for C++"
+  author: Cameron Desrochers
+  url: https://github.com/cameron314/concurrentqueue
+  date: 2024
+
+shishua:
+  type: web
+  title: "SHISHUA: The Fastest PRNG in the World"
+  author: Espadrine
+  url: https://espadrine.github.io/blog/posts/shishua-the-fastest-prng-in-the-world.html
+  date: 2021

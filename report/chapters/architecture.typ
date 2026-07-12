@@ -2,9 +2,9 @@
 
 == Arquitetura <chapter3>
 
-Depois de esclarecido o problema da avaliação realista dos sistemas de armazenamento e compreendidos os conceitos em seu redor, este capítulo visa abordar a arquitetura do benchmark, passando pelo modelo de execução que fundamenta a interação entre componentes, as estratégias adotadas para geração de workloads sintéticas e baseadas em traces, a integração com @api:pl de @io de natureza diversa e o sistema de recolha de métricas @didona2022 @ren2023 @rust_iouring_async.
+Depois de esclarecido o problema da avaliação realista dos sistemas de armazenamento e compreendidos os conceitos em seu redor, este capítulo visa abordar a arquitetura do benchmark, passando pelo modelo de execução que fundamenta a interação entre componentes, as estratégias adotadas para geração de workloads sintéticas e baseadas em traces, a integração com @api:pl de @io de natureza diversa e o sistema de recolha de métricas @didona2022 @ren2023.
 
-Numa primeira abordagem ao problema, a geração de conteúdo é facilmente dissociável das operações solicitadas ao sistema de armazenamento, sendo estas realizadas por meio das @api:pl de @io. Deste modo, a arquitetura pode ser dividida em dois grandes componentes que estabelecem cada um interfaces para manipulação da conduta: a geração de parâmetros da workload e a submissão de pedidos ao dispositivo @didona2022 @ren2023. A interface de geração abstrai as implementações concretas, daí que a sua utilização não implique desvios de padrão caso o utilizador escolha usufruir de dados sintéticos ou reais obtidos através de traces, do mesmo modo esta lógica é aplicável para a interface de abstração do disco @tracegen2024 @gracia-tinedo2018.
+Numa primeira abordagem ao problema, a geração de conteúdo é facilmente dissociável das operações solicitadas ao sistema de armazenamento, sendo estas realizadas por meio das @api:pl de @io. Deste modo, a arquitetura pode ser dividida em dois grandes componentes que estabelecem cada um interfaces para manipulação da conduta: a geração de parâmetros da workload e a submissão de pedidos ao dispositivo @didona2022 @ren2023. A interface de geração abstrai as implementações concretas, daí que a sua utilização não implique desvios de padrão caso o utilizador escolha usufruir de dados sintéticos ou reais obtidos através de traces, do mesmo modo esta lógica é aplicável para a interface de abstração do disco @tracegen2024 @gracia-tinedo2015.
 
 === Modelo de Execução <execution-model>
 
@@ -12,7 +12,7 @@ A execução de uma workload envolve a orquestração de múltiplos componentes 
 
 ==== Canais de Comunicação
 
-A comunicação entre produtor e consumidor é realizada através de duas filas concorrentes lock-free: a primeira transporta os pedidos preenchidos do produtor para o consumidor, enquanto a segunda devolve as estruturas cujo pedido já foi concluído, possibilitando a sua reutilização sem alocações dinâmicas durante a execução.
+A comunicação entre produtor e consumidor é realizada através de duas filas concorrentes lock-free @moodycamel: a primeira transporta os pedidos preenchidos do produtor para o consumidor, enquanto a segunda devolve as estruturas cujo pedido já foi concluído, possibilitando a sua reutilização sem alocações dinâmicas durante a execução.
 
 Uma vez que as filas apresentam capacidade limitada, e tendo em consideração que à partida o produtor será mais performante que o consumidor, este mecanismo permite alcançar buffering e backpressure em simultâneo, pois quando a capacidade limite for atingida, o produtor irá bloquear e portanto o consumidor jamais será sobrecarregado com uma quantidade infindável de pedidos, o que contribui para um uso eficiente da memória disponível.
 
@@ -211,7 +211,7 @@ Embora a implementação principal desta interface seja aquela que combina dupli
   caption: [Hierarquia da interface de geração de blocos]
 )
 
-Tal como seria expectável, os geradores necessitam de conhecer o tamanho do bloco, deste modo podem garantir que os limites dos buffers jamais serão violados. A implementação mais simplista deste gerador corresponde ao constante, que devolve sempre o mesmo buffer, resultando numa deduplicação e compressibilidade interbloco máximas. Por outro lado, o aleatório tem exatamente o comportamento oposto, pois ao devolver buffers diferentes não existem duplicados e a entropia é elevada @maxg_lz77 @huffman_wiki.
+Tal como seria expectável, os geradores necessitam de conhecer o tamanho do bloco, deste modo podem garantir que os limites dos buffers jamais serão violados. A implementação mais simplista deste gerador corresponde ao constante, que devolve sempre o mesmo buffer, resultando numa deduplicação e compressibilidade interbloco máximas. Por outro lado, o aleatório tem exatamente o comportamento oposto, pois ao devolver buffers diferentes não existem duplicados e a entropia é elevada, resultando em dados virtualmente incompressíveis @constantinescu2011.
 
 #figure(
   grid(
@@ -318,7 +318,7 @@ Na situação em que a lista encontra-se completa, um dos elementos é seleciona
 
 Por fim, depois de selecionado o identificador do bloco, volta a ser sorteado um número aleatório para descobrir a taxa de compressão a aplicar, de relembrar que a distribuição é obtida pela entrada do mapa selecionada inicialmente @constantinescu2011 @paulo2014.
 
-Apesar de ser bastante eficiente, esta abordagem acarreta o custo associado à geração pseudoaleatória, uma operação que tende a ser mais exigente computacionalmente do que as restantes envolvidas na geração de conteúdo. No entanto, este custo permanece negligenciável quando comparado com o tempo das operações de @io, não constituindo, por isso, um gargalo na avaliação do sistema de armazenamento.
+Apesar de ser bastante eficiente, esta abordagem acarreta o custo associado à geração pseudoaleatória, uma operação que tende a ser mais exigente computacionalmente do que as restantes envolvidas na geração de conteúdo. Para mitigar este custo, a implementação faz uso do gerador SHISHUA @shishua, que realiza gerações massivas em buffer, permitindo à aplicação recolher valores pseudo-aleatórios com latência reduzida. Desta forma, o custo permanece negligenciável quando comparado com o tempo das operações de @io, não constituindo um gargalo na avaliação do sistema de armazenamento.
 
 ==== Workloads Baseadas em Traces <trace-workloads>
 
@@ -404,9 +404,9 @@ A extensão mais elementar consiste na repetição cíclica do trace, onde ao at
 
 ===== Amostragem
 
-A segunda estratégia opera em duas fases distintas, sendo a primeira dedicada à recolha de amostras representativas do trace através de reservoir sampling, garantindo que cada registo do trace tem igual probabilidade de ser incluído independentemente do tamanho do ficheiro @tracegen2024.
+A segunda estratégia opera em duas fases distintas, sendo a primeira dedicada à recolha de amostras representativas do trace através de reservoir sampling @vitter1985, garantindo que cada registo do trace tem igual probabilidade de ser incluído independentemente do tamanho do ficheiro @tracegen2024.
 
-Ao atingir o final do trace, a segunda fase é iniciada com a construção de alias tables para cada dimensão, sendo esta estrutura de dados capaz de gerar amostras em tempo constante $O(1)$ a partir das distribuições marginais observadas @tracegen2024. Desta forma, os registos sintéticos gerados após o trace preservam as frequências relativas de cada offset, operação e identificador de bloco, embora a correlação entre dimensões não seja mantida por estas serem amostradas de forma independente.
+Ao atingir o final do trace, a segunda fase é iniciada com a construção de alias tables para cada dimensão @walker1977 @vose1991, sendo esta estrutura de dados capaz de gerar amostras em tempo constante $O(1)$ a partir das distribuições marginais observadas @tracegen2024. Desta forma, os registos sintéticos gerados após o trace preservam as frequências relativas de cada offset, operação e identificador de bloco, embora a correlação entre dimensões não seja mantida por estas serem amostradas de forma independente.
 
 ===== Regressão
 
@@ -723,7 +723,7 @@ Por fim, quanto mais detalhadas forem as métricas recolhidas, pior será o dese
 
 Além do registo individual de métricas por operação, o benchmark agrega as observações recolhidas durante a execução e produz um relatório final com indicadores estatísticos para cada tipo de operação @ren2023 @didona2022.
 
-As latências são registadas num histograma HDR capaz de calcular percentis com elevada precisão e baixo consumo de memória, disponibilizando os valores p50, p90, p95, p99, p99.9 e p99.99, métricas particularmente relevantes na caracterização da cauda da distribuição de latências @ren2023.
+As latências são registadas num histograma HDR @hdrhistogram capaz de calcular percentis com elevada precisão e baixo consumo de memória, disponibilizando os valores p50, p90, p95, p99, p99.9 e p99.99, métricas particularmente relevantes na caracterização da cauda da distribuição de latências @ren2023.
 
 Adicionalmente, três séries temporais são mantidas com granularidade ao segundo: número de operações, largura de banda e latência média, sendo estas obtidas por agregadores que acumulam os valores por janela temporal @didona2022.
 
