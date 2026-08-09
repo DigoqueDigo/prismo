@@ -9,6 +9,8 @@ Prismo is a configurable block-based I/O benchmark tool designed to stress-test 
 | [**Astroide**](tools/astroide/README.md)  | Converts `.blkparse` block traces into the compact binary `.prismo` format used by trace-driven generators                       |
 | [**Deltoide**](tools/deltoide/README.md)  | Analyses a dataset and emits compression/deduplication distribution profiles, ready to paste into a workload config              |
 | [**Cardoide**](tools/cardoide/README.md)  | Campaign runner, simplifies the execution of multiple workloads by allowing repeated runs and providing configurable filters     |
+| [**Scripts**](tools/scripts/README.md)    | Python scripts that parse execution logs and reports, generating plots and statistical analysis                                 |
+| [**Monitor**](monitor/README.md)          | Prometheus and Grafana stack that displays live host metrics and replays the metrics collected during a campaign                |
 
 ## Prerequisites
 
@@ -364,7 +366,7 @@ The `spdk` engine uses the [**bdev**](https://spdk.io/doc/bdev.html) interface, 
 
 ### Logger
 
-The logger captures benchmark activity and writes detailed execution records. These logs are stored in a structured format, which can then be analyzed with the scripts inside [**tools**](/tools/scripts/) to generate plots and run statistical analysis.
+The logger captures benchmark activity and writes detailed execution records. These logs are stored in a structured format, which can then be analyzed with the scripts inside [**tools**](tools/scripts/README.md) to generate plots and run statistical analysis.
 
 Logging detail follows the `metric` level selected in [**job**](#job). As you move from `none` to `full`, records include progressively richer information.
 
