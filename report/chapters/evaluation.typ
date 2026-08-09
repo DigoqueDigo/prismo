@@ -80,15 +80,15 @@ Todas as experiências foram conduzidas numa única máquina, evitando assim que
   caption: [Especificações da máquina utilizada nas experiências]
 ) <hardware>
 
-O sistema opera sobre Ubuntu 20.04.6 LTS com kernel Linux 5.4.0-216-generic, cabendo referir que a versão do kernel condiciona as funcionalidades disponíveis nas interfaces assíncronas, em particular no io_uring, cuja implementação tem vindo a ser progressivamente otimizada desde a sua introdução @uring_kernel.
+O sistema opera sobre Ubuntu 20.04.6 LTS com kernel Linux 5.4.0-216-generic, versão que condiciona as funcionalidades disponíveis nas interfaces assíncronas, em particular no io_uring, cuja implementação tem vindo a ser progressivamente otimizada desde a sua introdução @uring_kernel.
 
 Convém realçar que todos os acessos são efetuados com a flag `O_DIRECT`, o que elimina a intervenção da page cache e garante que os pedidos atingem efetivamente o dispositivo, sendo esta uma condição indispensável para que as métricas reflitam o comportamento do sistema de armazenamento e não o da memória @didona2022 @ren2023. Esta garantia é integral sobre o dispositivo em bruto, no entanto os sistemas de ficheiros avaliados impõem-lhe restrições que serão detalhadas adiante.
 
 ==== Ferramentas Comparadas
 
-A avaliação confronta o Prismo, na versão 1.0.0, com o @fio e o Vdbench, duas das ferramentas mais utilizadas na avaliação de sistemas de armazenamento, sendo consideradas as versões mais recentes de cada uma, respetivamente a 3.42 e a 5.04.07 @fio_docs @vdbench.
+A avaliação confronta o Prismo, na versão 1.0.0, com o @fio e o Vdbench, duas das ferramentas mais utilizadas na avaliação de sistemas de armazenamento, nas versões mais recentes de cada uma, respetivamente a 3.42 e a 5.04.07 @fio_docs @vdbench.
 
-Estas ferramentas não partilham, no entanto, o mesmo âmbito de aplicação, pois enquanto o @fio suporta as mesmas interfaces de @io que o Prismo, ainda que o acesso ao @spdk seja conseguido através de um plugin externo, o Vdbench opera exclusivamente sobre POSIX síncrono, o que restringe a comparação entre as três ferramentas a esse cenário @fio_docs @vdbench.
+Estas ferramentas não partilham, no entanto, o mesmo âmbito de aplicação, pois enquanto o @fio suporta as mesmas interfaces de @io que o Prismo, apesar de o acesso ao @spdk ser conseguido através de um plugin externo, o Vdbench opera exclusivamente sobre POSIX síncrono, o que restringe a comparação entre as três ferramentas a esse cenário @fio_docs @vdbench.
 
 #figure(
   table(
@@ -113,7 +113,7 @@ Sempre que possível, as configurações foram replicadas entre ferramentas de m
 
 ==== Campanha Experimental
 
-A campanha experimental é constituída por quinze workloads base, cada uma isolando exatamente uma dimensão relativamente à anterior, o que permite atribuir as diferenças observadas a um único fator. Estas workloads encontram-se descritas na @workloads-base, sendo posteriormente replicadas para as quatro interfaces de @io avaliadas, do que resulta um total de sessenta configurações.
+A campanha experimental é constituída por quinze workloads base, cada uma isolando exatamente uma dimensão relativamente à anterior, o que permite atribuir as diferenças observadas a um único fator. Estas workloads encontram-se descritas na @workloads-base, e posteriormente replicadas para as quatro interfaces de @io avaliadas, do que resulta um total de sessenta configurações.
 
 #[
 #show figure: set block(breakable: true)
@@ -144,18 +144,24 @@ A campanha experimental é constituída por quinze workloads base, cada uma isol
 ) <workloads-base>
 ]
 
-A dimensão das workloads foi fixada em 752.91 GiB, valor que corresponde a quatro vezes a memória disponível, garantindo assim que o conjunto de dados manipulado não é passível de acomodação em cache e que os pedidos atingem efetivamente o dispositivo. Nas workloads mais demoradas, nomeadamente aquelas assentes em acessos aleatórios, alcançar este volume implicaria execuções incomportáveis, daí que nestes casos a condição de paragem seja de quinze minutos de execução, duração suficiente para que o sistema atinja um regime estacionário @traeger2008 @tarasov2011.
+A dimensão das workloads foi fixada em 752.91 GiB, valor que corresponde a quatro vezes a memória disponível, garantindo assim que o conjunto de dados manipulado não é passível de acomodação em cache e que os pedidos atingem efetivamente o dispositivo. Nas workloads mais demoradas, em particular aquelas assentes em acessos aleatórios, alcançar este volume implicaria execuções incomportáveis, daí que nestes casos a condição de paragem seja de quinze minutos de execução, duração suficiente para que o sistema atinja um regime estacionário @traeger2008 @tarasov2011.
 
 No que respeita às interfaces, o io_uring e o libaio operam com 128 entradas na fila de submissão, sendo no primeiro caso ativado o polling do kernel através das flags `IORING_SETUP_SQPOLL` e `IORING_SETUP_SQ_AFF`, enquanto o @spdk é configurado com uma máscara de quatro reactors e uma única thread lógica.
 
-Antes de cada execução, o conteúdo em memória é sincronizado com o disco e as caches do sistema são invalidadas, seguindo-se um período de espera de cinco minutos que permite ao dispositivo estabilizar após a carga anterior. Só então tem início a recolha de métricas, sendo o benchmark lançado um segundo depois de forma a garantir que o período inicial fica devidamente registado.
+Entre a execução de workloads consecutivas é aplicado um procedimento de limpeza que garante o isolamento entre medições, evitando que o estado deixado por uma workload contamine os resultados da seguinte. Este procedimento inicia-se com um `sync`, que força a escrita para o disco de todas as páginas ainda pendentes em memória, assegurando deste modo que nenhuma operação da workload anterior transita para a janela de medição seguinte.
+
+De seguida, é escrito o valor 3 em `/proc/sys/vm/drop_caches`, invalidando não só a page cache mas também as estruturas de dentries e inodes mantidas pelo kernel. Esta invalidação assume particular importância nos sistemas de ficheiros avaliados, uma vez que, conforme anteriormente exposto, a flag `O_DIRECT` não impede o recurso à cache quando as otimizações de conteúdo se encontram ativas.
+
+Por fim, o procedimento aguarda cinco minutos antes de iniciar a workload seguinte, período durante o qual o dispositivo permanece em repouso e conclui as tarefas internas de manutenção, como o garbage collection e o esvaziamento dos buffers. Sem esta pausa, uma workload intensiva em escritas deixaria o dispositivo num estado degradado, penalizando artificialmente a workload subsequente @traeger2008 @tarasov2011.
+
+Só então tem início a recolha de métricas, sendo o benchmark lançado um segundo depois de modo a garantir que o período inicial fica devidamente registado.
 
 // TODO: número de repetições por configuração e tratamento estatístico (Cardoide com --repetitions),
 //       incluindo a forma como a média e o desvio padrão são calculados sobre as execuções
 
 ==== Sistemas de Armazenamento Avaliados
 
-As workloads são executadas sobre três sistemas de armazenamento distintos, sendo o dispositivo @nvme utilizado em bruto como linha de base agnóstica ao conteúdo, enquanto o Btrfs e o @zfs são avaliados por implementarem otimizações sensíveis às propriedades dos dados, nomeadamente compressão e deduplicação.
+As workloads são executadas sobre três sistemas de armazenamento distintos, sendo o dispositivo @nvme utilizado em bruto como linha de base agnóstica ao conteúdo, enquanto o Btrfs e o @zfs são avaliados por implementarem otimizações sensíveis às propriedades dos dados, por exemplo compressão e deduplicação.
 
 #figure(
   table(
@@ -171,21 +177,21 @@ As workloads são executadas sobre três sistemas de armazenamento distintos, se
   caption: [Sistemas de armazenamento avaliados]
 ) <sistemas>
 
-Os sistemas foram utilizados em versões compatíveis com o kernel instalado, nomeadamente o @zfs 2.4.0, que suporta kernels desde a versão 4.18 até à 6.18, e o bees 0.11, cuja documentação recomenda expressamente a versão 5.4 @zfs_docs @bees. Já o Btrfs, sendo implementado no interior do kernel, corresponde à implementação disponibilizada pelo 5.4.0-216-generic, cabendo às ferramentas de espaço de utilizador a versão 5.2.1 distribuída pelo Ubuntu 20.04.
+Os sistemas foram utilizados em versões compatíveis com o kernel instalado, o @zfs na 2.4.0, que suporta kernels desde a versão 4.18 até à 6.18, e o bees na 0.11, cuja documentação recomenda expressamente a versão 5.4 @zfs_docs @bees. Por outro lado, o Btrfs é implementado no interior do kernel, daí que corresponda à implementação disponibilizada pelo 5.4.0-216-generic, cabendo às ferramentas de espaço de utilizador a versão 5.2.1 distribuída pelo Ubuntu 20.04.
 
-Ambos os sistemas de ficheiros recorrem ao zstd para comprimir os blocos escritos, sendo em qualquer deles utilizado o nível 3. Esta escolha resulta do compromisso que tal nível estabelece entre a qualidade da compressão e a rapidez com que esta é alcançada, pois níveis superiores comprimem mais, no entanto acarretam um custo computacional que se refletiria nas métricas recolhidas, enviesando a avaliação do sistema de armazenamento em detrimento da avaliação do próprio algoritmo @btrfs_docs.
+Ambos os sistemas de ficheiros recorrem ao zstd para comprimir os blocos escritos, recorrendo em qualquer deles ao nível 3. Esta escolha resulta do compromisso que tal nível estabelece entre a qualidade da compressão e a rapidez com que esta é alcançada, visto níveis superiores comprimirem mais, no entanto acarretam um custo computacional que se refletiria nas métricas recolhidas, enviesando a avaliação do sistema de armazenamento em detrimento da avaliação do próprio algoritmo @btrfs_docs.
 
-Já a deduplicação encontra-se ativa em ambos, ainda que segundo estratégias distintas, pois enquanto o @zfs deduplica no caminho crítico de @io, o Btrfs delega essa tarefa no bees, um serviço que percorre o sistema de ficheiros em segundo plano recorrendo a um índice limitado a 1 GiB @bees.
+Já a deduplicação encontra-se ativa em ambos, embora segundo estratégias distintas, uma vez que enquanto o @zfs deduplica no caminho crítico de @io, o Btrfs delega essa tarefa no bees, um serviço que percorre o sistema de ficheiros em segundo plano recorrendo a um índice limitado a 1 GiB @bees.
 
-No @zfs, o recordsize foi fixado em 4 KiB de modo a coincidir com o tamanho dos blocos manipulados pela generalidade das workloads, à exceção da workload 03 que recorre a blocos de 64 KiB. Esta decisão revela-se indispensável, pois a deduplicação opera ao nível do record, daí que um valor superior implicasse que blocos duplicados de 4 KiB jamais originassem records idênticos, tornando a otimização inoperante perante o conteúdo gerado @zfs_docs.
+No @zfs, o recordsize foi fixado em 4 KiB de modo a coincidir com o tamanho dos blocos manipulados pela generalidade das workloads, à exceção da workload 03 que recorre a blocos de 64 KiB. Esta decisão revela-se indispensável, isto porque a deduplicação opera ao nível do record, daí que um valor superior implicasse que blocos duplicados de 4 KiB jamais originassem records idênticos, tornando a otimização inoperante perante o conteúdo gerado @zfs_docs.
 
-Esta diferença tem implicações diretas na leitura dos resultados, dado que no Btrfs a redução de espaço apenas se manifesta após a passagem do bees, ao contrário do @zfs onde esta é imediata, ainda que ao custo de latência acrescida nos pedidos de escrita @koller2010 @meyer2012.
+Esta diferença tem implicações diretas na leitura dos resultados, dado que no Btrfs a redução de espaço apenas se manifesta após a passagem do bees, ao contrário do @zfs onde esta é imediata, embora ao custo de latência acrescida nos pedidos de escrita @koller2010 @meyer2012.
 
-Importa ainda esclarecer que a garantia oferecida pela flag `O_DIRECT` deixa de ser absoluta quando as otimizações de conteúdo se encontram ativas. No Btrfs, as leituras de dados comprimidos recorrem sempre ao caminho tradicional, sendo as escritas igualmente redirecionadas para esse caminho quando o inode possui checksums, o que corresponde à configuração por omissão @btrfs_docs.
+Importa realçar que a garantia oferecida pela flag `O_DIRECT` deixa de ser absoluta quando as otimizações de conteúdo se encontram ativas. No Btrfs, as leituras de dados comprimidos recorrem sempre ao caminho tradicional, sendo as escritas igualmente redirecionadas para esse caminho quando o inode possui checksums, o que corresponde à configuração por omissão @btrfs_docs.
 
-No @zfs, por sua vez, as escritas apenas são efetuadas de forma direta caso o offset e a dimensão do pedido se encontrem alinhados com o recordsize, condição que o alinhamento adotado satisfaz. Sucede, no entanto, que a deduplicação e as escritas diretas são mutuamente incompatíveis, uma vez que os pedidos submetidos por esta via não são verificados quanto à existência de duplicados @zfs_docs.
+No @zfs, por sua vez, as escritas apenas são efetuadas de forma direta caso o offset e a dimensão do pedido se encontrem alinhados com o recordsize, condição que o alinhamento adotado satisfaz. Além disso, a deduplicação e as escritas diretas são mutuamente incompatíveis, visto os pedidos submetidos por esta via não serem verificados quanto à existência de duplicados @zfs_docs.
 
-Perante esta incompatibilidade, e dado que a deduplicação constitui precisamente um dos objetos de avaliação, a propriedade `direct` foi desativada nos conjuntos de dados envolvidos, o que encaminha as escritas através do ARC e assegura que os duplicados são efetivamente detetados, ainda que ao custo de a page cache deixar de ser contornada.
+Perante esta incompatibilidade, e dado que a deduplicação constitui precisamente um dos objetos de avaliação, a propriedade `direct` foi desativada nos conjuntos de dados envolvidos, o que encaminha as escritas através do ARC e assegura que os duplicados são efetivamente detetados, embora ao custo de a page cache deixar de ser contornada.
 
 Desta forma, os resultados obtidos sobre sistemas de ficheiros não são diretamente comparáveis com os do dispositivo em bruto no que respeita ao efeito da page cache, sendo esta uma limitação que decorre da natureza das otimizações avaliadas e não da metodologia adotada.
 
@@ -195,7 +201,7 @@ Importa realçar que o Prismo, tal como o @fio e o Vdbench, emite pedidos de lei
 
 As métricas recolhidas dividem-se entre aquelas reportadas pelas próprias ferramentas e as obtidas ao nível do sistema. Do primeiro grupo fazem parte o débito, os @iops e a latência, esta última caracterizada não apenas pelo valor médio mas também pelos percentis p50, p99 e p99.9, pois a média isoladamente esconde o comportamento da cauda da distribuição @traeger2008 @tarasov2011.
 
-Já as métricas de sistema, nomeadamente a utilização de @cpu e de @ram, são recolhidas através do `pcp dstat` com uma frequência de amostragem de um segundo, sendo esta a única fonte comum às três ferramentas e portanto a única que permite uma comparação justa do consumo de recursos.
+Já as métricas de sistema, nomeadamente a utilização de @cpu e de @ram, são recolhidas através do `pcp dstat` com uma frequência de amostragem de um segundo, que constitui a única fonte comum às três ferramentas e portanto a única que permite uma comparação justa do consumo de recursos.
 
 Por fim, nas workloads que exercitam deduplicação e compressão é ainda registado o espaço efetivamente ocupado em disco, pois só através deste é possível confirmar que as otimizações do sistema de armazenamento foram de facto acionadas pelo conteúdo gerado.
 
