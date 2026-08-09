@@ -4,7 +4,7 @@
 
 Após a descrição da arquitetura e dos mecanismos que sustentam a geração de workloads realistas, importa agora avaliar experimentalmente o Prismo, por um lado validando a sua correção e comparando o desempenho com as ferramentas de referência, e por outro demonstrando que a incorporação de propriedades de conteúdo nas workloads revela comportamentos dos sistemas de armazenamento que, de outro modo, permaneceriam invisíveis.
 
-Neste sentido, são definidas seis perguntas de investigação e três pontos de validação que orientam as experiências realizadas:
+Neste sentido, são definidas sete perguntas de investigação e quatro pontos de validação que orientam as experiências realizadas:
 
 #question_block[
 / Q1: As propriedades intrínsecas dos dados, nomeadamente a compressibilidade e a taxa de duplicados, influenciam o desempenho dos sistemas de armazenamento?
@@ -27,7 +27,11 @@ Neste sentido, são definidas seis perguntas de investigação e três pontos de
 ]
 
 #question_block[
-/ Q6: A execução da mesma workload sobre um block device e sobre um sistema de ficheiros resulta na obtenção de métricas de desempenho distintas?
+/ Q6: A escolha do sistema de armazenamento condiciona o benefício obtido a partir das propriedades dos dados, e qual o custo computacional associado às otimizações sensíveis ao conteúdo?
+]
+
+#question_block[
+/ Q7: Em que medida a avaliação produzida pelo Prismo difere daquela obtida através dos benchmarks existentes, e que conclusões sobre os sistemas de armazenamento avaliados se tornam possíveis a partir dessa diferença?
 ]
 
 #validation_point_block[
@@ -42,43 +46,158 @@ Neste sentido, são definidas seis perguntas de investigação e três pontos de
 / V3: O Prismo fornece todas as informações relevantes para a análise e avaliação do sistema de armazenamento, de modo a fundamentar as configurações dos sistemas para workloads específicas.
 ]
 
-Posto isto, o capítulo inicia-se pela descrição da metodologia experimental, avançando depois para a validação da ferramenta através da demonstração de equivalência com os benchmarks de referência em workloads genéricas. De seguida, são analisados cenários onde as funcionalidades exclusivas do Prismo se revelam determinantes, nomeadamente a geração de conteúdo com propriedades de deduplicação e compressão, a comparação entre interfaces de @io e a replicação de workloads baseadas em traces. Por fim, exploram-se eixos complementares, localidade de acesso e diferenças entre block devices e sistemas de ficheiros, antes de sintetizar as conclusões.
+#validation_point_block[
+/ V4: As conclusões alcançadas através do Prismo sobre os sistemas de armazenamento avaliados não são passíveis de obtenção com os benchmarks existentes, decorrendo essa diferença do realismo do conteúdo gerado e não da instrumentação da ferramenta.
+]
+
+Posto isto, o capítulo inicia-se pela descrição da metodologia experimental, avançando depois para a validação da ferramenta através da demonstração de equivalência com os benchmarks de referência em workloads genéricas. De seguida, são analisados cenários onde as funcionalidades exclusivas do Prismo se revelam determinantes, nomeadamente a geração de conteúdo com propriedades de deduplicação e compressão, a comparação entre interfaces de @io e a replicação de workloads baseadas em traces. Por fim, explora-se a localidade de acesso enquanto eixo complementar, antes de sintetizar as conclusões.
 
 === Metodologia <methodology>
 
-// TODO: parágrafo introdutório da metodologia
+A avaliação experimental assenta na execução de um conjunto alargado de workloads sobre a mesma máquina e sob condições controladas, sendo esta secção responsável por descrever o ambiente utilizado, as ferramentas comparadas, o procedimento seguido e as métricas recolhidas, de modo a que os resultados apresentados nas secções seguintes possam ser corretamente interpretados e reproduzidos.
 
 ==== Setup Experimental
 
-// TODO: descrição do hardware (Cloudinha140 / Alibaba)
-// TODO: sistema operativo, kernel, configurações relevantes (scheduler, O_DIRECT)
-// TODO: tabela com especificações de hardware
+Todas as experiências foram conduzidas numa única máquina, evitando assim que diferenças de hardware ou de configuração entre execuções se reflitam nas métricas recolhidas. As especificações do sistema encontram-se descritas na @hardware, sendo de realçar a capacidade de memória disponível, pois a condição de terminação de grande parte das workloads é calculada com base nesta.
+
+#figure(
+  table(
+    columns: (1fr, 1.6fr),
+    inset: 6pt,
+    align: horizon + left,
+    fill: (x, y) => if y == 0 { gray.lighten(60%) },
+    table.header([*Componente*], [*Especificação*]),
+    [Sistema operativo], [Ubuntu 20.04.6 LTS (Focal Fossa)],
+    [Kernel], [Linux 5.4.0-216-generic],
+    [Arquitetura], [x86_64],
+    [Processador], [2 $times$ Intel Xeon Gold 6342],
+    [Núcleos], [48 físicos (24 por processador), 96 threads],
+    [Frequência], [800 MHz base, 2.80 GHz máxima],
+    [Cache L2], [72 MiB],
+    [Memória], [188.23 GiB],
+    [Dispositivo], [Dell Enterprise @nvme P5600 MU U.2, 1.46 TiB],
+  ),
+  caption: [Especificações da máquina utilizada nas experiências]
+) <hardware>
+
+O sistema opera sobre Ubuntu 20.04.6 LTS com kernel Linux 5.4.0-216-generic, cabendo referir que a versão do kernel condiciona as funcionalidades disponíveis nas interfaces assíncronas, em particular no io_uring, cuja implementação tem vindo a ser progressivamente otimizada desde a sua introdução @uring_kernel.
+
+Convém realçar que todos os acessos são efetuados com a flag `O_DIRECT`, o que elimina a intervenção da page cache e garante que os pedidos atingem efetivamente o dispositivo, sendo esta uma condição indispensável para que as métricas reflitam o comportamento do sistema de armazenamento e não o da memória @didona2022 @ren2023. Esta garantia é integral sobre o dispositivo em bruto, no entanto os sistemas de ficheiros avaliados impõem-lhe restrições que serão detalhadas adiante.
 
 ==== Ferramentas Comparadas
 
-// TODO: Prismo, versão, configuração base
-// TODO: FIO, versão, equivalência de configurações de workload
-// TODO: Vdbench, versão, limitações (apenas POSIX síncrono)
-// TODO: tabela comparativa de funcionalidades (engines suportadas, geração de conteúdo, traces, etc.)
+A avaliação confronta o Prismo, na versão 1.0.0, com o @fio e o Vdbench, duas das ferramentas mais utilizadas na avaliação de sistemas de armazenamento, sendo consideradas as versões mais recentes de cada uma, respetivamente a 3.42 e a 5.04.07 @fio_docs @vdbench.
+
+Estas ferramentas não partilham, no entanto, o mesmo âmbito de aplicação, pois enquanto o @fio suporta as mesmas interfaces de @io que o Prismo, ainda que o acesso ao @spdk seja conseguido através de um plugin externo, o Vdbench opera exclusivamente sobre POSIX síncrono, o que restringe a comparação entre as três ferramentas a esse cenário @fio_docs @vdbench.
+
+#figure(
+  table(
+    columns: (1.8fr, auto, auto, auto),
+    inset: 6pt,
+    align: horizon + left,
+    fill: (x, y) => if y == 0 { gray.lighten(60%) },
+    table.header([*Funcionalidade*], [*Prismo*], [*FIO*], [*Vdbench*]),
+    [POSIX], [Sim], [Sim], [Sim],
+    [libaio], [Sim], [Sim], [Não],
+    [io_uring], [Sim], [Sim], [Não],
+    [SPDK], [Sim], [Plugin], [Não],
+    [Distribuição de duplicados], [Sim], [Taxa global], [Rácio global],
+    [Distribuição de compressibilidade], [Sim], [Taxa global], [Rácio global],
+    [Replay de traces], [Sim], [Limitado], [Não],
+    [Extensão sintética de traces], [Sim], [Não], [Não],
+  ),
+  caption: [Funcionalidades suportadas por cada ferramenta]
+) <ferramentas>
+
+Sempre que possível, as configurações foram replicadas entre ferramentas de modo a garantir equivalência semântica, no entanto o Vdbench não dispõe de barreiras de sincronização nem de geração de conteúdo constante, sendo a distribuição Zipfiana aproximada através do parâmetro `hotband`, aproximações que devem ser tidas em conta na leitura dos resultados @vdbench.
 
 ==== Campanha Experimental
 
-// TODO: tabela-resumo das 15 workloads com dimensões (operação × acesso × conteúdo)
-// TODO: procedimento: duração/tamanho das runs, warm-up, cleanup entre execuções
-// TODO: número de repetições e tratamento estatístico (Cardoide com --repetitions)
+A campanha experimental é constituída por quinze workloads base, cada uma isolando exatamente uma dimensão relativamente à anterior, o que permite atribuir as diferenças observadas a um único fator. Estas workloads encontram-se descritas na @workloads-base, sendo posteriormente replicadas para as quatro interfaces de @io avaliadas, do que resulta um total de sessenta configurações.
+
+#[
+#show figure: set block(breakable: true)
+#figure(
+  table(
+    columns: (auto, 1.2fr, 1.6fr),
+    inset: 6pt,
+    align: horizon + left,
+    fill: (x, y) => if y == 0 or x == 0 { gray.lighten(60%) },
+    table.header([*\#*], [*Dimensão isolada*], [*Parâmetros principais*]),
+    [*01*], [Débito sequencial de escrita], [Escrita, sequencial, conteúdo constante],
+    [*02*], [Débito sequencial de leitura], [Leitura, sequencial, conteúdo constante],
+    [*03*], [Tamanho do bloco], [Escrita, sequencial, blocos de 64 KiB],
+    [*04*], [Acesso aleatório], [Leitura, aleatório],
+    [*05*], [Contenção entre leituras e escritas], [50/50 leitura e escrita, aleatório],
+    [*06*], [Localidade de acesso], [50/50 leitura e escrita, Zipf(0.9)],
+    [*07*], [Rácio assimétrico], [90/10 escrita e leitura, sequencial],
+    [*08*], [Custo da durabilidade], [Sequência de operações, `fsync` a cada 1024 escritas],
+    [*09*], [Paralelismo], [50/50 leitura e escrita, aleatório, 3 jobs],
+    [*10*], [Compressibilidade isolada], [Zipf(0.9), três níveis de compressão],
+    [*11*], [Duplicados e compressibilidade], [Zipf(0.9), três níveis de duplicados e compressão],
+    [*12*], [Localidade real e operações sintéticas], [Acessos do trace homes, 70/30 leitura e escrita],
+    [*13*], [Operações reais e acessos sintéticos], [Operações do trace cheetah, Zipf(0.9)],
+    [*14*], [Replay integral de um fileserver], [Trace homes, extensão por repetição],
+    [*15*], [Replay integral de um webmail], [Trace webmail, extensão por amostragem e regressão],
+  ),
+  caption: [Workloads base da campanha experimental]
+) <workloads-base>
+]
+
+A dimensão das workloads foi fixada em 752.91 GiB, valor que corresponde a quatro vezes a memória disponível, garantindo assim que o conjunto de dados manipulado não é passível de acomodação em cache e que os pedidos atingem efetivamente o dispositivo. Nas workloads mais demoradas, nomeadamente aquelas assentes em acessos aleatórios, alcançar este volume implicaria execuções incomportáveis, daí que nestes casos a condição de paragem seja de quinze minutos de execução, duração suficiente para que o sistema atinja um regime estacionário @traeger2008 @tarasov2011.
+
+No que respeita às interfaces, o io_uring e o libaio operam com 128 entradas na fila de submissão, sendo no primeiro caso ativado o polling do kernel através das flags `IORING_SETUP_SQPOLL` e `IORING_SETUP_SQ_AFF`, enquanto o @spdk é configurado com uma máscara de quatro reactors e uma única thread lógica.
+
+Antes de cada execução, o conteúdo em memória é sincronizado com o disco e as caches do sistema são invalidadas, seguindo-se um período de espera de cinco minutos que permite ao dispositivo estabilizar após a carga anterior. Só então tem início a recolha de métricas, sendo o benchmark lançado um segundo depois de forma a garantir que o período inicial fica devidamente registado.
+
+// TODO: número de repetições por configuração e tratamento estatístico (Cardoide com --repetitions),
+//       incluindo a forma como a média e o desvio padrão são calculados sobre as execuções
 
 ==== Sistemas de Armazenamento Avaliados
 
-// TODO: block devices: raw NVMe (/dev/nvme0n1)
-// TODO: sistemas de ficheiros: Btrfs, ZFS
-// TODO: tabela com propriedades de cada sistema (dedup nativo, compressão nativa, stack)
+As workloads são executadas sobre três sistemas de armazenamento distintos, sendo o dispositivo @nvme utilizado em bruto como linha de base agnóstica ao conteúdo, enquanto o Btrfs e o @zfs são avaliados por implementarem otimizações sensíveis às propriedades dos dados, nomeadamente compressão e deduplicação.
+
+#figure(
+  table(
+    columns: (1fr, auto, auto, 1.6fr),
+    inset: 6pt,
+    align: horizon + left,
+    fill: (x, y) => if y == 0 { gray.lighten(60%) },
+    table.header([*Sistema*], [*Compressão*], [*Deduplicação*], [*Papel na avaliação*]),
+    [@nvme em bruto], [Não], [Não], [Linha de base agnóstica ao conteúdo],
+    [Btrfs], [zstd, nível 3], [Offline, via bees], [Compressão no caminho crítico e deduplicação diferida],
+    [@zfs], [zstd, nível 3], [Inline], [Compressão e deduplicação no caminho crítico],
+  ),
+  caption: [Sistemas de armazenamento avaliados]
+) <sistemas>
+
+Os sistemas foram utilizados em versões compatíveis com o kernel instalado, nomeadamente o @zfs 2.4.0, que suporta kernels desde a versão 4.18 até à 6.18, e o bees 0.11, cuja documentação recomenda expressamente a versão 5.4 @zfs_docs @bees. Já o Btrfs, sendo implementado no interior do kernel, corresponde à implementação disponibilizada pelo 5.4.0-216-generic, cabendo às ferramentas de espaço de utilizador a versão 5.2.1 distribuída pelo Ubuntu 20.04.
+
+Ambos os sistemas de ficheiros recorrem ao zstd para comprimir os blocos escritos, sendo em qualquer deles utilizado o nível 3. Esta escolha resulta do compromisso que tal nível estabelece entre a qualidade da compressão e a rapidez com que esta é alcançada, pois níveis superiores comprimem mais, no entanto acarretam um custo computacional que se refletiria nas métricas recolhidas, enviesando a avaliação do sistema de armazenamento em detrimento da avaliação do próprio algoritmo @btrfs_docs.
+
+Já a deduplicação encontra-se ativa em ambos, ainda que segundo estratégias distintas, pois enquanto o @zfs deduplica no caminho crítico de @io, o Btrfs delega essa tarefa no bees, um serviço que percorre o sistema de ficheiros em segundo plano recorrendo a um índice limitado a 1 GiB @bees.
+
+No @zfs, o recordsize foi fixado em 4 KiB de modo a coincidir com o tamanho dos blocos manipulados pela generalidade das workloads, à exceção da workload 03 que recorre a blocos de 64 KiB. Esta decisão revela-se indispensável, pois a deduplicação opera ao nível do record, daí que um valor superior implicasse que blocos duplicados de 4 KiB jamais originassem records idênticos, tornando a otimização inoperante perante o conteúdo gerado @zfs_docs.
+
+Esta diferença tem implicações diretas na leitura dos resultados, dado que no Btrfs a redução de espaço apenas se manifesta após a passagem do bees, ao contrário do @zfs onde esta é imediata, ainda que ao custo de latência acrescida nos pedidos de escrita @koller2010 @meyer2012.
+
+Importa ainda esclarecer que a garantia oferecida pela flag `O_DIRECT` deixa de ser absoluta quando as otimizações de conteúdo se encontram ativas. No Btrfs, as leituras de dados comprimidos recorrem sempre ao caminho tradicional, sendo as escritas igualmente redirecionadas para esse caminho quando o inode possui checksums, o que corresponde à configuração por omissão @btrfs_docs.
+
+No @zfs, por sua vez, as escritas apenas são efetuadas de forma direta caso o offset e a dimensão do pedido se encontrem alinhados com o recordsize, condição que o alinhamento adotado satisfaz. Sucede, no entanto, que a deduplicação e as escritas diretas são mutuamente incompatíveis, uma vez que os pedidos submetidos por esta via não são verificados quanto à existência de duplicados @zfs_docs.
+
+Perante esta incompatibilidade, e dado que a deduplicação constitui precisamente um dos objetos de avaliação, a propriedade `direct` foi desativada nos conjuntos de dados envolvidos, o que encaminha as escritas através do ARC e assegura que os duplicados são efetivamente detetados, ainda que ao custo de a page cache deixar de ser contornada.
+
+Desta forma, os resultados obtidos sobre sistemas de ficheiros não são diretamente comparáveis com os do dispositivo em bruto no que respeita ao efeito da page cache, sendo esta uma limitação que decorre da natureza das otimizações avaliadas e não da metodologia adotada.
+
+Importa realçar que o Prismo, tal como o @fio e o Vdbench, emite pedidos de leitura e escrita de tamanho fixo sobre um ficheiro previamente alocado, exercitando por isso o caminho de dados e não as operações de metadados. Assim sendo, não se trata de uma avaliação de sistemas de ficheiros, mas antes da forma como cada sistema reage às propriedades do conteúdo que lhe é submetido.
 
 ==== Métricas
 
-// TODO: throughput (MB/s), IOPS, latência (p50, p99)
-// TODO: CPU%, RAM (recolha via dstat/pidstat)
-// TODO: espaço em disco (para workloads com dedup/compressão)
-// TODO: ferramentas de recolha e frequência de amostragem
+As métricas recolhidas dividem-se entre aquelas reportadas pelas próprias ferramentas e as obtidas ao nível do sistema. Do primeiro grupo fazem parte o débito, os @iops e a latência, esta última caracterizada não apenas pelo valor médio mas também pelos percentis p50, p99 e p99.9, pois a média isoladamente esconde o comportamento da cauda da distribuição @traeger2008 @tarasov2011.
+
+Já as métricas de sistema, nomeadamente a utilização de @cpu e de @ram, são recolhidas através do `pcp dstat` com uma frequência de amostragem de um segundo, sendo esta a única fonte comum às três ferramentas e portanto a única que permite uma comparação justa do consumo de recursos.
+
+Por fim, nas workloads que exercitam deduplicação e compressão é ainda registado o espaço efetivamente ocupado em disco, pois só através deste é possível confirmar que as otimizações do sistema de armazenamento foram de facto acionadas pelo conteúdo gerado.
 
 === Validação do Prismo <validation>
 
@@ -118,6 +237,19 @@ Antes de utilizar o Prismo para avaliar sistemas de armazenamento, é necessári
 
 Uma vez demonstrada a equivalência do Prismo em workloads genéricas, esta secção explora o eixo de diferenciação fundamental, nomeadamente o impacto das propriedades intrínsecas dos dados no desempenho dos sistemas de armazenamento. Na prática, benchmarks que ignoram a compressibilidade e a taxa de duplicados dos dados tendem a produzir avaliações que não refletem o comportamento real dos sistemas, em particular daqueles que implementam otimizações sensíveis ao conteúdo, como é o caso do @zfs e do Btrfs.
 
+Convém realçar que a análise se inicia pelo estabelecimento de uma linha de base com conteúdo aleatório, sem a qual seria impossível distinguir o custo intrínseco de cada sistema de armazenamento do efeito atribuível às propriedades dos dados, afinal apenas a comparação entre ambos os cenários permite isolar o contributo do conteúdo.
+
+==== Linha de Base por Sistema de Armazenamento
+
+// TODO: WL 01, 04, 05 (conteúdo aleatório, logo incompressível e sem duplicados) em raw NVMe vs
+//       Btrfs vs ZFS, engine POSIX para comparação justa
+// TODO: objetivo: estabelecer o custo de cada sistema independentemente das propriedades do
+//       conteúdo, servindo de controlo às subsecções seguintes
+// TODO: declarar o desalinhamento entre block_size de 4K e o recordsize do ZFS como potencial
+//       confundidor (read-modify-write), e verificar a configuração efetivamente usada
+// TODO: gráfico: débito e latência por workload × sistema de armazenamento
+// Evidência: report.json de prismo_posix_1_9_odirect_dev_nvme vs _btrfs vs _zfs
+
 ==== Compressão
 
 // TODO: WL 10 (compress_zipf): Prismo (dados compressíveis) vs FIO (dados aleatórios)
@@ -144,10 +276,13 @@ Uma vez demonstrada a equivalência do Prismo em workloads genéricas, esta sec�
 
 ==== Discussão
 
-// TODO: quantificar a diferença entre throughput reportado por FIO vs Prismo no mesmo sistema
+// TODO: quantificar a diferença entre o débito reportado por FIO vs Prismo no mesmo sistema
 // TODO: esta diferença representa o erro de avaliação introduzido por benchmarks que ignoram conteúdo
 // TODO: conclusão: benchmarks que não modelam propriedades de conteúdo produzem avaliações enganadoras
-// TODO: fundamentação de Q1, Q2
+// TODO: contrastar o ganho obtido em cada sistema com a respetiva linha de base, de modo a atribuir
+//       a diferença ao conteúdo e não ao sistema de armazenamento
+// TODO: recomendações sobre a escolha do sistema para diferentes perfis de workload
+// TODO: fundamentação de Q1, Q2, Q6
 
 === Comparação de Interfaces de I/O <io-interfaces>
 
@@ -181,6 +316,7 @@ O suporte a múltiplas interfaces de @io constitui uma das funcionalidades disti
 ==== Discussão
 
 // TODO: tabela-síntese: ranking de interfaces por tipo de workload × ferramenta
+// TODO: verificar se o ranking de interfaces se inverte consoante o sistema de armazenamento
 // TODO: trade-off entre complexidade de configuração e ganho de desempenho
 // TODO: diferenças entre Prismo e FIO nas interfaces assíncronas
 // TODO: recomendações práticas para utilizadores do benchmark
@@ -230,30 +366,6 @@ Em ambientes de produção, as workloads exibem frequentemente padrões de acess
 // TODO: comparação de latência p99 entre padrões de acesso
 // TODO: fundamentação de Q5
 
-=== Block Devices vs Sistemas de Ficheiros <bdev-vs-fs>
-
-Ao executar workloads diretamente sobre um block device, a camada de abstração do sistema de ficheiros é eliminada, o que à partida deverá resultar em perfis de desempenho distintos. Deste modo, esta secção procura quantificar essas diferenças e analisar o impacto das funcionalidades nativas dos sistemas de ficheiros nos resultados obtidos.
-
-==== Overhead do Filesystem
-
-// TODO: WL 01, 04, 05 em raw NVMe vs Btrfs vs ZFS (engine POSIX, para comparação justa)
-// TODO: quantificar overhead introduzido pelo filesystem em throughput e latência
-// TODO: gráfico: throughput por workload × target
-// Evidência: report.json de prismo_posix_1_9_odirect_dev_nvme vs _btrfs vs _zfs
-
-==== Deduplicação e Compressão Nativa
-
-// TODO: WL 10-11 em ZFS (dedup+compress) vs Btrfs (compress) vs raw NVMe (sem)
-// TODO: benefícios vs custos: throughput, CPU, RAM, espaço em disco
-// TODO: gráfico: throughput e espaço utilizado por target
-// Evidência: report.json + dstat.csv de prismo_*_10_11_odirect_{zfs,btrfs}
-
-==== Discussão
-
-// TODO: o ranking de engines pode inverter-se consoante o target
-// TODO: recomendações sobre escolha de sistema para diferentes perfis de workload
-// TODO: fundamentação de Q6
-
 === Síntese e Discussão Geral <evaluation-synthesis>
 
 // TODO: parágrafo introdutório da síntese
@@ -265,19 +377,28 @@ Ao executar workloads diretamente sobre um block device, a camada de abstração
 // TODO: Q3: resposta concisa com referência cruzada à secção de interfaces de I/O
 // TODO: Q4: resposta concisa com referência cruzada à secção de workloads baseadas em traces
 // TODO: Q5: resposta concisa com referência cruzada à secção de localidade e cache
-// TODO: Q6: resposta concisa com referência cruzada à secção de bdev vs FS
+// TODO: Q6: resposta concisa com referência cruzada à linha de base e aos trade-offs da secção de
+//       impacto das propriedades dos dados
+// TODO: Q7: resposta transversal — confronto com FIO e Vdbench ao longo de todo o capítulo,
+//       quantificando o erro de avaliação de quem ignora conteúdo e enumerando as conclusões
+//       sobre os sistemas avaliados que só o Prismo permite alcançar
 
 ==== Validação
 
 // TODO: V1: confirmação com referência à secção de validação do Prismo (geração de conteúdo)
 // TODO: V2: confirmação com referência à secção de reprodutibilidade
 // TODO: V3: confirmação com referência às métricas e relatórios produzidos
+// TODO: V4: confirmação com referência à equivalência demonstrada em workloads genéricas (a
+//       diferença não vem da instrumentação) cruzada com a divergência observada em ZFS/Btrfs
 
 ==== Limitações
 
 // TODO: workloads não testadas, sistemas não avaliados
 // TODO: condições experimentais (single machine, single device)
 // TODO: limitações dos traces disponíveis
+// TODO: o caminho de metadados dos sistemas de ficheiros não é exercitado, dado que o Prismo, tal
+//       como o FIO e o Vdbench, opera sobre um ficheiro pré-alocado; uma avaliação completa exigiria
+//       workloads intensivas em metadados, ficando essa análise fora do âmbito desta dissertação
 
 ==== Sumário
 
