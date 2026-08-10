@@ -35,7 +35,7 @@
     ],
     "bdev_name": "Nvme0n1",
     "reactor_mask": "0xF",
-    "spdk_threads": 1,
+    "spdk_threads": 8,
     "json_config_file": "/home/gsd/diogo_marques/prismo/workloads/bdev/nvme_bdev.json"
   }
 }
