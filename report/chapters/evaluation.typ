@@ -149,6 +149,8 @@ A dimensão das workloads foi fixada em 752.91 GiB, valor que corresponde a quat
 
 Além disso, cada configuração é executada três vezes de forma independente, o que permite distinguir as diferenças atribuíveis às propriedades das workloads daquelas que decorrem apenas da variabilidade do sistema, sendo o tratamento estatístico dessas execuções descrito adiante @traeger2008 @tarasov2011.
 
+===== Estabilização do Sistema entre Execuções
+
 Antes de cada execução é aplicado um procedimento de limpeza que garante o isolamento entre medições, evitando que o estado deixado pela execução anterior contamine os resultados da seguinte. Este procedimento inicia-se com um `sync`, que força a escrita para o disco de todas as páginas ainda pendentes em memória, assegurando deste modo que nenhuma operação da execução anterior transita para a janela de medição seguinte.
 
 De seguida, é escrito o valor 3 em `/proc/sys/vm/drop_caches`, invalidando não só a page cache mas também as estruturas de dentries e inodes mantidas pelo kernel. Esta invalidação assume particular importância nos sistemas de ficheiros avaliados, uma vez que a flag `O_DIRECT` não impede o recurso à cache quando as otimizações de conteúdo se encontram ativas.
@@ -159,38 +161,30 @@ Por fim, o procedimento aguarda cinco minutos antes de iniciar a execução segu
 
 As workloads são executadas sobre três sistemas de armazenamento distintos, sendo o primeiro o próprio dispositivo @nvme acedido sem qualquer sistema de ficheiros interposto, o que constitui a linha de base agnóstica ao conteúdo, enquanto o Btrfs e o @zfs são avaliados por implementarem otimizações sensíveis às propriedades dos dados, por exemplo compressão e deduplicação.
 
-Este acesso direto assume duas formas distintas consoante a interface utilizada, isto porque nas interfaces do kernel o alvo é o ficheiro especial `/dev/nvme0n1`, enquanto no @spdk o dispositivo é manipulado a partir do user space através da abstração de @bdev, sem que o kernel chegue a intervir @spdk_docs.
+// Este acesso direto assume duas formas distintas consoante a interface utilizada, isto porque nas interfaces do kernel o alvo é o ficheiro especial `/dev/nvme0n1`, enquanto no @spdk o dispositivo é manipulado a partir do user space através da abstração de @bdev, sem que o kernel chegue a intervir @spdk_docs.
 
 #figure(
   doc_table(
-    columns: (1fr, auto, auto, 1.6fr),
-    header: ([Sistema], [Compressão], [Deduplicação], [Papel na avaliação]),
-    [@nvme sem sistema de ficheiros], [Não], [Não], [Linha de base agnóstica ao conteúdo],
-    [Btrfs], [zstd, nível 3], [Offline, via bees], [Compressão no caminho crítico e deduplicação diferida],
-    [@zfs], [zstd, nível 3], [Inline], [Compressão e deduplicação no caminho crítico],
+    columns: (1.3fr, 1.4fr, auto, 1.2fr),
+    header: ([Sistema], [Versão], [Compressão], [Deduplicação]),
+    [@nvme sem sistema de ficheiros], [---], [---], [---],
+    [Btrfs], [Kernel 5.4, ferramentas 5.2.1], [zstd, nível 3], [Offline, via bees 0.11],
+    [@zfs], [2.4.0], [zstd, nível 3], [Inline],
   ),
-  caption: [Sistemas de armazenamento avaliados]
+  caption: [Sistemas de armazenamento avaliados e respetiva configuração]
 ) <sistemas>
 
-Os sistemas foram utilizados em versões compatíveis com o kernel instalado, o @zfs na 2.4.0, que suporta kernels desde a versão 4.18 até à 6.18, e o bees na 0.11, cuja documentação recomenda expressamente a versão 5.4 @zfs_docs @bees. Por outro lado, o Btrfs é implementado no interior do kernel, daí que corresponda à implementação disponibilizada pelo 5.4.0-216-generic, cabendo às ferramentas de espaço de utilizador a versão 5.2.1 distribuída pelo Ubuntu 20.04.
+Em ambos os sistemas de ficheiros a compressão recorre ao zstd no nível 3, valor que estabelece o compromisso entre a qualidade da compressão e a rapidez com que esta é alcançada, visto níveis superiores comprimirem mais, no entanto a um custo computacional que enviesaria a avaliação do sistema de armazenamento em detrimento da avaliação do próprio algoritmo @btrfs_docs.
 
-Ambos os sistemas de ficheiros recorrem ao zstd para comprimir os blocos escritos, recorrendo em qualquer deles ao nível 3. Esta escolha resulta do compromisso que tal nível estabelece entre a qualidade da compressão e a rapidez com que esta é alcançada, visto níveis superiores comprimirem mais, no entanto acarretam um custo computacional que se refletiria nas métricas recolhidas, enviesando a avaliação do sistema de armazenamento em detrimento da avaliação do próprio algoritmo @btrfs_docs.
+No @zfs o recordsize foi ainda fixado em 4 KiB, de modo a coincidir com os blocos manipulados pela generalidade das workloads. Esta decisão revela-se indispensável, isto porque a deduplicação opera ao nível do record, daí que um valor superior implicasse que blocos duplicados de 4 KiB jamais originassem records idênticos, tornando a otimização inoperante perante o conteúdo gerado @zfs_docs.
 
-Já a deduplicação encontra-se ativa em ambos, embora segundo estratégias distintas, uma vez que enquanto o @zfs deduplica no caminho crítico de @io, o Btrfs delega essa tarefa no bees, um serviço que percorre o sistema de ficheiros em segundo plano recorrendo a um índice limitado a 1 GiB @bees.
+As estratégias de deduplicação diferem igualmente, uma vez que o @zfs atua no caminho crítico de @io enquanto o Btrfs delega a tarefa no bees, um serviço que percorre o sistema de ficheiros em segundo plano recorrendo a um índice limitado a 1 GiB @bees. Tal diferença condiciona a leitura dos resultados, dado que no Btrfs a redução de espaço apenas se manifesta após a passagem do serviço, ao contrário do @zfs onde é imediata, embora ao custo de latência acrescida nas escritas @koller2010 @meyer2012.
 
-No @zfs, o recordsize foi fixado em 4 KiB de modo a coincidir com o tamanho dos blocos manipulados pela generalidade das workloads, à exceção da workload 03 que recorre a blocos de 64 KiB. Esta decisão revela-se indispensável, isto porque a deduplicação opera ao nível do record, daí que um valor superior implicasse que blocos duplicados de 4 KiB jamais originassem records idênticos, tornando a otimização inoperante perante o conteúdo gerado @zfs_docs.
+Importa realçar que a garantia oferecida pela flag `O_DIRECT` deixa de ser absoluta quando estas otimizações se encontram ativas. No Btrfs, tanto as leituras de dados comprimidos como as escritas sobre inodes com checksums são redirecionadas para o caminho tradicional, enquanto no @zfs a deduplicação e as escritas diretas são mutuamente incompatíveis, o que obrigou a desativar a propriedade `direct` nos conjuntos de dados avaliados @btrfs_docs @zfs_docs.
 
-Esta diferença tem implicações diretas na leitura dos resultados, dado que no Btrfs a redução de espaço apenas se manifesta após a passagem do bees, ao contrário do @zfs onde esta é imediata, embora ao custo de latência acrescida nos pedidos de escrita @koller2010 @meyer2012.
+Desta forma, os resultados obtidos sobre sistemas de ficheiros não são diretamente comparáveis com os do acesso direto ao dispositivo no que respeita ao efeito da page cache, limitação que decorre da natureza das otimizações avaliadas e não da metodologia adotada.
 
-Importa realçar que a garantia oferecida pela flag `O_DIRECT` deixa de ser absoluta quando as otimizações de conteúdo se encontram ativas. No Btrfs, as leituras de dados comprimidos recorrem sempre ao caminho tradicional, sendo as escritas igualmente redirecionadas para esse caminho quando o inode possui checksums, o que corresponde à configuração por omissão @btrfs_docs.
-
-No @zfs, por sua vez, as escritas apenas são efetuadas de forma direta caso o offset e a dimensão do pedido se encontrem alinhados com o recordsize, condição que o alinhamento adotado satisfaz. Além disso, a deduplicação e as escritas diretas são mutuamente incompatíveis, visto os pedidos submetidos por esta via não serem verificados quanto à existência de duplicados @zfs_docs.
-
-Perante esta incompatibilidade, e dado que a deduplicação constitui precisamente um dos objetos de avaliação, a propriedade `direct` foi desativada nos conjuntos de dados envolvidos, o que encaminha as escritas através do ARC e assegura que os duplicados são efetivamente detetados, embora ao custo de a page cache deixar de ser contornada.
-
-Desta forma, os resultados obtidos sobre sistemas de ficheiros não são diretamente comparáveis com os do acesso direto ao dispositivo no que respeita ao efeito da page cache, sendo esta uma limitação que decorre da natureza das otimizações avaliadas e não da metodologia adotada.
-
-Importa realçar que o Prismo, tal como o @fio e o Vdbench, emite pedidos de leitura e escrita de tamanho fixo sobre um ficheiro previamente alocado, exercitando por isso o caminho de dados e não as operações de metadados. Assim sendo, não se trata de uma avaliação de sistemas de ficheiros, mas antes da forma como cada sistema reage às propriedades do conteúdo que lhe é submetido.
+Em qualquer dos casos, o Prismo, tal como o @fio e o Vdbench, emite pedidos de leitura e escrita de tamanho fixo sobre um ficheiro previamente alocado, exercitando por isso o caminho de dados e não as operações de metadados. Assim sendo, não se trata de uma avaliação de sistemas de ficheiros, mas antes da forma como cada sistema reage às propriedades do conteúdo que lhe é submetido.
 
 ==== Métricas
 
@@ -200,14 +194,13 @@ Já as métricas de sistema, nomeadamente a utilização de @cpu e de @ram, são
 
 Nas workloads que exercitam deduplicação e compressão é ainda registado o espaço efetivamente ocupado em disco, pois só através deste é possível confirmar que as otimizações do sistema de armazenamento foram de facto acionadas pelo conteúdo gerado.
 
+===== Agregação de Métricas
+
 Uma vez recolhidas, as métricas das três execuções de cada configuração são combinadas na respetiva média, acompanhada do desvio padrão. Deste modo, as barras de erro presentes nas figuras traduzem a dispersão observada entre execuções e não a variação interna de uma única medição.
 
-No caso dos percentis de latência, a combinação incide sobre os valores reportados em cada execução, opção admissível por todas as repetições partilharem a mesma duração e submeterem o mesmo volume de pedidos. Já as séries temporais são apresentadas a partir da execução cuja média se aproxima da mediana das três, evitando que a combinação de séries com durações distintas introduza artefactos inexistentes.
+// No caso dos percentis de latência, a combinação incide sobre os valores reportados em cada execução, opção admissível por todas as repetições partilharem a mesma duração e submeterem o mesmo volume de pedidos. Já as séries temporais são apresentadas a partir da execução cuja média se aproxima da mediana das três, evitando que a combinação de séries com durações distintas introduza artefactos inexistentes.
 
 Por fim, a estabilidade dos resultados é aferida através do coeficiente de variação, o qual serve igualmente de critério de leitura, uma vez que diferenças inferiores à dispersão medida não são interpretadas como diferenças efetivas @traeger2008 @tarasov2011.
-
-// TODO: reportar o coeficiente de variação observado na campanha, indicando o valor máximo registado
-//       e as workloads onde a dispersão se revelou mais elevada
 
 === Validação do Prismo <validation>
 
