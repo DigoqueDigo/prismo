@@ -1,4 +1,4 @@
-#import "../utils/functions.typ" : question_block, validation_point_block
+#import "../utils/functions.typ" : question_block, validation_point_block, doc_table, cell_yes, cell_no, cell_partial
 
 == Avaliação Experimental <chapter4>
 
@@ -58,31 +58,27 @@ A avaliação experimental assenta na execução de um conjunto alargado de work
 
 ==== Setup Experimental
 
-Todas as experiências foram conduzidas numa única máquina, evitando assim que diferenças de hardware ou de configuração entre execuções se reflitam nas métricas recolhidas. As especificações do sistema encontram-se descritas na @hardware, sendo de realçar a capacidade de memória disponível, pois a condição de terminação de grande parte das workloads é calculada com base nesta.
+Todas as experiências foram conduzidas numa única máquina, evitando assim que diferenças de hardware ou de configuração entre execuções se reflitam nas métricas recolhidas. As especificações do sistema encontram-se descritas na @hardware, sendo de realçar a capacidade de memória disponível, pois a condição de terminação de algumas workloads é calculada com base nesta.
 
 #figure(
-  table(
+  doc_table(
     columns: (1fr, 1.6fr),
-    inset: 6pt,
-    align: horizon + left,
-    fill: (x, y) => if y == 0 { gray.lighten(60%) },
-    table.header([*Componente*], [*Especificação*]),
+    header: ([Componente], [Especificação]),
     [Sistema operativo], [Ubuntu 20.04.6 LTS (Focal Fossa)],
     [Kernel], [Linux 5.4.0-216-generic],
     [Arquitetura], [x86_64],
     [Processador], [2 $times$ Intel Xeon Gold 6342],
     [Núcleos], [48 físicos (24 por processador), 96 threads],
     [Frequência], [800 MHz base, 2.80 GHz máxima],
-    [Cache L2], [72 MiB],
-    [Memória], [188.23 GiB],
-    [Dispositivo], [Dell Enterprise @nvme P5600 MU U.2, 1.46 TiB],
+    [Memória], [188.23 GiB, DDR4-3200],
+    [Dispositivo de armazenamento], [Dell Enterprise @nvme P5600 MU U.2, 1.46 TiB],
   ),
   caption: [Especificações da máquina utilizada nas experiências]
 ) <hardware>
 
 O sistema opera sobre Ubuntu 20.04.6 LTS com kernel Linux 5.4.0-216-generic, versão que condiciona as funcionalidades disponíveis nas interfaces assíncronas, em particular no io_uring, cuja implementação tem vindo a ser progressivamente otimizada desde a sua introdução @uring_kernel.
 
-Convém realçar que todos os acessos são efetuados com a flag `O_DIRECT`, o que elimina a intervenção da page cache e garante que os pedidos atingem efetivamente o dispositivo, sendo esta uma condição indispensável para que as métricas reflitam o comportamento do sistema de armazenamento e não o da memória @didona2022 @ren2023. Esta garantia é integral sobre o dispositivo em bruto, no entanto os sistemas de ficheiros avaliados impõem-lhe restrições que serão detalhadas adiante.
+Convém realçar que todos os acessos são efetuados com a flag `O_DIRECT`, o que elimina a intervenção da page cache e garante que os pedidos atingem efetivamente o dispositivo, sendo esta uma condição indispensável para que as métricas reflitam o comportamento do sistema de armazenamento e não o da memória @didona2022 @ren2023. Esta garantia é integral quando o dispositivo é acedido diretamente, sem sistema de ficheiros interposto, no entanto os sistemas de ficheiros avaliados impõem-lhe restrições que serão detalhadas adiante.
 
 ==== Ferramentas Comparadas
 
@@ -91,25 +87,32 @@ A avaliação confronta o Prismo, na versão 1.0.0, com o @fio e o Vdbench, duas
 Estas ferramentas não partilham, no entanto, o mesmo âmbito de aplicação, pois enquanto o @fio suporta as mesmas interfaces de @io que o Prismo, apesar de o acesso ao @spdk ser conseguido através de um plugin externo, o Vdbench opera exclusivamente sobre POSIX síncrono, o que restringe a comparação entre as três ferramentas a esse cenário @fio_docs @vdbench.
 
 #figure(
-  table(
-    columns: (1.8fr, auto, auto, auto),
-    inset: 6pt,
-    align: horizon + left,
-    fill: (x, y) => if y == 0 { gray.lighten(60%) },
-    table.header([*Funcionalidade*], [*Prismo*], [*FIO*], [*Vdbench*]),
-    [POSIX], [Sim], [Sim], [Sim],
-    [libaio], [Sim], [Sim], [Não],
-    [io_uring], [Sim], [Sim], [Não],
-    [SPDK], [Sim], [Plugin], [Não],
-    [Distribuição de duplicados], [Sim], [Taxa global], [Rácio global],
-    [Distribuição de compressibilidade], [Sim], [Taxa global], [Rácio global],
-    [Replay de traces], [Sim], [Limitado], [Não],
-    [Extensão sintética de traces], [Sim], [Não], [Não],
+  doc_table(
+    columns: (3fr, 1fr, 1fr, 1fr),
+    header: ([Interface], [Prismo], [FIO], [Vdbench]),
+    [POSIX], cell_yes, cell_yes, cell_yes,
+    [libaio], cell_yes, cell_yes, cell_no,
+    [io_uring], cell_yes, cell_yes, cell_no,
+    [SPDK], cell_yes, cell_partial[Plugin], cell_no,
+  ),
+  caption: [Interfaces suportadas por cada ferramenta]
+) <interfaces>
+
+As interfaces comuns a mais do que uma ferramenta foram configuradas de forma equivalente, operando o io_uring e o libaio com 128 entradas na fila de submissão, sendo no primeiro caso ativado o polling do kernel através das flags `IORING_SETUP_SQPOLL` e `IORING_SETUP_SQ_AFF`, enquanto o @spdk recorre a uma máscara de quatro reactors e oito threads lógicas.
+
+#figure(
+  doc_table(
+    columns: (3fr, 1fr, 1fr, 1fr),
+    header: ([Funcionalidade], [Prismo], [FIO], [Vdbench]),
+    [Distribuição de duplicados], cell_yes, cell_partial[Taxa global], cell_partial[Rácio global],
+    [Distribuição de compressibilidade], cell_yes, cell_partial[Taxa global], cell_partial[Rácio global],
+    [Replay de traces], cell_yes, cell_partial[Limitado], cell_no,
+    [Extensão sintética de traces], cell_yes, cell_no, cell_no,
   ),
   caption: [Funcionalidades suportadas por cada ferramenta]
 ) <ferramentas>
 
-Sempre que possível, as configurações foram replicadas entre ferramentas de modo a garantir equivalência semântica, no entanto o Vdbench não dispõe de barreiras de sincronização nem de geração de conteúdo constante, sendo a distribuição Zipfiana aproximada através do parâmetro `hotband`, aproximações que devem ser tidas em conta na leitura dos resultados @vdbench.
+Esta equivalência nem sempre é alcançável no que toca ao conteúdo, uma vez que o Vdbench não dispõe de barreiras de sincronização nem de geração de conteúdo constante, sendo a distribuição Zipfian aproximada através do parâmetro `hotband`, aproximações que devem ser tidas em conta na leitura dos resultados @vdbench.
 
 ==== Campanha Experimental
 
@@ -118,12 +121,10 @@ A campanha experimental é constituída por quinze workloads base, cada uma isol
 #[
 #show figure: set block(breakable: true)
 #figure(
-  table(
+  doc_table(
     columns: (auto, 1.2fr, 1.6fr),
-    inset: 6pt,
-    align: horizon + left,
-    fill: (x, y) => if y == 0 or x == 0 { gray.lighten(60%) },
-    table.header([*\#*], [*Dimensão isolada*], [*Parâmetros principais*]),
+    header: ([\#], [Dimensão isolada], [Parâmetros principais]),
+    fill: (x, y) => if x == 0 { gray.lighten(60%) },
     [*01*], [Débito sequencial de escrita], [Escrita, sequencial, conteúdo constante],
     [*02*], [Débito sequencial de leitura], [Leitura, sequencial, conteúdo constante],
     [*03*], [Tamanho do bloco], [Escrita, sequencial, blocos de 64 KiB],
@@ -144,33 +145,27 @@ A campanha experimental é constituída por quinze workloads base, cada uma isol
 ) <workloads-base>
 ]
 
-A dimensão das workloads foi fixada em 752.91 GiB, valor que corresponde a quatro vezes a memória disponível, garantindo assim que o conjunto de dados manipulado não é passível de acomodação em cache e que os pedidos atingem efetivamente o dispositivo. Nas workloads mais demoradas, em particular aquelas assentes em acessos aleatórios, alcançar este volume implicaria execuções incomportáveis, daí que nestes casos a condição de paragem seja de quinze minutos de execução, duração suficiente para que o sistema atinja um regime estacionário @traeger2008 @tarasov2011.
+A dimensão das workloads foi fixada em 752.91 GiB, valor que corresponde a quatro vezes a memória disponível, garantindo assim que o conjunto de dados manipulado não é passível de acomodação em cache e que os pedidos atingem efetivamente o dispositivo. Nas workloads mais demoradas, em particular aquelas assentes em barreiras de sincronização, alcançar este volume implicaria execuções incomportáveis, daí que nestes casos a condição de paragem seja de quinze minutos de execução, duração suficiente para que o sistema atinja um regime estacionário @traeger2008 @tarasov2011.
 
-No que respeita às interfaces, o io_uring e o libaio operam com 128 entradas na fila de submissão, sendo no primeiro caso ativado o polling do kernel através das flags `IORING_SETUP_SQPOLL` e `IORING_SETUP_SQ_AFF`, enquanto o @spdk é configurado com uma máscara de quatro reactors e uma única thread lógica.
+Além disso, cada configuração é executada três vezes de forma independente, o que permite distinguir as diferenças atribuíveis às propriedades das workloads daquelas que decorrem apenas da variabilidade do sistema, sendo o tratamento estatístico dessas execuções descrito adiante @traeger2008 @tarasov2011.
 
-Entre a execução de workloads consecutivas é aplicado um procedimento de limpeza que garante o isolamento entre medições, evitando que o estado deixado por uma workload contamine os resultados da seguinte. Este procedimento inicia-se com um `sync`, que força a escrita para o disco de todas as páginas ainda pendentes em memória, assegurando deste modo que nenhuma operação da workload anterior transita para a janela de medição seguinte.
+Antes de cada execução é aplicado um procedimento de limpeza que garante o isolamento entre medições, evitando que o estado deixado pela execução anterior contamine os resultados da seguinte. Este procedimento inicia-se com um `sync`, que força a escrita para o disco de todas as páginas ainda pendentes em memória, assegurando deste modo que nenhuma operação da execução anterior transita para a janela de medição seguinte.
 
-De seguida, é escrito o valor 3 em `/proc/sys/vm/drop_caches`, invalidando não só a page cache mas também as estruturas de dentries e inodes mantidas pelo kernel. Esta invalidação assume particular importância nos sistemas de ficheiros avaliados, uma vez que, conforme anteriormente exposto, a flag `O_DIRECT` não impede o recurso à cache quando as otimizações de conteúdo se encontram ativas.
+De seguida, é escrito o valor 3 em `/proc/sys/vm/drop_caches`, invalidando não só a page cache mas também as estruturas de dentries e inodes mantidas pelo kernel. Esta invalidação assume particular importância nos sistemas de ficheiros avaliados, uma vez que a flag `O_DIRECT` não impede o recurso à cache quando as otimizações de conteúdo se encontram ativas.
 
-Por fim, o procedimento aguarda cinco minutos antes de iniciar a workload seguinte, período durante o qual o dispositivo permanece em repouso e conclui as tarefas internas de manutenção, como o garbage collection e o esvaziamento dos buffers. Sem esta pausa, uma workload intensiva em escritas deixaria o dispositivo num estado degradado, penalizando artificialmente a workload subsequente @traeger2008 @tarasov2011.
-
-Só então tem início a recolha de métricas, sendo o benchmark lançado um segundo depois de modo a garantir que o período inicial fica devidamente registado.
-
-// TODO: número de repetições por configuração e tratamento estatístico (Cardoide com --repetitions),
-//       incluindo a forma como a média e o desvio padrão são calculados sobre as execuções
+Por fim, o procedimento aguarda cinco minutos antes de iniciar a execução seguinte, período durante o qual o dispositivo permanece em repouso e conclui as tarefas internas de manutenção, como o garbage collection e o esvaziamento dos buffers. Sem esta pausa, uma workload intensiva em escritas deixaria o dispositivo num estado degradado, penalizando artificialmente a execução subsequente @traeger2008 @tarasov2011.
 
 ==== Sistemas de Armazenamento Avaliados
 
-As workloads são executadas sobre três sistemas de armazenamento distintos, sendo o dispositivo @nvme utilizado em bruto como linha de base agnóstica ao conteúdo, enquanto o Btrfs e o @zfs são avaliados por implementarem otimizações sensíveis às propriedades dos dados, por exemplo compressão e deduplicação.
+As workloads são executadas sobre três sistemas de armazenamento distintos, sendo o primeiro o próprio dispositivo @nvme acedido sem qualquer sistema de ficheiros interposto, o que constitui a linha de base agnóstica ao conteúdo, enquanto o Btrfs e o @zfs são avaliados por implementarem otimizações sensíveis às propriedades dos dados, por exemplo compressão e deduplicação.
+
+Este acesso direto assume duas formas distintas consoante a interface utilizada, isto porque nas interfaces do kernel o alvo é o ficheiro especial `/dev/nvme0n1`, enquanto no @spdk o dispositivo é manipulado a partir do user space através da abstração de @bdev, sem que o kernel chegue a intervir @spdk_docs.
 
 #figure(
-  table(
+  doc_table(
     columns: (1fr, auto, auto, 1.6fr),
-    inset: 6pt,
-    align: horizon + left,
-    fill: (x, y) => if y == 0 { gray.lighten(60%) },
-    table.header([*Sistema*], [*Compressão*], [*Deduplicação*], [*Papel na avaliação*]),
-    [@nvme em bruto], [Não], [Não], [Linha de base agnóstica ao conteúdo],
+    header: ([Sistema], [Compressão], [Deduplicação], [Papel na avaliação]),
+    [@nvme sem sistema de ficheiros], [Não], [Não], [Linha de base agnóstica ao conteúdo],
     [Btrfs], [zstd, nível 3], [Offline, via bees], [Compressão no caminho crítico e deduplicação diferida],
     [@zfs], [zstd, nível 3], [Inline], [Compressão e deduplicação no caminho crítico],
   ),
@@ -193,7 +188,7 @@ No @zfs, por sua vez, as escritas apenas são efetuadas de forma direta caso o o
 
 Perante esta incompatibilidade, e dado que a deduplicação constitui precisamente um dos objetos de avaliação, a propriedade `direct` foi desativada nos conjuntos de dados envolvidos, o que encaminha as escritas através do ARC e assegura que os duplicados são efetivamente detetados, embora ao custo de a page cache deixar de ser contornada.
 
-Desta forma, os resultados obtidos sobre sistemas de ficheiros não são diretamente comparáveis com os do dispositivo em bruto no que respeita ao efeito da page cache, sendo esta uma limitação que decorre da natureza das otimizações avaliadas e não da metodologia adotada.
+Desta forma, os resultados obtidos sobre sistemas de ficheiros não são diretamente comparáveis com os do acesso direto ao dispositivo no que respeita ao efeito da page cache, sendo esta uma limitação que decorre da natureza das otimizações avaliadas e não da metodologia adotada.
 
 Importa realçar que o Prismo, tal como o @fio e o Vdbench, emite pedidos de leitura e escrita de tamanho fixo sobre um ficheiro previamente alocado, exercitando por isso o caminho de dados e não as operações de metadados. Assim sendo, não se trata de uma avaliação de sistemas de ficheiros, mas antes da forma como cada sistema reage às propriedades do conteúdo que lhe é submetido.
 
@@ -203,7 +198,16 @@ As métricas recolhidas dividem-se entre aquelas reportadas pelas próprias ferr
 
 Já as métricas de sistema, nomeadamente a utilização de @cpu e de @ram, são recolhidas através do `pcp dstat` com uma frequência de amostragem de um segundo, que constitui a única fonte comum às três ferramentas e portanto a única que permite uma comparação justa do consumo de recursos.
 
-Por fim, nas workloads que exercitam deduplicação e compressão é ainda registado o espaço efetivamente ocupado em disco, pois só através deste é possível confirmar que as otimizações do sistema de armazenamento foram de facto acionadas pelo conteúdo gerado.
+Nas workloads que exercitam deduplicação e compressão é ainda registado o espaço efetivamente ocupado em disco, pois só através deste é possível confirmar que as otimizações do sistema de armazenamento foram de facto acionadas pelo conteúdo gerado.
+
+Uma vez recolhidas, as métricas das três execuções de cada configuração são combinadas na respetiva média, acompanhada do desvio padrão. Deste modo, as barras de erro presentes nas figuras traduzem a dispersão observada entre execuções e não a variação interna de uma única medição.
+
+No caso dos percentis de latência, a combinação incide sobre os valores reportados em cada execução, opção admissível por todas as repetições partilharem a mesma duração e submeterem o mesmo volume de pedidos. Já as séries temporais são apresentadas a partir da execução cuja média se aproxima da mediana das três, evitando que a combinação de séries com durações distintas introduza artefactos inexistentes.
+
+Por fim, a estabilidade dos resultados é aferida através do coeficiente de variação, o qual serve igualmente de critério de leitura, uma vez que diferenças inferiores à dispersão medida não são interpretadas como diferenças efetivas @traeger2008 @tarasov2011.
+
+// TODO: reportar o coeficiente de variação observado na campanha, indicando o valor máximo registado
+//       e as workloads onde a dispersão se revelou mais elevada
 
 === Validação do Prismo <validation>
 
