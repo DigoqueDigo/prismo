@@ -163,7 +163,7 @@ As workloads são executadas sobre três sistemas de armazenamento distintos, se
 
 #figure(
   doc_table(
-    columns: (1.3fr, 1.4fr, auto, 1.2fr),
+    columns: (1.3fr, 1fr, 1fr, 1fr),
     header: ([Sistema], [Versão], [Compressão], [Deduplicação]),
     [@nvme `/dev/nvme0n1`], [Kernel 5.4], [Não], [Não],
     [Btrfs], [btrfs-progs 5.4.1-2], [zstd, nível 3], [Offline, via bees 0.11],
@@ -178,7 +178,7 @@ No @zfs o recordsize foi ainda fixado em 4 KiB, de modo a coincidir com os bloco
 
 As estratégias de deduplicação diferem igualmente, uma vez que o @zfs atua no caminho crítico de @io enquanto o Btrfs delega a tarefa no bees, um serviço que percorre o sistema de ficheiros em segundo plano recorrendo a um índice limitado a 1 GiB @bees. Tal diferença condiciona a leitura dos resultados, dado que no Btrfs a redução de espaço apenas se manifesta após a passagem do serviço, ao contrário do @zfs onde é imediata, embora ao custo de latência acrescida nas escritas @koller2010 @meyer2012.
 
-Importa realçar que a garantia oferecida pela flag `O_DIRECT` deixa de ser absoluta quando estas otimizações se encontram ativas. No Btrfs, tanto as leituras de dados comprimidos como as escritas sobre inodes com checksums são redirecionadas para o caminho tradicional, enquanto no @zfs a deduplicação e as escritas diretas são mutuamente incompatíveis, o que obrigou a desativar a flag nos conjuntos de dados avaliados @btrfs_docs @zfs_docs.
+Importa realçar que a garantia oferecida pela flag `O_DIRECT` deixa de ser absoluta quando estas otimizações se encontram ativas. No Btrfs, tanto as leituras de dados comprimidos como as escritas sobre inodes com checksums acabam por transitar pela page cache, enquanto no @zfs a deduplicação e as escritas diretas são mutuamente incompatíveis, o que obrigou a desativar a propriedade `direct` nos conjuntos de dados avaliados @btrfs_docs @zfs_docs.
 
 Desta forma, os resultados obtidos sobre sistemas de ficheiros não são diretamente comparáveis com os do acesso direto ao dispositivo no que respeita ao efeito da page cache, limitação que decorre da natureza das otimizações avaliadas e não da metodologia adotada.
 
@@ -196,9 +196,15 @@ Nas workloads que exercitam deduplicação e compressão é ainda registado o es
 
 Uma vez recolhidas, as métricas das três execuções de cada configuração são combinadas na respetiva média, acompanhada do desvio padrão. Deste modo, as barras de erro presentes nas figuras adiante traduzem a dispersão observada entre execuções e não a variação interna de uma única medição.
 
-Por fim, a estabilidade dos resultados é aferida através do coeficiente de variação, o qual serve igualmente de critério de leitura, uma vez que diferenças inferiores à dispersão medida não são interpretadas como diferenças efetivas @traeger2008 @tarasov2011.
+No entanto, os percentis de latência constituem um caso particular, uma vez que a sua combinação incide sobre os valores reportados em cada execução e não sobre a distribuição conjunta das três, opção que decorre de os relatórios registarem apenas o percentil já calculado, sendo a aproximação admissível por todas as repetições possuírem duração e volume de pedidos comparáveis.
 
 === Validação do Prismo <validation>
+
+// TODO: passar esta informação para o capitulo de validação do prismo
+// talvez na secção de equivalencia ou reprodutibilidade
+#text(red)[
+  Por fim, o coeficiente de variação é utilizado para aferir a estabilidade dos resultados, exprimindo a dispersão das três execuções em proporção da respetiva média. Este valor estabelece igualmente o limiar a partir do qual as diferenças são consideradas efetivas, dado que duas medições cuja distância não ultrapasse a dispersão observada são tratadas como equivalentes @traeger2008 @tarasov2011.
+]
 
 Antes de utilizar o Prismo para avaliar sistemas de armazenamento, é necessário estabelecer confiança na ferramenta, daí que esta secção procure demonstrar que os resultados produzidos são fiáveis e comparáveis aos das ferramentas de referência em workloads genéricas, ao mesmo tempo que valida a correção dos mecanismos de geração de conteúdo.
 
