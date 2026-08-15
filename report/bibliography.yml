@@ -4,6 +4,24 @@ fio_docs:
   author: Jens Axboe
   url: https://fio.readthedocs.io/en/latest/fio_doc.html
 
+bees:
+  type: web
+  title: 'bees: Best-Effort Extent-Same, a block-oriented userspace deduplication agent for Btrfs'
+  author: Zygo Blaxell
+  url: https://github.com/Zygo/bees
+
+zfs_docs:
+  type: web
+  title: 'zfsprops: Native properties and user-defined properties of ZFS datasets'
+  author: OpenZFS
+  url: https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html
+
+btrfs_docs:
+  type: web
+  title: 'Btrfs documentation: Compression'
+  author: Btrfs
+  url: https://btrfs.readthedocs.io/en/latest/Compression.html
+
 spdk_docs:
   type: web
   title: Storage Performance Development Kit

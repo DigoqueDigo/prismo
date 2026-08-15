@@ -1,3 +1,4 @@
+#import "../utils/charts.typ" : tool-bars, tool-lines, cpu-stack, component-bars
 #import "../utils/functions.typ" : question_block, validation_point_block, doc_table, cell_yes, cell_no, cell_partial
 
 == Avaliação Experimental <chapter4>
@@ -39,7 +40,7 @@ Neste sentido, são definidas sete perguntas de investigação e quatro pontos d
 ]
 
 #validation_point_block[
-/ V2: Os resultados obtidos são estáveis e comparáveis entre execuções, garantindo que as variações observadas decorrem das propriedades das workloads e não de efeitos alheios.
+/ V2: As medições produzidas são estáveis ao longo da execução e comparáveis entre ferramentas, garantindo que as variações observadas decorrem das propriedades das workloads e não de efeitos alheios.
 ]
 
 #validation_point_block[
@@ -147,7 +148,7 @@ A campanha experimental é constituída por quinze workloads base, cada uma isol
 
 A dimensão das workloads foi fixada em 752.91 GiB, valor que corresponde a quatro vezes a memória disponível, garantindo assim que o conjunto de dados manipulado não é passível de acomodação em cache e que os pedidos atingem efetivamente o dispositivo. Nas workloads mais demoradas, em particular aquelas assentes em barreiras de sincronização, alcançar este volume implicaria execuções incomportáveis, daí que nestes casos a condição de paragem seja de quinze minutos de execução, duração suficiente para que o sistema atinja um regime estacionário @traeger2008 @tarasov2011.
 
-Além disso, cada configuração é executada três vezes de forma independente, o que permite distinguir as diferenças atribuíveis às propriedades das workloads daquelas que decorrem apenas da variabilidade do sistema, sendo o tratamento estatístico dessas execuções descrito adiante @traeger2008 @tarasov2011.
+Cada configuração corresponde a uma única execução, sendo a estabilidade das medições aferida a partir das séries temporais recolhidas ao longo dessa execução, conforme descrito adiante @traeger2008 @tarasov2011.
 
 ===== Estabilização do Sistema entre Execuções
 
@@ -176,7 +177,7 @@ Em ambos os sistemas de ficheiros a compressão recorre ao zstd no nível 3, val
 
 No @zfs o recordsize foi ainda fixado em 4 KiB, de modo a coincidir com os blocos manipulados pela generalidade das workloads. Esta decisão revela-se indispensável, isto porque a deduplicação opera ao nível do record, daí que um valor superior implicasse que blocos duplicados de 4 KiB jamais originassem records idênticos, tornando a otimização inoperante face ao conteúdo gerado @zfs_docs.
 
-As estratégias de deduplicação diferem igualmente, uma vez que o @zfs atua no caminho crítico de @io enquanto o Btrfs delega a tarefa no bees, um serviço que percorre o sistema de ficheiros em segundo plano recorrendo a um índice limitado a 1 GiB @bees. Tal diferença condiciona a leitura dos resultados, dado que no Btrfs a redução de espaço apenas se manifesta após a passagem do serviço, ao contrário do @zfs onde é imediata, embora ao custo de latência acrescida nas escritas @koller2010 @meyer2012.
+As estratégias de deduplicação diferem igualmente, visto o @zfs atuar no caminho crítico de @io enquanto o Btrfs delega a tarefa no bees, um serviço que percorre o sistema de ficheiros em segundo plano recorrendo a um índice limitado a 1 GiB @bees. Tal diferença condiciona a leitura dos resultados, dado que no Btrfs a redução de espaço apenas se manifesta após a passagem do serviço, ao contrário do @zfs onde é imediata, embora ao custo de latência acrescida nas escritas @koller2010 @meyer2012.
 
 Importa realçar que a garantia oferecida pela flag `O_DIRECT` deixa de ser absoluta quando estas otimizações se encontram ativas. No Btrfs, tanto as leituras de dados comprimidos como as escritas sobre inodes com checksums acabam por transitar pela page cache, enquanto no @zfs a deduplicação e as escritas diretas são mutuamente incompatíveis, o que obrigou a desativar a propriedade `direct` nos conjuntos de dados avaliados @btrfs_docs @zfs_docs.
 
@@ -194,49 +195,145 @@ Nas workloads que exercitam deduplicação e compressão é ainda registado o es
 
 ===== Agregação de Métricas
 
-Uma vez recolhidas, as métricas das três execuções de cada configuração são combinadas na respetiva média, acompanhada do desvio padrão. Deste modo, as barras de erro presentes nas figuras adiante traduzem a dispersão observada entre execuções e não a variação interna de uma única medição.
+Uma vez recolhidas, as métricas são apresentadas através do valor reportado pela ferramenta, acompanhado do desvio padrão calculado sobre a respetiva série temporal. Deste modo, as barras de erro presentes nas figuras adiante traduzem a oscilação da medição ao longo da execução, sendo descartadas as primeiras amostras de forma a excluir o período de arranque.
 
-No entanto, os percentis de latência constituem um caso particular, uma vez que a sua combinação incide sobre os valores reportados em cada execução e não sobre a distribuição conjunta das três, opção que decorre de os relatórios registarem apenas o percentil já calculado, sendo a aproximação admissível por todas as repetições possuírem duração e volume de pedidos comparáveis.
+No entanto, os percentis de latência constituem um caso particular, dado que os relatórios registam apenas o valor já calculado sobre a totalidade da execução, não sendo por isso possível acompanhar a sua evolução temporal nem associar-lhes uma medida de dispersão.
 
 === Validação do Prismo <validation>
 
-// TODO: passar esta informação para o capitulo de validação do prismo
-// talvez na secção de equivalencia ou reprodutibilidade
-#text(red)[
-  Por fim, o coeficiente de variação é utilizado para aferir a estabilidade dos resultados, exprimindo a dispersão das três execuções em proporção da respetiva média. Este valor estabelece igualmente o limiar a partir do qual as diferenças são consideradas efetivas, dado que duas medições cuja distância não ultrapasse a dispersão observada são tratadas como equivalentes @traeger2008 @tarasov2011.
-]
+Previamente a utilizar o Prismo para avaliar sistemas de armazenamento, é necessário estabelecer confiança na ferramenta, daí que esta secção procure demonstrar que os resultados produzidos são fiáveis e comparáveis aos das ferramentas de referência em workloads genéricas, ao mesmo tempo que valida a correção dos mecanismos de geração de conteúdo.
 
-Antes de utilizar o Prismo para avaliar sistemas de armazenamento, é necessário estabelecer confiança na ferramenta, daí que esta secção procure demonstrar que os resultados produzidos são fiáveis e comparáveis aos das ferramentas de referência em workloads genéricas, ao mesmo tempo que valida a correção dos mecanismos de geração de conteúdo.
+==== Débito dos Componentes
+
+Antes de confrontar o Prismo com as ferramentas de referência, importa determinar o débito máximo que os seus componentes conseguem sustentar, pois qualquer limite imposto pela própria ferramenta comprometeria a atribuição dos resultados ao sistema de armazenamento. Para o efeito, cada gerador foi exercitado isoladamente, sem submissão de pedidos, ao longo de 100 milhões de invocações.
+
+#figure(
+  grid(
+    columns: 2, gutter: 6pt, row-gutter: 10pt,
+    component-bars("componentes.csv", "Acesso"),
+    component-bars("componentes.csv", "Conteúdo"),
+    component-bars("componentes.csv", "Operação"),
+    component-bars("componentes.csv", "Extensão"),
+  ),
+  caption: [Débito máximo de cada componente do Prismo]
+) <componentes>
+
+Os valores reunidos na @componentes revelam uma disparidade de duas ordens de grandeza entre variantes, sendo o gerador de operações constante o mais rápido, com 844.8 milhões de operações por segundo, enquanto o gerador de conteúdo com deduplicação se fica pelos 4.8 milhões, diferença que se explica pelo trabalho envolvido, dado que o primeiro devolve um valor fixo e o segundo constrói um bloco de 4096 bytes respeitando uma distribuição de duplicados e de compressibilidade.
+
+Uma workload combina sempre um gerador de cada categoria, atuando estes em série na preparação de cada pedido, pelo que o débito da configuração resulta da soma dos respetivos tempos. Convém realçar que uma extensão de trace pode assumir o papel de qualquer um destes geradores, admitindo-se por isso configurações que recorrem a três extensões em simultâneo.
+
+Nestes termos, a configuração menos favorável corresponde a três extensões por regressão, que consomem 213.7 nanossegundos cada e limitam o Prismo a 1.6 milhões de operações por segundo. Já a pior combinação entre geradores convencionais, reunindo acesso Zipfian, operações por percentagem e conteúdo com deduplicação, totaliza 294.0 nanossegundos e permite 3.4 milhões de operações por segundo.
+
+Assim sendo, mesmo a configuração mais exigente mantém-se cerca de catorze vezes acima do débito máximo observado nas experiências, que foi de 113 015 @iops na workload 02 (demonstrado adiante), margem suficiente para acomodar dispositivos consideravelmente mais rápidos do que o utilizado. Deste modo, nenhuma combinação de geradores constitui o fator limitante da avaliação, e os resultados apresentados traduzem o comportamento do sistema de armazenamento.
 
 ==== Reprodutibilidade
 
-// TODO: mesma workload executada N vezes (via Cardoide com --repetitions)
-// TODO: reportar desvio padrão e coeficiente de variação sobre métricas dos report.json
-// TODO: workloads selecionadas: WL 01 (seq_write), WL 05 (rw_rand_mixed)
-// Evidência: report.json de múltiplas execuções da mesma workload
+A validação assenta nas workloads 01 a 09 executadas sobre o dispositivo @nvme através da interface POSIX, único cenário em que as três ferramentas operam sobre configurações muito semelhantes e podem por isso ser confrontadas diretamente.
+
+O primeiro requisito a verificar é a estabilidade das medições, pois uma ferramenta cujos valores oscilem acentuadamente não permite distinguir o efeito da workload do simples ruído experimental. Esta estabilidade é quantificada pelo coeficiente de variação das séries por segundo recolhidas ao longo de cada execução, apresentado na @reprodutibilidade.
+
+#figure(
+  tool-lines("validacao-cv.csv", ylabel: [Coeficiente de variação (%)]),
+  caption: [Coeficiente de variação do débito de operações por workload]
+) <reprodutibilidade>
+
+Os valores obtidos pelo Prismo situam-se entre 0.50% e 2.71%, gama que confirma tratar-se de medições estáveis, sendo de realçar que em sete das nove workloads a oscilação é inferior à do Vdbench e em quatro delas inferior também à do @fio.
+
+A workload 03 destaca-se por apresentar a maior dispersão nas três ferramentas, comportamento que não é imputável aos benchmarks mas ao dispositivo, pois trata-se da única workload com blocos de 64 KiB e o débito alcançado esgota periodicamente a cache interna do @nvme. Por outro lado, o Vdbench exibe oscilações acima de 9% em várias workloads, o que é consistente com as pausas introduzidas pela máquina virtual do Java.
+
+Estes valores fixam o critério de leitura adotado no restante capítulo, dado que uma diferença entre duas medições só é considerada efetiva quando excede a oscilação que a própria medição apresenta. Na prática, e tomando o valor mais elevado registado pelo Prismo, diferenças inferiores a 3% são tratadas como equivalência e não como vantagem de uma ferramenta sobre a outra @traeger2008 @tarasov2011.
+
+Convém realçar que esta análise caracteriza a estabilidade da medição e não a variabilidade entre execuções independentes, a qual exigiria a repetição integral da campanha e não foi avaliada, conforme se assinala nas limitações.
 
 ==== Equivalência em Workloads Genéricas
 
-// TODO: comparação Prismo vs FIO vs Vdbench em WL 01-09 (dados aleatórios, POSIX, raw NVMe)
-// TODO: gráficos de barras: throughput (MB/s) e IOPS por ferramenta
-// TODO: latência média: Prismo (report.json) vs FIO (clat.mean) vs Vdbench (resp time)
-// TODO: overhead de recursos: dstat.csv, usr%+sys% e mem used entre as 3 ferramentas
-// Evidência: report.json e dstat.csv de prismo_posix_1_9, fio_posix_1_9, vdbench_posix_1_9
+Aferida a estabilidade das medições, importa agora verificar se o Prismo produz valores comparáveis aos das ferramentas de referência quando submetido às mesmas condições, confronto que incide sobre o débito de operações, a latência e o consumo de recursos.
+
+#figure(
+  tool-bars("validacao-iops.csv", ylabel: [Milhares de @iops]),
+  caption: [Débito de operações por workload em cada ferramenta]
+) <validacao-iops>
+
+O débito apresentado na @validacao-iops revela concordância entre as três ferramentas em praticamente todas as workloads, com desvios que se mantêm abaixo do limiar de dispersão nos cenários dominados pelo dispositivo, ou seja naqueles assentes em acessos aleatórios. Nestas condições o dispositivo satura muito antes de qualquer ferramenta se aproximar do seu limite, pelo que as três medem inevitavelmente a mesma realidade.
+
+As workloads sequenciais afastam-se ligeiramente deste padrão, com uma vantagem para o Prismo na ordem dos cinco pontos percentuais, atribuível ao modelo produtor-consumidor descrito no @chapter3, uma vez que a preparação dos pedidos decorre numa thread distinta daquela que os submete e permite manter o dispositivo ocupado enquanto o bloco seguinte é construído.
+
+A workload 07 constitui a única exceção relevante, com o Prismo a ficar cerca de um quinto abaixo do @fio. Ambas as ferramentas executaram exatamente o mesmo trabalho, com idêntico número de operações, volume escrito e repartição entre leituras e escritas, diferindo apenas na duração, pelo que a explicação tem de residir no custo por pedido e não na carga submetida.
+
+Descartam-se desde logo duas hipóteses, dado que a geração de conteúdo é equivalente nas duas ferramentas, visto o parâmetro `buffer_compress_percentage` do @fio ativar automaticamente o `refill_buffers` @fio_docs, e dado que a @componentes demonstra que os geradores sustentam um débito duas ordens de grandeza superior ao exigido por esta workload.
+
+Esta leitura é corroborada pela workload 03, que recorre igualmente à regeneração de conteúdo mas com blocos dezasseis vezes maiores, reduzindo na mesma proporção o número de pedidos, e onde o Prismo volta a apresentar vantagem. Deste modo, tudo indica tratar-se de um custo que se manifesta por pedido e não por byte transferido.
+
+#figure(
+  grid(
+    columns: 2, gutter: 4pt,
+    tool-bars("validacao-latencia.csv", ylabel: [Latência média (µs)],
+              width: 6.0cm, height: 4.6cm, legend: false),
+    tool-bars("validacao-p99.csv", ylabel: [Latência p99 (µs)],
+              width: 6.0cm, height: 4.6cm),
+  ),
+  caption: [Latência média e percentil 99 por workload em cada ferramenta]
+) <validacao-latencia>
+
+A latência média confirma a equivalência estabelecida pelo débito, sendo o painel esquerdo da @validacao-latencia essencialmente uma imagem espelhada da figura anterior, o que demonstra medir a instrumentação do Prismo a mesma realidade que as ferramentas consagradas.
+
+O percentil 99, no painel direito, revela porém um padrão que a média esconde, pois o Prismo apresenta uma cauda mais pesada nas workloads que combinam escritas com concorrência, chegando a duplicar o valor do @fio, enquanto nas sequenciais a situação se inverte a seu favor.
+
+Este comportamento é atribuível ao mesmo modelo produtor-consumidor que explica a vantagem no débito, uma vez que a fila de pedidos impõe backpressure ao produtor sempre que a capacidade limite é atingida, penalizando os pedidos que nela aguardam sem afetar o débito agregado. Assim sendo, o Prismo privilegia a ocupação do dispositivo em detrimento da previsibilidade individual de cada pedido, compromisso que importa ter presente sempre que a cauda da distribuição seja o objeto de estudo.
+
+#figure(
+  grid(
+    columns: 2, gutter: 4pt,
+    tool-bars("validacao-cpu.csv", ylabel: [Utilização de @cpu (%)],
+              width: 6.0cm, height: 4.4cm, legend: false),
+    tool-bars("validacao-ram.csv", ylabel: [Memória utilizada (GiB)],
+              width: 6.0cm, height: 4.4cm),
+  ),
+  caption: [Consumo de recursos por workload em cada ferramenta]
+) <validacao-recursos>
+
+Por fim, o consumo de recursos apresentado na @validacao-recursos demonstra que as decisões arquiteturais do Prismo não acarretam um custo desproporcional, sendo a utilização de @cpu indistinguível da do @fio, ao passo que o Vdbench se destaca por executar sobre a máquina virtual do Java @vdbench.
+
+Ao nível da memória utilizada pela máquina a distância é mais nítida, embora modesta em termos absolutos, pois o Prismo ocupa cerca de meio gigabyte acima do @fio, diferença que decorre do pool de pacotes pré-alocado durante a inicialização do canal descrito na @chapter3, enquanto o Vdbench requer perto de três gigabytes adicionais. Tratando-se de uma máquina com 188 GiB, nenhum destes valores condiciona a avaliação.
+
+==== Fator Limitante da Avaliação
+
+O débito dos componentes, analisado no início desta secção, demonstrou que nenhum gerador limita a avaliação, no entanto essa medição incidiu sobre cada peça isoladamente e não sobre a execução completa. A repartição do tempo de @cpu recolhida pelo `pcp dstat` permite confirmar a conclusão em condições reais.
+
+
+#figure(
+  cpu-stack("validacao-cpu-tipos.csv"),
+  caption: [Repartição do tempo de @cpu durante a execução do Prismo]
+) <validacao-cpu-tipos>
+
+A @validacao-cpu-tipos apresenta as componentes de utilizador, sistema e espera por @io, correspondendo o remanescente até 100% a tempo ocioso, que se situa acima de 95% em todas as workloads com um único job e em 91.6% na workload 09. Estes valores decorrem de a máquina disponibilizar 96 threads de execução enquanto o benchmark ocupa apenas uma, ou três no caso da workload 09.
+
+Mais relevante é a proporção entre as componentes ativas, visto a espera por @io representar entre 29% e 48% do tempo não ocioso nas workloads com um único job, valor que ascende a 70% na workload 09. Por outras palavras, o processador passa mais tempo à espera do dispositivo do que a executar código do benchmark, seja em espaço de utilizador ou dentro do kernel.
+
+Convém realçar que a componente de utilizador, onde reside a geração de conteúdo e a preparação dos pedidos, não ultrapassa 0.77% em qualquer workload, mantendo-se sempre abaixo da componente de sistema. Assim sendo, o custo do Prismo é dominado pelas chamadas ao sistema inerentes à interface POSIX e não pela lógica própria da ferramenta.
+
+Em suma, os resultados apresentados ao longo desta secção medem a capacidade do sistema de armazenamento e não o limite das ferramentas utilizadas, conclusão que sustenta a interpretação de todas as comparações realizadas no restante capítulo @traeger2008 @didona2022.
 
 ==== Validação da Geração de Conteúdo
 
-// TODO: Deltoide aplicado sobre dados escritos pelo Prismo → JSON com distribuições de dedup e compressão
-// TODO: comparar distribuição configurada vs distribuição medida pelo Deltoide
-// TODO: Deltoide aplicado sobre dados escritos por FIO e Vdbench → confirmar ~0% duplicados e compressão negligenciável
-// TODO: gráfico ou tabela: distribuição configurada vs medida (Prismo) vs medida (FIO/Vdbench)
-// Evidência: output JSON do Deltoide sobre datasets gerados por cada ferramenta
+A equivalência demonstrada até aqui atesta a fiabilidade da instrumentação, no entanto nada diz sobre a propriedade que distingue o Prismo, ou seja, a capacidade de gerar conteúdo com distribuições de duplicados e compressibilidade controladas. Assim sendo, o #link("https://github.com/dsrhaslab/prismo/blob/main/tools/deltoide/README.md")[Deltoide] é aplicado sobre os dados efetivamente escritos, extraindo as distribuições presentes no dispositivo de armazenamento.
 
-==== Discussão
+A workload 11 foi configurada com três grupos de duplicados, cada um com a sua própria repartição de compressibilidade, sendo os valores configurados e os medidos apresentados na @conteudo.
 
-// TODO: síntese dos 3 subpontos anteriores
-// TODO: conclusão: o Prismo é tão fiável quanto FIO/Vdbench em workloads genéricas
-// TODO: destaque: a validação do conteúdo confirma que o Prismo gera dados realistas que os outros não conseguem
-// TODO: fundamentação de V1, V2, V3
+#figure(
+  doc_table(
+    columns: (0.5fr, 0.8fr, 0.7fr, 1.4fr, 1.4fr),
+    header: ([Cópias], [Configurado], [Medido], [Redução configurada], [Redução medida]),
+    [0], [50.0%], [51.1%], [50% sem redução \ 50% a 50% de redução], [49.7% sem redução \ 50.3% a 49.7% de redução],
+    [1], [35.0%], [34.6%], [70% a 30% de redução \ 30% a 20% de redução], [71.2% a 30.2% de redução \ 28.8% a 19.8% de redução],
+    [3], [15.0%], [14.3%], [100% sem redução], [100% sem redução],
+  ),
+  caption: [Distribuição de duplicados e compressibilidade configurada e medida]
+) <conteudo>
+
+Os desvios observados na @conteudo não ultrapassam 1.1% na repartição de duplicados nem 1.2% na de compressibilidade, valores que confirmam uma reprodução fiel a distribuição solicitada. Além disso, observa-se um comportamento particular do algoritmo de geração de duplicados: à medida que os blocos repetidos avançam através da janela, a percentagem medida para o último nível de cópias nunca pode exceder a percentagem solicitada, uma vez que este corresponde ao último estágio.
+
+Estes resultados fundamentam o V1, dado que a distribuição medida sobre os dados escritos corresponde à configurada, e não a uma aproximação global como a praticada pelas ferramentas de referência, cujas configurações apenas admitem uma taxa única de duplicados e de compressibilidade @fio_docs @vdbench.
 
 === Impacto das Propriedades dos Dados no Desempenho <data-properties>
 
@@ -400,6 +497,9 @@ Em ambientes de produção, as workloads exibem frequentemente padrões de acess
 
 // TODO: workloads não testadas, sistemas não avaliados
 // TODO: condições experimentais (single machine, single device)
+// TODO: cada configuração corresponde a uma única execução, pelo que a variabilidade entre
+//       execuções independentes não foi caracterizada; a dispersão reportada traduz a
+//       estabilidade da medição ao longo da execução
 // TODO: limitações dos traces disponíveis
 // TODO: o caminho de metadados dos sistemas de ficheiros não é exercitado, dado que o Prismo, tal
 //       como o FIO e o Vdbench, opera sobre um ficheiro pré-alocado; uma avaliação completa exigiria
