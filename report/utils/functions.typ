@@ -29,11 +29,11 @@
   my_block(body, color: navy.lighten(80%), width: 100%)
 }
 
-#let doc_table(columns: (), header: (), fill: none, ..rows) = {
+#let doc_table(columns: (), header: (), fill: none, align: horizon + left, ..rows) = {
   table(
     columns: columns,
     inset: 6pt,
-    align: horizon + left,
+    align: align,
     fill: (x, y) => {
       if y == 0 { gray.lighten(60%) } else if fill != none { fill(x, y) }
     },
