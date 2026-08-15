@@ -1,0 +1,14 @@
+categoria,variante,ops
+Acesso,Aleatório,186.8
+Acesso,Sequencial,117.9
+Acesso,Zipfian,15.4
+Conteúdo,Compressão,23.4
+Conteúdo,Constante,12.8
+Conteúdo,Aleatório,5.0
+Conteúdo,Deduplicação,4.8
+Operação,Constante,844.8
+Operação,Sequência,119.0
+Operação,Percentagem,49.2
+Extensão,Repetição,14.8
+Extensão,Amostragem,13.7
+Extensão,Regressão,4.7
