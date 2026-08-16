@@ -10,28 +10,40 @@
 
 #let tool-labels = (prismo: [Prismo], fio: [FIO], vdbench: [Vdbench])
 
+// Séries por sistema de armazenamento, usadas nas figuras que comparam targets.
+#let series-colors = tool-colors + (
+  dev_nvme: rgb("#4d4d4d"),
+  btrfs: rgb("#1f4e79"),
+  zfs: rgb("#e08214"),
+)
+
+#let series-labels = tool-labels + (
+  dev_nvme: [NVMe], btrfs: [Btrfs], zfs: [ZFS],
+)
+
 // Lê um CSV de figura com o formato
 //   workload,prismo,fio,vdbench,prismo_std,fio_std,vdbench_std
 // e devolve as séries prontas a desenhar, ignorando as ferramentas sem valores.
 // O caminho é resolvido a partir deste ficheiro, de modo a não depender da raiz
 // configurada no compilador.
 #let read-series(name) = {
-  let rows = csv("../data/" + name).slice(1)
-  let tools = ("prismo", "fio", "vdbench")
-  let present = tools.filter(t => {
-    let i = tools.position(x => x == t) + 1
-    rows.any(r => r.at(i) != "")
-  })
+  let table = csv("../data/" + name)
+  let head = table.at(0)
+  let rows = table.slice(1)
+  // Metade das colunas úteis são valores e a outra metade desvios homónimos.
+  let names = head.slice(1, 1 + int((head.len() - 1) / 2))
   (
     labels: rows.map(r => r.at(0)),
-    series: present.map(t => {
-      let i = tools.position(x => x == t) + 1
-      (
-        name: t,
-        values: rows.map(r => if r.at(i) == "" { 0.0 } else { float(r.at(i)) }),
-        errors: rows.map(r => if r.at(i + 3) == "" { 0.0 } else { float(r.at(i + 3)) }),
-      )
-    }),
+    series: names.enumerate()
+      .filter(((i, n)) => rows.any(r => r.at(i + 1) != ""))
+      .map(((i, n)) => (
+        name: n,
+        values: rows.map(r => if r.at(i + 1) == "" { 0.0 } else { float(r.at(i + 1)) }),
+        errors: rows.map(r => {
+          let k = i + 1 + names.len()
+          if k >= r.len() or r.at(k) == "" { 0.0 } else { float(r.at(k)) }
+        }),
+      )),
   )
 }
 
@@ -115,7 +127,9 @@
 ) = {
   let data = read-series(name)
   let n = data.series.len()
-  let bar-width = 0.8 / n
+  // Enquanto não existirem valores, desenha-se apenas o referencial, de modo a que a
+  // figura permaneça visível no documento e se preencha assim que os dados cheguem.
+  let bar-width = 0.8 / calc.max(n, 1)
   let xs = range(data.labels.len())
 
   lq.diagram(
@@ -130,8 +144,8 @@
       xs.map(x => x + (k - (n - 1) / 2) * bar-width),
       s.values,
       width: bar-width,
-      fill: tool-colors.at(s.name),
-      label: tool-labels.at(s.name),
+      fill: series-colors.at(s.name),
+      label: series-labels.at(s.name),
     )),
     ..data.series.enumerate().filter(((k, s)) => s.errors.any(e => e > 0)).map(((k, s)) => lq.plot(
       xs.map(x => x + (k - (n - 1) / 2) * bar-width),

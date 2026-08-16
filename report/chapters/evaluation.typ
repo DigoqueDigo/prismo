@@ -195,7 +195,7 @@ Nas workloads que exercitam deduplicação e compressão é ainda registado o es
 
 ===== Agregação de Métricas
 
-Uma vez recolhidas, as métricas são apresentadas através do valor reportado pela ferramenta, acompanhado do desvio padrão calculado sobre a respetiva série temporal. Deste modo, as barras de erro presentes nas figuras adiante traduzem a oscilação da medição ao longo da execução, sendo descartadas as primeiras amostras de forma a excluir o período de arranque.
+Uma vez recolhidas, as métricas são apresentadas através do valor reportado pela ferramenta, acompanhado do desvio padrão calculado sobre a respetiva série temporal. Deste modo, as barras de erro presentes nas figuras adiante traduzem a oscilação da medição ao longo da execução, sendo descartadas as primeiras amostras de modo a excluir o período de arranque.
 
 No entanto, os percentis de latência constituem um caso particular, dado que os relatórios registam apenas o valor já calculado sobre a totalidade da execução, não sendo por isso possível acompanhar a sua evolução temporal nem associar-lhes uma medida de dispersão.
 
@@ -230,7 +230,9 @@ Assim sendo, mesmo a configuração mais exigente mantém-se cerca de catorze ve
 
 A validação assenta nas workloads 01 a 09 executadas sobre o dispositivo @nvme através da interface POSIX, único cenário em que as três ferramentas operam sobre configurações muito semelhantes e podem por isso ser confrontadas diretamente.
 
-O primeiro requisito a verificar é a estabilidade das medições, pois uma ferramenta cujos valores oscilem acentuadamente não permite distinguir o efeito da workload do simples ruído experimental. Esta estabilidade é quantificada pelo coeficiente de variação das séries por segundo recolhidas ao longo de cada execução, apresentado na @reprodutibilidade.
+O primeiro requisito a verificar é a estabilidade das medições, pois uma ferramenta cujos valores oscilem acentuadamente não permite distinguir o efeito da workload do simples ruído experimental.
+
+Esta estabilidade é quantificada pelo coeficiente de variação das séries por segundo recolhidas ao longo de cada execução, apresentado na @reprodutibilidade.
 
 #figure(
   tool-lines("validacao-cv.csv", ylabel: [Coeficiente de variação (%)]),
@@ -395,14 +397,17 @@ A workload 11 acrescenta à compressibilidade uma distribuição de duplicados r
 
 A @impacto-dedup reproduz de forma quase exata o comportamento da workload anterior, mantendo-se as diferenças entre ambas abaixo de 2% nos dois sistemas, valor muito inferior à dispersão registada, pelo que a introdução de duplicados não produziu qualquer efeito mensurável no débito.
 
-Este resultado admite duas leituras que os dados disponíveis não permitem separar, visto tanto poder significar que a deduplicação não chegou a ser acionada, como que foi acionada sem que daí resultasse ganho de desempenho. Importa notar que também o @fio gera duplicados nesta workload, embora através de uma percentagem global, pelo que a comparação incide novamente sobre a forma da distribuição e não sobre a sua presença.
+Este resultado admite duas leituras que os dados disponíveis não permitem separar, visto tanto poder significar que a deduplicação não chegou a ser acionada, como que foi acionada sem que daí resultasse ganho de desempenho.
 
-No Btrfs a primeira hipótese é a mais provável, uma vez que o bees opera em segundo plano e a janela de medição termina antes de este percorrer os dados escritos, ao contrário da compressão, aplicada no caminho crítico. Já no @zfs a ausência de efeito remete para a incompatibilidade identificada na metodologia entre deduplicação e escritas diretas.
+Importa notar que também o @fio gera duplicados nesta workload, embora através de uma percentagem global, pelo que a comparação incide novamente sobre a forma da distribuição e não sobre a sua presença.
 
-// TODO: registar o espaço efetivamente ocupado em disco após cada execução, medição sem a
-//       qual não é possível determinar se a deduplicação foi acionada, e que no Btrfs exige
-//       aguardar a passagem do bees
-// Evidência: ocupação do dispositivo via zpool list e btrfs filesystem usage
+No Btrfs a primeira hipótese é a mais provável, dado que o bees opera em segundo plano e a janela de medição termina antes de este percorrer os dados escritos, ao contrário da compressão, aplicada no caminho crítico.
+
+Já no @zfs, onde a deduplicação atua no caminho crítico e a propriedade `direct` foi desativada precisamente para a manter operacional, a ausência de efeito admite duas explicações distintas. A primeira decorre da própria configuração das workloads, visto a workload 11 apresentar uma compressibilidade média de 22% contra os 30% da workload 10, pelo que o ganho trazido pelos duplicados pode estar a ser anulado por uma redução por compressão inferior em oito pontos percentuais.
+
+A segunda aponta para o custo da tabela de deduplicação, uma vez que o @zfs consulta e atualiza esta estrutura a cada escrita, e o recordsize de 4 KiB adotado multiplica o número de entradas a manter. Nestas condições, o trabalho acrescido pode compensar as escritas evitadas, hipótese consistente com os quase sessenta gigabytes de memória ocupados neste sistema.
+
+Convém realçar que a primeira explicação constitui igualmente uma limitação do desenho experimental, dado que as duas workloads não diferem apenas na presença de duplicados, o que impede o isolamento do contributo da deduplicação.
 
 ==== Custo Computacional das Otimizações
 
@@ -421,36 +426,30 @@ A redução do volume escrito não é gratuita, uma vez que a compressão e a de
 
 O contraste apresentado na @impacto-recursos é acentuado, dado que o @zfs consome cerca de cinco vezes mais processador do que o Btrfs e ocupa perto de sessenta gigabytes de memória contra pouco mais de dez, custo que reflete a natureza inline das suas otimizações e o dimensionamento do ARC.
 
-Particularmente esclarecedora é a comparação da memória entre ferramentas no @zfs, onde o Prismo ocupa cerca de oito gigabytes menos do que o @fio apesar de submeter o mesmo volume de dados. Este resultado corrobora de forma independente a leitura avançada na subsecção anterior, visto o ARC armazenar os blocos já comprimidos.
+Particularmente esclarecedora é a comparação da memória entre ferramentas no @zfs, onde o Prismo ocupa cerca de oito gigabytes menos do que o @fio apesar de submeter exatamente o mesmo volume de dados lógicos. Uma vez que o ARC retém os blocos no estado em que são armazenados, ou seja já comprimidos, esta diferença só se explica se o conteúdo do Prismo estiver a ser efetivamente reduzido em maior grau.
 
-Por fim, no Btrfs o @fio consome praticamente o dobro do processador do Prismo para um débito apenas 17% superior, o que evidencia uma eficiência inferior por operação e reforça a hipótese de o custo se concentrar no tratamento do conteúdo e não na submissão dos pedidos.
+Trata-se de uma confirmação independente do ganho de débito discutido na subsecção da compressão, visto provir de uma grandeza distinta e apontar no mesmo sentido, atestando que a vantagem observada resulta de redução real de dados e não de qualquer particularidade da instrumentação.
 
-==== Discussão
+No Btrfs a leitura mais informativa reside igualmente no processador, onde o @fio consome praticamente o dobro do Prismo para um débito que, conforme estabelecido, não é distinguível do ruído da medição. Esta assimetria é coerente com a forma das duas distribuições, visto metade dos blocos do Prismo serem incompressíveis e portanto descartados precocemente pelo algoritmo, enquanto os do @fio, uniformemente compressíveis a 30%, obrigam ao trabalho completo em cada bloco @btrfs_docs.
 
-Os resultados reunidos nesta secção respondem afirmativamente à Q1, dado que o mesmo padrão de acessos executado sobre o mesmo sistema produz um débito superior em cerca de um terço quando o conteúdo é compressível, diferença que nenhuma outra característica da workload explica.
+Deste modo, o custo de comprimir depende não apenas da quantidade de dados redutíveis mas do modo como essa redutibilidade se distribui, o que reforça a conclusão avançada na subsecção da compressão sobre a insuficiência de uma taxa única para caracterizar o conteúdo.
 
-A resposta à Q2 é menos linear, pois as duas propriedades avaliadas não se comportam de igual modo, produzindo a compressibilidade um efeito imediato e mensurável enquanto a introdução de duplicados não alterou o débito em qualquer dos sistemas.
-
-Quanto à Q6, verifica-se que a escolha do sistema condiciona fortemente o benefício obtido, embora de forma menos evidente do que os valores absolutos sugerem. O Btrfs entrega um débito três a quatro vezes superior, no entanto é no @zfs que o conteúdo realista produz maior ganho relativo, e é também aí que o custo computacional se revela mais elevado.
-
-Deste modo, a recomendação depende do perfil da carga, pois sistemas dominados por dados compressíveis e com processador disponível beneficiam das otimizações do @zfs, ao passo que cargas pouco redutíveis são melhor servidas por um sistema que não pague o custo dessas otimizações.
-
-Em suma, um benchmark que ignore as propriedades do conteúdo subestima em cerca de um terço o débito que o @zfs entrega perante dados realistas, erro que fundamenta o V4 e demonstra não ser a fidelidade do conteúdo um requisito acessório, mas antes condição para que a avaliação seja representativa @koller2010 @meyer2012.
-
-// TODO: declarar as diferenças de configuração entre os dois sistemas de ficheiros que não
-//       são exatamente equivalentes, nomeadamente ao nível do alinhamento dos blocos
-// Usar este tudo para dizer que não é possivel estabelecer relaç~ões diretas este os dois sistemas de ficheiros, visto que nem sequer operam sobre a mesma configuração, a configuração deles foi detalhanda anteriormente
-
-
-
-
-
-
-
-
+Em suma, um benchmark que ignore as propriedades do conteúdo subestima em cerca de um terço o débito que o @zfs entrega perante dados realistas, resultado que demonstra não ser a fidelidade do conteúdo um requisito acessório, mas antes condição para que a avaliação seja representativa. Estabelecido o efeito das propriedades dos dados, importa agora averiguar em que medida a interface de @io condiciona os valores medidos @koller2010 @meyer2012.
 
 #pagebreak()
-#pagebreak()
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 === Comparação de Interfaces de I/O <io-interfaces>
 
@@ -481,8 +480,6 @@ O suporte a múltiplas interfaces de @io constitui uma das funcionalidades disti
 // TODO: dstat.csv: CPU por core
 // Evidência: report.json + dstat.csv
 
-==== Discussão
-
 // TODO: tabela-síntese: ranking de interfaces por tipo de workload × ferramenta
 // TODO: verificar se o ranking de interfaces se inverte consoante o sistema de armazenamento
 // TODO: trade-off entre complexidade de configuração e ganho de desempenho
@@ -509,8 +506,6 @@ A capacidade de replicar workloads baseadas em traces de produção constitui um
 // TODO: gráfico: distribuição de dedup/compressão por estratégia de extensão
 // Evidência: output Deltoide + report.json de workloads 12-13
 
-==== Discussão
-
 // TODO: o Prismo é o único benchmark a combinar replay de traces com geração de conteúdo realista
 // TODO: tabela comparativa: Prismo vs FIO vs Vdbench em cada capacidade de trace (✓/✗/parcial)
 // TODO: utilidade prática das workloads híbridas para avaliação de sistemas modernos
@@ -528,8 +523,6 @@ Em ambientes de produção, as workloads exibem frequentemente padrões de acess
 // TODO: dstat.csv: disk ops/sec ao longo do tempo
 // Evidência: report.json + dstat.csv das respetivas workloads
 
-==== Discussão
-
 // TODO: conclusão: workloads com localidade realista são necessárias para exercitar mecanismos de cache
 // TODO: comparação de latência p99 entre padrões de acesso
 // TODO: fundamentação de Q5
@@ -540,13 +533,18 @@ Em ambientes de produção, as workloads exibem frequentemente padrões de acess
 
 ==== Respostas às Perguntas de Avaliação
 
-// TODO: Q1: resposta concisa com referência cruzada à secção de impacto das propriedades dos dados
-// TODO: Q2: resposta concisa com referência cruzada à mesma secção
+A Q1 obtém resposta afirmativa na @data-properties, dado que o mesmo padrão de acessos executado sobre o mesmo sistema produz um débito superior em cerca de um terço quando o conteúdo é compressível, diferença que nenhuma outra característica da workload explica.
+
+Já a Q2 admite uma resposta menos linear, pois as duas propriedades avaliadas não se comportam de igual modo, produzindo a compressibilidade um efeito imediato e mensurável enquanto a introdução de duplicados não alterou o débito em qualquer dos sistemas. Este contraste é atribuído na mesma secção tanto ao carácter diferido da deduplicação no Btrfs como ao custo da tabela mantida pelo @zfs.
+
 // TODO: Q3: resposta concisa com referência cruzada à secção de interfaces de I/O
 // TODO: Q4: resposta concisa com referência cruzada à secção de workloads baseadas em traces
 // TODO: Q5: resposta concisa com referência cruzada à secção de localidade e cache
-// TODO: Q6: resposta concisa com referência cruzada à linha de base e aos trade-offs da secção de
-//       impacto das propriedades dos dados
+
+Quanto à Q6, verifica-se que a escolha do sistema condiciona fortemente o benefício obtido, embora de forma menos evidente do que os valores absolutos sugerem. O Btrfs entrega um débito três a quatro vezes superior, no entanto é no @zfs que o conteúdo realista produz maior ganho relativo, e é também aí que o custo computacional se revela mais elevado.
+
+Deste modo, a recomendação depende do perfil da carga, beneficiando das otimizações do @zfs as cargas dominadas por dados compressíveis, enquanto as pouco redutíveis são melhor servidas por um sistema que não pague esse custo.
+
 // TODO: Q7: resposta transversal — confronto com FIO e Vdbench ao longo de todo o capítulo,
 //       quantificando o erro de avaliação de quem ignora conteúdo e enumerando as conclusões
 //       sobre os sistemas avaliados que só o Prismo permite alcançar
@@ -557,7 +555,8 @@ Em ambientes de produção, as workloads exibem frequentemente padrões de acess
 // TODO: V2: confirmação com referência à secção de reprodutibilidade
 // TODO: V3: confirmação com referência às métricas e relatórios produzidos
 // TODO: V4: confirmação com referência à equivalência demonstrada em workloads genéricas (a
-//       diferença não vem da instrumentação) cruzada com a divergência observada em ZFS/Btrfs
+//       diferença não vem da instrumentação) cruzada com a divergência observada em ZFS/Btrfs,
+//       retomando o erro de avaliação de cerca de um terço quantificado na @data-properties
 
 ==== Limitações
 
@@ -571,6 +570,9 @@ Em ambientes de produção, as workloads exibem frequentemente padrões de acess
 //       partilha a distribuição de acessos com as workloads 10 e 11 mas não o mix de operações;
 //       um controlo estrito exigiria uma variante da workload 10 com redução nula, que
 //       diferisse das restantes apenas no conteúdo
+// TODO: as workloads 10 e 11 diferem na presença de duplicados mas também na compressibilidade
+//       média, 30% contra 22%, o que impede o isolamento do contributo da deduplicação; uma
+//       variante da workload 11 com a mesma compressibilidade da 10 resolveria a ambiguidade
 // TODO: o caminho de metadados dos sistemas de ficheiros não é exercitado, dado que o Prismo, tal
 //       como o FIO e o Vdbench, opera sobre um ficheiro pré-alocado; uma avaliação completa exigiria
 //       workloads intensivas em metadados, ficando essa análise fora do âmbito desta dissertação
