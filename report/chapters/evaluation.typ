@@ -371,13 +371,15 @@ A workload 10 escreve conteúdo com compressibilidade controlada segundo três n
   caption: [Débito de operações na workload 10 em cada sistema de ficheiros]
 ) <impacto-compressao>
 
-Confrontando a @impacto-compressao com a linha de base, verifica-se que o Prismo alcança mais 26% de débito no Btrfs e mais 32% no @zfs do que na workload 06, embora esta partilhe a mesma distribuição de acessos e a workload 10 contenha uma proporção superior de escritas, pelo que o ganho é atribuível ao zstd, única dimensão favorável que as distingue.
+Confrontando a @impacto-compressao com a linha de base, verifica-se que o Prismo alcança mais 26% de débito no Btrfs e mais 32% no @zfs do que na workload 06, que partilha com esta a mesma distribuição Zipfiana de acessos. O mecanismo que sustenta este ganho é claro, dado que conteúdo compressível permite ao sistema de ficheiros armazenar fisicamente menos dados do que aqueles que lhe são entregues, reduzindo na mesma medida o trabalho pedido ao dispositivo e libertando-o para aceitar mais operações no mesmo intervalo.
 
-O mecanismo subjacente é direto, dado que conteúdo compressível permite ao sistema de ficheiros armazenar fisicamente menos dados do que aqueles que lhe são entregues, reduzindo na mesma medida o trabalho pedido ao dispositivo e libertando-o para aceitar mais operações no mesmo intervalo.
+Convém realçar, no entanto, que esta comparação não isola o efeito do conteúdo, visto a workload 10 apresentar também uma proporção superior de escritas, as quais, conforme observado na própria linha de base, tendem a elevar o débito por retornarem sem aguardar o dispositivo. Assim sendo, ambas as diferenças atuam no mesmo sentido e o ganho não é integralmente imputável à compressibilidade.
 
-Mais revelador é o confronto entre ferramentas no @zfs, onde o Prismo supera o @fio em cerca de 31%, diferença que atinge o dobro da dispersão registada e é por isso a única desta secção que o critério de leitura adotado permite declarar. Convém realçar que as duas configurações foram deliberadamente igualadas na compressibilidade média, pois a distribuição do Prismo, com metade dos blocos incompressíveis, 30% a reduzir metade e 20% a reduzir três quartos, produz exatamente os mesmos 30% que o @fio aplica de forma uniforme a todos os blocos.
+É o confronto entre ferramentas que elimina esta ambiguidade, dado que o Prismo e o @fio executam exatamente a mesma workload, com idêntico padrão de acessos e idêntica proporção de escritas, diferindo unicamente no conteúdo submetido. No @zfs o Prismo supera o @fio em cerca de 31%, diferença que atinge o dobro da dispersão registada e é por isso a única desta secção que o critério de leitura adotado permite declarar.
 
-Assim sendo, a diferença observada não é imputável a uma carga globalmente mais compressível, mas ao modo como essa compressibilidade se distribui pelos blocos. Por outras palavras, o sistema de armazenamento responde à forma da distribuição e não apenas ao seu valor médio, propriedade que uma taxa única é por construção incapaz de exprimir.
+No entanto, merece particular destaque o facto de as duas configurações terem sido deliberadamente igualadas na compressibilidade média, pois a distribuição do Prismo, com metade dos blocos incompressíveis, 30% a reduzir metade e 20% a reduzir três quartos, produz exatamente os mesmos 30% que o @fio aplica de forma uniforme a todos os blocos.
+
+Deste modo, a diferença observada não é imputável a uma carga globalmente mais compressível, mas ao modo como essa compressibilidade se distribui pelos blocos. Por outras palavras, o sistema de armazenamento responde à forma da distribuição e não apenas ao seu valor médio, propriedade que uma taxa única é por construção incapaz de exprimir.
 
 No Btrfs a relação aparenta inverter-se, ficando o Prismo cerca de 16% abaixo do @fio. Esta diferença não deve porém ser interpretada como uma inversão efetiva, dado que a dispersão das medições ronda os 13% e os intervalos das duas ferramentas se sobrepõem numa extensão considerável, pelo que o critério estabelecido na secção anterior obriga a tratá-las como equivalentes.
 
@@ -399,8 +401,6 @@ A @impacto-dedup reproduz de forma quase exata o comportamento da workload anter
 
 Este resultado admite duas leituras que os dados disponíveis não permitem separar, visto tanto poder significar que a deduplicação não chegou a ser acionada, como que foi acionada sem que daí resultasse ganho de desempenho.
 
-Importa notar que também o @fio gera duplicados nesta workload, embora através de uma percentagem global, pelo que a comparação incide novamente sobre a forma da distribuição e não sobre a sua presença.
-
 No Btrfs a primeira hipótese é a mais provável, dado que o bees opera em segundo plano e a janela de medição termina antes de este percorrer os dados escritos, ao contrário da compressão, aplicada no caminho crítico.
 
 Já no @zfs, onde a deduplicação atua no caminho crítico e a propriedade `direct` foi desativada precisamente para a manter operacional, a ausência de efeito admite duas explicações distintas. A primeira decorre da própria configuração das workloads, visto a workload 11 apresentar uma compressibilidade média de 22% contra os 30% da workload 10, pelo que o ganho trazido pelos duplicados pode estar a ser anulado por uma redução por compressão inferior em oito pontos percentuais.
@@ -411,7 +411,7 @@ Convém realçar que a primeira explicação constitui igualmente uma limitaçã
 
 ==== Custo Computacional das Otimizações
 
-A redução do volume escrito não é gratuita, uma vez que a compressão e a deduplicação consomem processador e memória em troca das operações de @io poupadas. Este custo é apresentado na @impacto-recursos para a workload 11, onde ambas as otimizações se encontram ativas.
+A redução do volume escrito não é gratuita, dado que a compressão e a deduplicação consomem processador e memória em troca das operações de @io poupadas. Este custo é apresentado na @impacto-recursos para a workload 11, onde ambas as otimizações se encontram ativas.
 
 #figure(
   grid(
@@ -428,28 +428,11 @@ O contraste apresentado na @impacto-recursos é acentuado, dado que o @zfs conso
 
 Particularmente esclarecedora é a comparação da memória entre ferramentas no @zfs, onde o Prismo ocupa cerca de oito gigabytes menos do que o @fio apesar de submeter exatamente o mesmo volume de dados lógicos. Uma vez que o ARC retém os blocos no estado em que são armazenados, ou seja já comprimidos, esta diferença só se explica se o conteúdo do Prismo estiver a ser efetivamente reduzido em maior grau.
 
-Trata-se de uma confirmação independente do ganho de débito discutido na subsecção da compressão, visto provir de uma grandeza distinta e apontar no mesmo sentido, atestando que a vantagem observada resulta de redução real de dados e não de qualquer particularidade da instrumentação.
-
 No Btrfs a leitura mais informativa reside igualmente no processador, onde o @fio consome praticamente o dobro do Prismo para um débito que, conforme estabelecido, não é distinguível do ruído da medição. Esta assimetria é coerente com a forma das duas distribuições, visto metade dos blocos do Prismo serem incompressíveis e portanto descartados precocemente pelo algoritmo, enquanto os do @fio, uniformemente compressíveis a 30%, obrigam ao trabalho completo em cada bloco @btrfs_docs.
 
 Deste modo, o custo de comprimir depende não apenas da quantidade de dados redutíveis mas do modo como essa redutibilidade se distribui, o que reforça a conclusão avançada na subsecção da compressão sobre a insuficiência de uma taxa única para caracterizar o conteúdo.
 
 Em suma, um benchmark que ignore as propriedades do conteúdo subestima em cerca de um terço o débito que o @zfs entrega perante dados realistas, resultado que demonstra não ser a fidelidade do conteúdo um requisito acessório, mas antes condição para que a avaliação seja representativa. Estabelecido o efeito das propriedades dos dados, importa agora averiguar em que medida a interface de @io condiciona os valores medidos @koller2010 @meyer2012.
-
-#pagebreak()
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 === Comparação de Interfaces de I/O <io-interfaces>
 
