@@ -438,37 +438,141 @@ Em suma, um benchmark que ignore as propriedades do conteúdo subestima em cerca
 
 O suporte a múltiplas interfaces de @io constitui uma das funcionalidades distintivas do Prismo, daí que faça todo o sentido avaliar o impacto da escolha da interface no desempenho observado. Embora o @fio suporte as mesmas interfaces, o acesso ao @spdk é conseguido através de um plugin cuja utilização é deveras complexa, não sendo por isso suportado nativamente. Por outro lado, o Vdbench opera exclusivamente sobre POSIX síncrono. Deste modo, a comparação entre as três ferramentas é possível para POSIX, enquanto para io_uring, libaio e @spdk a comparação é restrita ao Prismo e ao @fio.
 
+Todas as execuções recorrem ao dispositivo acedido diretamente e partilham a parametrização descrita adiante, o que permite separar dois efeitos distintos. As diferenças entre interfaces medidas com a mesma ferramenta traduzem o custo do próprio mecanismo de submissão, ao passo que as diferenças entre ferramentas dentro da mesma interface só podem ser imputadas ao modo como cada uma a utiliza.
+
+==== Configuração das Interfaces
+
+A interface POSIX opera de forma síncrona através das chamadas `pread` e `pwrite`, mantendo por isso um único pedido em curso de cada vez, condição que a torna a referência natural contra a qual as restantes são confrontadas, afinal qualquer ganho observado traduz o benefício de sobrepor operações.
+
+O libaio e o io_uring recebem em ambas as ferramentas uma profundidade de fila de 128 pedidos, sendo este o valor que fixa quantas operações podem aguardar conclusão ao mesmo tempo e portanto o parâmetro determinante deste confronto. No io_uring é adicionalmente ativado o polling do kernel, através das flags `IORING_SETUP_SQPOLL` e `IORING_SETUP_SQ_AFF` no Prismo e dos parâmetros `sqthread_poll` e `sqthread_poll_cpu` no @fio, ficando em qualquer dos casos a thread responsável fixada no primeiro processador @uring_kernel.
+
+Já o @spdk dispensa por completo a intervenção do kernel, acedendo ao dispositivo a partir do espaço de utilizador através da abstração de @bdev. Além disso, o Prismo é configurado com uma máscara de quatro reactors e oito threads lógicas, enquanto o @fio recorre ao plugin `spdk_bdev` mantendo a profundidade de fila das restantes interfaces assíncronas @spdk_docs.
+
+Convém realçar que apenas o libaio e o io_uring admitem uma comparação rigorosa entre ferramentas, dado que o modelo de reactors do Prismo não encontra correspondência direta nos parâmetros do plugin, pelo que os valores do @spdk devem ser lidos com a devida reserva.
+
 ==== Workloads Sequenciais
 
-// TODO: POSIX vs io_uring vs libaio vs SPDK em WL 01, 02, 03 no raw NVMe
-// TODO: para POSIX: comparação Prismo vs FIO vs Vdbench
-// TODO: para io_uring, libaio, SPDK: comparação Prismo vs FIO
-// TODO: gráfico de barras: throughput (MB/s) por engine × workload × ferramenta
-// Evidência: report.json de prismo_posix_1_9, prismo_uring_1_9, prismo_aio_1_9,
-//            fio_posix_1_9, fio_uring_1_9, fio_aio_1_9, fio_spdk_1_9, vdbench_posix_1_9
+As workloads 01 e 02 percorrem o dispositivo de forma sequencial com blocos de 4 KiB, a primeira em escrita e a segunda em leitura, constituindo por isso o cenário mais favorável à submissão assíncrona, uma vez que o padrão de acessos é previsível e permite ao dispositivo antecipar os pedidos seguintes.
+
+#figure(
+  grid(
+    columns: 2, gutter: 4pt,
+    tool-bars("interfaces-wl01.csv", ylabel: [Milhares de @iops],
+              xlabel: [Interface], width: 6.0cm, height: 4.4cm, legend: false),
+    tool-bars("interfaces-wl02.csv", ylabel: [Milhares de @iops],
+              xlabel: [Interface], width: 6.0cm, height: 4.4cm),
+  ),
+  caption: [Débito de operações nas workloads 01 e 02 em cada interface de @io]
+) <interfaces-seq>
+
+A @interfaces-seq revela um ganho considerável das interfaces assíncronas sobre o POSIX, que no Prismo ascende a cerca de cinco vezes na escrita e quatro na leitura, resultado esperado visto o POSIX síncrono bloquear a thread em cada operação e permitir por isso um único pedido em curso, enquanto as restantes mantêm dezenas em execução ao mesmo tempo.
+
+Convém realçar que o Prismo iguala ou supera o @fio em todas as interfaces destas duas workloads, com vantagem particularmente nítida no libaio, onde alcança perto de 20% acima. Assim sendo, a arquitetura produtor-consumidor mostra-se adequada a padrões previsíveis, nos quais o produtor consegue antecipar a preparação dos pedidos enquanto o consumidor aguarda as conclusões.
+
+// TODO: acrescentar a coluna do SPDK do Prismo, cujos valores se perderam, e retomar a
+//       comparação nesta interface
+
+==== Saturação da Largura de Banda
+
+As workloads anteriores mantiveram o bloco em 4 KiB, dimensão que obriga a submeter um elevado número de pedidos para movimentar um volume modesto de dados e que coloca por isso o esforço do lado da submissão. A workload 03 altera exclusivamente este parâmetro, elevando-o para 64 KiB, o que reduz para um sexto o número de operações necessárias a transferir a mesma quantidade de dados.
+
+Deste modo, o esforço desloca-se da submissão para a transferência, deixando o dispositivo de ser solicitado pela cadência dos pedidos e passando a sê-lo pelo volume que deles resulta, sendo assim possível averiguar se a vantagem das interfaces assíncronas se mantém quando o estrangulamento muda de natureza.
+
+#figure(
+  tool-bars("interfaces-wl03.csv", ylabel: [Milhares de @iops],
+            xlabel: [Interface], width: 8.5cm, height: 4.6cm),
+  caption: [Débito de operações na workload 03 em cada interface de @io]
+) <interfaces-bloco>
+
+Conforme se observa na @interfaces-bloco, as quatro interfaces produzem resultados indistinguíveis entre si e entre ferramentas, situando-se todas próximo das 28 mil operações por segundo. Uma vez que este valor corresponde a cerca de 1.8 GiB por segundo, conclui-se que o fator limitante deixou de ser a submissão de pedidos e passou a ser a largura de banda do próprio dispositivo.
+
+Por fim, importa reter que a escolha da interface apenas é determinante enquanto o estrangulamento residir no número de operações submetidas, pois a partir do momento em que o volume de dados satura o dispositivo qualquer interface atinge o mesmo limite.
+
+// TODO: acrescentar a coluna do SPDK do Prismo, cujos valores se perderam
 
 ==== Workloads Aleatórias e Mistas
 
-// TODO: WL 04 (rand_read), WL 05 (rw_rand_mixed)
-// TODO: para POSIX: Prismo vs FIO vs Vdbench; restantes: Prismo vs FIO
-// TODO: vantagem das interfaces assíncronas em random I/O
-// TODO: gráfico: IOPS por engine × ferramenta
-// Evidência: report.json das mesmas campanhas
+As workloads 04 e 05 substituem o acesso sequencial por acessos aleatórios distribuídos por toda a extensão do dispositivo, o que impede qualquer antecipação por parte deste e obriga cada pedido a suportar integralmente a latência do acesso. Nestas condições o débito deixa de depender da rapidez com que os dados são transferidos e passa a depender de quantos pedidos permanecem em curso, sendo portanto a profundidade da fila o parâmetro decisivo.
+
+#figure(
+  grid(
+    columns: 2, gutter: 4pt,
+    tool-bars("interfaces-wl04.csv", ylabel: [Milhares de @iops],
+              xlabel: [Interface], width: 6.0cm, height: 4.4cm, legend: false),
+    tool-bars("interfaces-wl05.csv", ylabel: [Milhares de @iops],
+              xlabel: [Interface], width: 6.0cm, height: 4.4cm),
+  ),
+  caption: [Débito de operações nas workloads 04 e 05 em cada interface de @io]
+) <interfaces-rand>
+
+O ganho das interfaces assíncronas é aqui muito superior ao observado nas workloads sequenciais, atingindo no Prismo cerca de catorze vezes o débito do POSIX na leitura aleatória, amplificação que se explica pela latência de cada acesso, integralmente exposta à aplicação numa interface síncrona e sobreposta entre pedidos concorrentes nas restantes.
+
+O confronto entre ferramentas revela, porém, uma diferença assinalável, com o @fio a alcançar aproximadamente o dobro do Prismo na workload 04 e cerca de 60% acima na workload 05, discrepância que constitui a maior registada em todo o capítulo e que não decorre da configuração, idêntica em ambas as ferramentas.
+
+#figure(
+  grid(
+    columns: 2, gutter: 4pt,
+    tool-bars("interfaces-lat-wl04.csv", ylabel: [Latência média (µs)],
+              xlabel: [Interface], width: 6.0cm, height: 4.4cm, legend: false),
+    tool-bars("interfaces-lat-wl05.csv", ylabel: [Latência média (µs)],
+              xlabel: [Interface], width: 6.0cm, height: 4.4cm),
+  ),
+  caption: [Latência média nas workloads 04 e 05 em cada interface de @io]
+) <interfaces-lat>
+
+A @interfaces-lat esclarece a origem desta diferença, dado que a latência reportada pelo Prismo nas interfaces assíncronas duplica a do @fio, ao passo que em POSIX ambas coincidem ao décimo de microssegundo. Uma vez que o débito resulta do quociente entre os pedidos em curso e a latência de cada um, e sendo a profundidade configurada idêntica, o dobro da latência traduz-se necessariamente em metade do débito.
+
+Convém realçar que a coincidência em POSIX é significativa, visto demonstrar medirem as duas ferramentas a mesma grandeza. A discrepância surge, no entanto, apenas quando existem pedidos a aguardar conclusão, ou seja quando a fila deixa de estar vazia.
+
+Merece particular destaque o facto de o Prismo obter praticamente o mesmo valor no io_uring e no libaio, duas interfaces que partilham apenas o carácter assíncrono e diferem por completo na implementação, o que localiza o estrangulamento num ponto anterior à interface e comum a ambas.
+
+Três candidatos podem desde logo ser excluídos, pois a @componentes demonstra sustentarem os geradores um débito duas ordens de grandeza superior ao exigido, medições próprias do canal entre produtor e consumidor situam-no acima de dez milhões de operações por segundo em ambos os modos de funcionamento, e a profundidade configurada é respeitada. Resta assim o ciclo do consumidor, que alterna entre submeter pedidos e recolher conclusões numa única thread, e onde o tempo despendido a recolher atrasa a reposição da fila.
+
+// TODO: confirmar esta interpretação instrumentando o número de pedidos efetivamente em curso
+//       no dispositivo, grandeza que a latência reportada não permite distinguir do tempo de
+//       permanência no próprio Prismo
+
+// TODO: acrescentar a coluna do SPDK do Prismo, cujos valores se perderam
 
 ==== Concorrência
 
-// TODO: WL 09 (rw_rand_multijob): escalabilidade com múltiplos jobs por engine
-// TODO: para POSIX: Prismo vs FIO vs Vdbench; restantes: Prismo vs FIO
-// TODO: throughput total e per-job
-// TODO: dstat.csv: CPU por core
-// Evidência: report.json + dstat.csv
+A workload 09 replica o padrão aleatório misto da workload 05 distribuindo-o por três jobs independentes, cada um com a sua fila e a sua thread submissora, o que permite averiguar se cada interface acompanha o aumento do número de produtores ou se algum recurso partilhado impede essa escalabilidade.
 
-// TODO: tabela-síntese: ranking de interfaces por tipo de workload × ferramenta
-// TODO: verificar se o ranking de interfaces se inverte consoante o sistema de armazenamento
-// TODO: trade-off entre complexidade de configuração e ganho de desempenho
-// TODO: diferenças entre Prismo e FIO nas interfaces assíncronas
-// TODO: recomendações práticas para utilizadores do benchmark
-// TODO: fundamentação de Q3
+#figure(
+  tool-bars("interfaces-wl09.csv", ylabel: [Milhares de @iops],
+            xlabel: [Interface], width: 8.5cm, height: 4.6cm),
+  caption: [Débito de operações na workload 09 em cada interface de @io]
+) <interfaces-conc>
+
+A @interfaces-conc mostra que o libaio do Prismo escala com o número de jobs, passando de cerca de 215 mil operações por segundo com um único job para 326 mil com três, valor que iguala o do @fio e constitui o único cenário assíncrono em que as duas ferramentas convergem.
+
+O io_uring, no entanto, não acompanha esta evolução no Prismo, mantendo-se próximo do valor obtido com um único job apesar de dispor do triplo das threads submissoras.
+
+#figure(
+  grid(
+    columns: 2, gutter: 4pt,
+    tool-bars("interfaces-cpu-1job.csv", ylabel: [Utilização de @cpu (%)],
+              xlabel: [Interface], width: 6.0cm, height: 4.4cm, legend: false),
+    tool-bars("interfaces-cpu-3jobs.csv", ylabel: [Utilização de @cpu (%)],
+              xlabel: [Interface], width: 6.0cm, height: 4.4cm),
+  ),
+  caption: [Utilização de @cpu com um job e com três jobs em cada interface de @io]
+) <interfaces-recursos>
+
+A @interfaces-recursos, que confronta a workload 05 com a workload 09, oferece a explicação mais provável, dado que o io_uring do Prismo triplica o consumo de processador ao passar de um para três jobs, enquanto o libaio o mantém praticamente inalterado e ainda assim entrega mais 50% de débito.
+
+Este consumo decorre das threads de polling do kernel, que giram em espera ativa e que a configuração adotada fixa todas no mesmo processador, conforme descrito anteriormente, competindo portanto três instâncias por um único núcleo sem que o tempo assim despendido se traduza em pedidos submetidos.
+
+// TODO: testar a hipótese distribuindo as threads de polling por processadores distintos,
+//       através do parâmetro sq_thread_cpu de cada job
+// Evidência: report.json e dstat.csv de prismo_uring_1_9, workload 24
+
+Em suma, a interface de @io condiciona fortemente o débito medido, com ganhos que vão de nulos, quando o dispositivo satura, até catorze vezes nos acessos aleatórios, disparidade que fundamenta a necessidade de um benchmark capaz de as exercitar a todas. Estabelecido este efeito, importa agora verificar se as workloads derivadas de traces reproduzem fielmente as propriedades dos dados originais.
+
+
+#pagebreak()
+#pagebreak()
+
 
 === Workloads Baseadas em Traces <trace-workloads>
 
