@@ -444,9 +444,9 @@ Todas as execuções recorrem ao dispositivo acedido diretamente e partilham a p
 
 A interface POSIX opera de forma síncrona através das chamadas `pread` e `pwrite`, mantendo por isso um único pedido em curso de cada vez, condição que a torna a referência natural contra a qual as restantes são confrontadas, afinal qualquer ganho observado traduz o benefício de sobrepor operações.
 
-O libaio e o io_uring recebem em ambas as ferramentas uma profundidade de fila de 128 pedidos, sendo este o valor que fixa quantas operações podem aguardar conclusão ao mesmo tempo e portanto o parâmetro determinante deste confronto. No io_uring é adicionalmente ativado o polling do kernel, através das flags `IORING_SETUP_SQPOLL` e `IORING_SETUP_SQ_AFF` no Prismo e dos parâmetros `sqthread_poll` e `sqthread_poll_cpu` no @fio, ficando em qualquer dos casos a thread responsável fixada no primeiro processador @uring_kernel.
+O libaio e o io_uring recebem em ambas as ferramentas uma profundidade de fila de 128 pedidos, sendo este o valor que fixa quantas operações podem aguardar conclusão ao mesmo tempo e portanto o parâmetro determinante deste confronto. No io_uring é adicionalmente ativado o polling do kernel, ficando a thread responsável fixada no primeiro core do processador @uring_kernel.
 
-Já o @spdk dispensa por completo a intervenção do kernel, acedendo ao dispositivo a partir do espaço de utilizador através da abstração de @bdev. Além disso, o Prismo é configurado com uma máscara de quatro reactors e oito threads lógicas, enquanto o @fio recorre ao plugin `spdk_bdev` mantendo a profundidade de fila das restantes interfaces assíncronas @spdk_docs.
+Já o @spdk dispensa por completo a intervenção do kernel, acedendo ao dispositivo a partir do espaço de utilizador através da abstração de @bdev. Além disso, o Prismo é configurado com uma máscara de quatro reactors e oito threads lógicas, enquanto o @fio recorre ao plugin `spdk_bdev` respeitando a profundidade de fila das restantes interfaces assíncronas @spdk_docs.
 
 Convém realçar que apenas o libaio e o io_uring admitem uma comparação rigorosa entre ferramentas, dado que o modelo de reactors do Prismo não encontra correspondência direta nos parâmetros do plugin, pelo que os valores do @spdk devem ser lidos com a devida reserva.
 
@@ -469,14 +469,15 @@ A @interfaces-seq revela um ganho considerável das interfaces assíncronas sobr
 
 Convém realçar que o Prismo iguala ou supera o @fio em todas as interfaces destas duas workloads, com vantagem particularmente nítida no libaio, onde alcança perto de 20% acima. Assim sendo, a arquitetura produtor-consumidor mostra-se adequada a padrões previsíveis, nos quais o produtor consegue antecipar a preparação dos pedidos enquanto o consumidor aguarda as conclusões.
 
-// TODO: acrescentar a coluna do SPDK do Prismo, cujos valores se perderam, e retomar a
-//       comparação nesta interface
+O @spdk apresenta, no entanto, um comportamento que contraria a expectativa, dado situar-se entre 10% e 14% abaixo do io_uring e do libaio no Prismo, quando seria de esperar que a eliminação do kernel do caminho crítico produzisse o débito mais elevado de todos. Sendo o mesmo padrão observado no @fio, cujo @spdk fica igualmente abaixo das interfaces do kernel, tudo indica tratar-se de uma característica desta workload e não de uma limitação de qualquer das ferramentas.
+
+Uma explicação plausível reside na natureza sequencial dos acessos, que permite ao kernel agregar pedidos contíguos e beneficiar do prefetch do dispositivo, vantagem que o @spdk perde ao submeter cada pedido individualmente. Convém realçar, no entanto, que esta interpretação carece de confirmação, não sendo possível excluir que a configuração de reactors adotada não seja a mais favorável a este padrão. // TODO: esta explicacao nao faz sentido pois as workloads foram todas executada com a flag odirect
 
 ==== Saturação da Largura de Banda
 
-As workloads anteriores mantiveram o bloco em 4 KiB, dimensão que obriga a submeter um elevado número de pedidos para movimentar um volume modesto de dados e que coloca por isso o esforço do lado da submissão. A workload 03 altera exclusivamente este parâmetro, elevando-o para 64 KiB, o que reduz para um sexto o número de operações necessárias a transferir a mesma quantidade de dados.
+As workloads anteriores mantiveram o bloco em 4 KiB, dimensão que obriga a submeter um elevado número de pedidos para movimentar um volume modesto de dados e que coloca por isso o esforço do lado da submissão. A workload 03 altera exclusivamente este parâmetro, elevando-o para 64 KiB, reduzindo para um sexto o número de operações necessárias a transferir a mesma quantidade de dados.
 
-Deste modo, o esforço desloca-se da submissão para a transferência, deixando o dispositivo de ser solicitado pela cadência dos pedidos e passando a sê-lo pelo volume que deles resulta, sendo assim possível averiguar se a vantagem das interfaces assíncronas se mantém quando o estrangulamento muda de natureza.
+Deste modo, o dispositivo deixa de ser solicitado pela cadência dos pedidos e passa a sê-lo pelo volume que deles resulta, permitindo assim averiguar se a vantagem das interfaces assíncronas se mantém quando o estrangulamento muda de natureza.
 
 #figure(
   tool-bars("interfaces-wl03.csv", ylabel: [Milhares de @iops],
@@ -486,9 +487,9 @@ Deste modo, o esforço desloca-se da submissão para a transferência, deixando 
 
 Conforme se observa na @interfaces-bloco, as quatro interfaces produzem resultados indistinguíveis entre si e entre ferramentas, situando-se todas próximo das 28 mil operações por segundo. Uma vez que este valor corresponde a cerca de 1.8 GiB por segundo, conclui-se que o fator limitante deixou de ser a submissão de pedidos e passou a ser a largura de banda do próprio dispositivo.
 
-Por fim, importa reter que a escolha da interface apenas é determinante enquanto o estrangulamento residir no número de operações submetidas, pois a partir do momento em que o volume de dados satura o dispositivo qualquer interface atinge o mesmo limite.
+Merece destaque o facto de esta convergência abranger igualmente o @spdk, cujo acesso em espaço de utilizador não lhe confere qualquer vantagem neste cenário, resultado que reforça a ideia de que a limitação se encontra no próprio dispositivo, e não no caminho de acesso utilizado.
 
-// TODO: acrescentar a coluna do SPDK do Prismo, cujos valores se perderam
+Por fim, importa reter que a escolha da interface apenas é determinante enquanto o estrangulamento reside no número de operações submetidas, pois a partir do momento em que o volume de dados satura o dispositivo qualquer interface atinge o mesmo limite.
 
 ==== Workloads Aleatórias e Mistas
 
@@ -526,13 +527,17 @@ Convém realçar que a coincidência em POSIX é significativa, visto demonstrar
 
 Merece particular destaque o facto de o Prismo obter praticamente o mesmo valor no io_uring e no libaio, duas interfaces que partilham apenas o carácter assíncrono e diferem por completo na implementação, o que localiza o estrangulamento num ponto anterior à interface e comum a ambas.
 
-Três candidatos podem desde logo ser excluídos, pois a @componentes demonstra sustentarem os geradores um débito duas ordens de grandeza superior ao exigido, medições próprias do canal entre produtor e consumidor situam-no acima de dez milhões de operações por segundo em ambos os modos de funcionamento, e a profundidade configurada é respeitada. Resta assim o ciclo do consumidor, que alterna entre submeter pedidos e recolher conclusões numa única thread, e onde o tempo despendido a recolher atrasa a reposição da fila.
+Três candidatos podem desde logo ser excluídos, dado que a @componentes demonstra sustentarem os geradores um débito duas ordens de grandeza superior ao exigido por esta workload, sendo além disso a profundidade configurada respeitada em ambas as ferramentas.
+
+Também o canal entre produtor e consumidor fica afastado, visto medições realizadas sobre este isoladamente atingirem 10 190 699 operações por segundo na variante não bloqueante e 9 992 777 na bloqueante, valores que excedem em mais de cinquenta vezes o débito aqui observado e que tornam a escolha entre as duas variantes irrelevante para o resultado.
+
+Resta assim o ciclo do consumidor, que alterna entre submeter pedidos e recolher conclusões numa única thread, e onde o tempo despendido a recolher atrasa a reposição da fila. Convém realçar, no entanto, que esta explicação permanece por confirmar, pois a latência reportada não permite distinguir o tempo passado no dispositivo daquele que decorre dentro do próprio Prismo.
+
+O @spdk oferece aqui o comportamento inverso ao observado nas workloads sequenciais, superando as interfaces do kernel em cerca de 31% na leitura aleatória e apresentando a latência mais baixa das três, comportamento consistente com a ausência de transições para o kernel em cada operação. Ainda assim permanece cerca de 36% abaixo do @fio, diferença que confirma residir a limitação num ponto comum a todas as interfaces do Prismo.
 
 // TODO: confirmar esta interpretação instrumentando o número de pedidos efetivamente em curso
 //       no dispositivo, grandeza que a latência reportada não permite distinguir do tempo de
 //       permanência no próprio Prismo
-
-// TODO: acrescentar a coluna do SPDK do Prismo, cujos valores se perderam
 
 ==== Concorrência
 
@@ -563,11 +568,19 @@ A @interfaces-recursos, que confronta a workload 05 com a workload 09, oferece a
 
 Este consumo decorre das threads de polling do kernel, que giram em espera ativa e que a configuração adotada fixa todas no mesmo processador, conforme descrito anteriormente, competindo portanto três instâncias por um único núcleo sem que o tempo assim despendido se traduza em pedidos submetidos.
 
+O @spdk exibe neste cenário a degradação mais acentuada de todo o capítulo, caindo de 238 mil operações por segundo com um único job para 87 mil com três, ou seja pouco mais de um terço, quando o @fio mantém nesta interface o mesmo débito das restantes. Trata-se de um resultado que contraria frontalmente o esperado, visto o @spdk dispor de quatro reactors e oito threads lógicas e ser, das quatro interfaces, aquela que à partida melhor acomodaria múltiplos produtores.
+
+Dado que o consumo de processador acompanha a subida do número de jobs sem retorno em débito, tudo indica tratar-se de contenção entre os reactors e as threads lógicas do Prismo, cuja repartição não foi ajustada ao número de jobs da workload. Não sendo possível confirmar esta leitura com os dados disponíveis, importa registar que o suporte a @spdk do Prismo não se encontra validado em cenários concorrentes.
+
+// TODO: repetir a workload 09 variando a máscara de reactors e o número de threads lógicas,
+//       de modo a determinar se a degradação decorre da configuração ou da implementação
+// Evidência: report.json e dstat.csv de prismo_spdk, workload 54
+
 // TODO: testar a hipótese distribuindo as threads de polling por processadores distintos,
 //       através do parâmetro sq_thread_cpu de cada job
 // Evidência: report.json e dstat.csv de prismo_uring_1_9, workload 24
 
-Em suma, a interface de @io condiciona fortemente o débito medido, com ganhos que vão de nulos, quando o dispositivo satura, até catorze vezes nos acessos aleatórios, disparidade que fundamenta a necessidade de um benchmark capaz de as exercitar a todas. Estabelecido este efeito, importa agora verificar se as workloads derivadas de traces reproduzem fielmente as propriedades dos dados originais.
+Em suma, a interface de @io condiciona fortemente o débito medido, com ganhos que vão de nulos, quando o dispositivo satura, até catorze vezes nos acessos aleatórios, disparidade que fundamenta a necessidade de um benchmark capaz de as exercitar a todas. Convém realçar, contudo, que nenhuma interface se revela superior em todos os cenários, pois o @spdk vence nos acessos aleatórios com um único job mas fica atrás nas workloads sequenciais e degrada-se perante concorrência, o que desaconselha recomendações absolutas. Estabelecido este efeito, importa agora verificar se as workloads derivadas de traces reproduzem fielmente as propriedades dos dados originais.
 
 
 #pagebreak()
