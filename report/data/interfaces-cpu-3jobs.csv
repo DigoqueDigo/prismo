@@ -2,4 +2,4 @@ engine,prismo,fio,vdbench,prismo_std,fio_std,vdbench_std
 posix,2.459,2.495,3.196,0.084,0.097,0.935
 uring,10.596,10.574,,0.063,0.603,
 aio,3.572,4.517,,0.146,0.706,
-spdk,,9.145,,,0.983,
+spdk,12.462,9.145,,1.323,0.983,
