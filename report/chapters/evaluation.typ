@@ -523,21 +523,15 @@ O confronto entre ferramentas revela, porém, uma diferença assinalável, com o
 
 A @interfaces-lat esclarece a origem desta diferença, dado que a latência reportada pelo Prismo nas interfaces assíncronas duplica a do @fio, ao passo que em POSIX ambas coincidem ao décimo de microssegundo. Uma vez que o débito resulta do quociente entre os pedidos em curso e a latência de cada um, e sendo a profundidade configurada idêntica, o dobro da latência traduz-se necessariamente em metade do débito.
 
-Convém realçar que a coincidência em POSIX é significativa, visto demonstrar medirem as duas ferramentas a mesma grandeza. A discrepância surge, no entanto, apenas quando existem pedidos a aguardar conclusão, ou seja quando a fila deixa de estar vazia.
+Convém realçar que a coincidência em POSIX é significativa, visto demonstrar medirem as duas ferramentas a mesma grandeza. A discrepância surge, no entanto, apenas quando existem pedidos a aguardar conclusão, ou seja quando a fila deixa de estar vazia. // TODO: não tenho a certeza desta afirmação
 
 Merece particular destaque o facto de o Prismo obter praticamente o mesmo valor no io_uring e no libaio, duas interfaces que partilham apenas o carácter assíncrono e diferem por completo na implementação, o que localiza o estrangulamento num ponto anterior à interface e comum a ambas.
 
 Três candidatos podem desde logo ser excluídos, dado que a @componentes demonstra sustentarem os geradores um débito duas ordens de grandeza superior ao exigido por esta workload, sendo além disso a profundidade configurada respeitada em ambas as ferramentas.
 
-Também o canal entre produtor e consumidor fica afastado, visto medições realizadas sobre este isoladamente atingirem 10 190 699 operações por segundo na variante não bloqueante e 9 992 777 na bloqueante, valores que excedem em mais de cinquenta vezes o débito aqui observado e que tornam a escolha entre as duas variantes irrelevante para o resultado.
+Também o canal entre produtor e consumidor fica afastado, visto medições realizadas sobre este isoladamente atingirem 10.2 milhões operações por segundo na variante não bloqueante e 9.99 milhẽes na bloqueante, valores que excedem em mais de cinquenta vezes o débito aqui observado e que tornam a escolha entre as duas variantes irrelevante para o resultado.
 
 Resta assim o ciclo do consumidor, que alterna entre submeter pedidos e recolher conclusões numa única thread, e onde o tempo despendido a recolher atrasa a reposição da fila. Convém realçar, no entanto, que esta explicação permanece por confirmar, pois a latência reportada não permite distinguir o tempo passado no dispositivo daquele que decorre dentro do próprio Prismo.
-
-O @spdk oferece aqui o comportamento inverso ao observado nas workloads sequenciais, superando as interfaces do kernel em cerca de 31% na leitura aleatória e apresentando a latência mais baixa das três, comportamento consistente com a ausência de transições para o kernel em cada operação. Ainda assim permanece cerca de 36% abaixo do @fio, diferença que confirma residir a limitação num ponto comum a todas as interfaces do Prismo.
-
-// TODO: confirmar esta interpretação instrumentando o número de pedidos efetivamente em curso
-//       no dispositivo, grandeza que a latência reportada não permite distinguir do tempo de
-//       permanência no próprio Prismo
 
 ==== Concorrência
 
@@ -564,11 +558,13 @@ O io_uring, no entanto, não acompanha esta evolução no Prismo, mantendo-se pr
   caption: [Utilização de @cpu com um job e com três jobs em cada interface de @io]
 ) <interfaces-recursos>
 
-A @interfaces-recursos, que confronta a workload 05 com a workload 09, oferece a explicação mais provável, dado que o io_uring do Prismo triplica o consumo de processador ao passar de um para três jobs, enquanto o libaio o mantém praticamente inalterado e ainda assim entrega mais 50% de débito.
+A @interfaces-recursos, que confronta a workload 05 com a workload 09, oferece a explicação mais provável, dado que o io_uring do Prismo triplica o consumo de processador ao passar de um para três jobs, enquanto o libaio o mantém praticamente inalterado e ainda assim entrega mais 50% de débito. // TODO: o consumor de CPU não foi triplocado no io_uring do prismo
 
-Este consumo decorre das threads de polling do kernel, que giram em espera ativa e que a configuração adotada fixa todas no mesmo processador, conforme descrito anteriormente, competindo portanto três instâncias por um único núcleo sem que o tempo assim despendido se traduza em pedidos submetidos.
+Este consumo decorre das threads de polling do kernel, que giram em espera ativa e que a configuração adotada fixa todas no mesmo core do processador, conforme descrito anteriormente, competindo portanto três instâncias por um único núcleo sem que o tempo assim despendido se traduza em pedidos submetidos.
 
-O @spdk exibe neste cenário a degradação mais acentuada de todo o capítulo, caindo de 238 mil operações por segundo com um único job para 87 mil com três, ou seja pouco mais de um terço, quando o @fio mantém nesta interface o mesmo débito das restantes. Trata-se de um resultado que contraria frontalmente o esperado, visto o @spdk dispor de quatro reactors e oito threads lógicas e ser, das quatro interfaces, aquela que à partida melhor acomodaria múltiplos produtores.
+O @spdk exibe neste cenário a degradação mais acentuada de todo o capítulo, caindo de 238 mil operações por segundo com um único job para 87 mil com três, ou seja pouco mais de um terço, quando o @fio mantém nesta interface o mesmo débito das restantes. Trata-se de um resultado que contraria frontalmente o esperado, visto o @spdk dispor de quatro reactors e oito threads lógicas e ser, das quatro interfaces, aquela que à partida melhor acomodaria múltiplos produtores. // TODO: esta afirmação não tem fundamento
+
+// TODO: a explicação para o desempenho do spdk ter caido tanto é semelhante à do io_uring no prismo, ou seja, a configuracao do reactor é igual para as tres instancias, entao os recursos dos cores alocadados serao explorados em simultaneo pelos tres jobs, contribuido assim para a degradaçao da performance
 
 Dado que o consumo de processador acompanha a subida do número de jobs sem retorno em débito, tudo indica tratar-se de contenção entre os reactors e as threads lógicas do Prismo, cuja repartição não foi ajustada ao número de jobs da workload. Não sendo possível confirmar esta leitura com os dados disponíveis, importa registar que o suporte a @spdk do Prismo não se encontra validado em cenários concorrentes.
 
