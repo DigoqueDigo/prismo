@@ -357,7 +357,7 @@ A @impacto-baseline evidencia desde logo uma diferença estrutural entre os dois
 
 Merece destaque o facto de a workload 04, composta exclusivamente por leituras, apresentar o débito mais baixo em ambos os sistemas, enquanto a workload 05, com metade das operações a serem escritas, mais do que duplica esse valor no Btrfs. Uma explicação plausível reside no encaminhamento das escritas através da cache, conforme exposto na metodologia, retornando estas sem aguardar o dispositivo.
 
-Por outro lado, a workload 06 fica ligeiramente abaixo da workload 05 nos dois sistemas, apesar de a distribuição Zipfian concentrar os acessos numa fração reduzida do dispositivo. Este resultado contraria a expectativa de que a localidade favoreça o desempenho, matéria que será retomada na secção dedicada aos efeitos de cache.
+Por outro lado, a workload 06 fica ligeiramente abaixo da workload 05 nos dois sistemas, apesar de a distribuição Zipfian concentrar os acessos numa fração reduzida do dispositivo, resultado que contraria a expectativa de a localidade favorecer o desempenho e que será retomado na secção dedicada aos efeitos de cache.
 
 Convém realçar que a dispersão registada nestas workloads é bastante superior à observada sobre o dispositivo em acesso direto, situando-se entre 10% e 18% do valor médio, o que decorre de os sistemas de ficheiros introduzirem trabalho assíncrono que não acompanha o ritmo dos pedidos, oscilando por isso o débito instantâneo conforme essas tarefas são despachadas.
 
@@ -381,7 +381,7 @@ No entanto, merece particular destaque o facto de as duas configurações terem 
 
 Deste modo, a diferença observada não é imputável a uma carga globalmente mais compressível, mas ao modo como essa compressibilidade se distribui pelos blocos. Por outras palavras, o sistema de armazenamento responde à forma da distribuição e não apenas ao seu valor médio, propriedade que uma taxa única é por construção incapaz de exprimir.
 
-No Btrfs a relação aparenta inverter-se, ficando o Prismo cerca de 16% abaixo do @fio. Esta diferença não deve porém ser interpretada como uma inversão efetiva, dado que a dispersão das medições ronda os 13% e os intervalos das duas ferramentas se sobrepõem numa extensão considerável, pelo que o critério estabelecido na secção anterior obriga a tratá-las como equivalentes.
+No Btrfs a relação aparenta inverter-se, ficando o Prismo cerca de 16% abaixo do @fio, diferença que não deve porém ser interpretada como uma inversão efetiva, dado que a dispersão das medições ronda os 13% e os intervalos das duas ferramentas se sobrepõem numa extensão considerável, obrigando assim o critério estabelecido na secção anterior a tratá-las como equivalentes.
 
 Convém realçar que a elevada dispersão do Btrfs decorre da sua própria arquitetura, dado que a compressão opera sobre extents de dimensão superior ao bloco de 4 KiB submetido, agrupando num mesmo extent blocos de compressibilidade distinta. Deste modo, a redução alcançada depende de quais os blocos que ficam agrupados, variando ao longo da execução de uma forma que o @zfs, ao comprimir cada record isoladamente, não apresenta.
 
@@ -411,7 +411,7 @@ Convém realçar que a primeira explicação constitui igualmente uma limitaçã
 
 ==== Custo Computacional das Otimizações
 
-A redução do volume escrito não é gratuita, dado que a compressão e a deduplicação consomem processador e memória em troca das operações de @io poupadas. Este custo é apresentado na @impacto-recursos para a workload 11, onde ambas as otimizações se encontram ativas.
+A redução do volume escrito não é gratuita, dado que a compressão e a deduplicação consomem processador e memória em troca das operações de @io poupadas, custo que a @impacto-recursos apresenta para a workload 11, onde ambas as otimizações se encontram ativas.
 
 #figure(
   grid(
@@ -469,9 +469,11 @@ A @interfaces-seq revela um ganho considerável das interfaces assíncronas sobr
 
 Convém realçar que o Prismo iguala ou supera o @fio em todas as interfaces nestas duas workloads, com vantagem particularmente nítida no libaio, onde alcança perto de 20% acima. Assim sendo, a arquitetura produtor-consumidor mostra-se adequada a padrões previsíveis, nos quais o produtor consegue antecipar a preparação dos pedidos enquanto o consumidor aguarda as conclusões.
 
-O @spdk apresenta, no entanto, um comportamento que contraria a expectativa, dado situar-se entre 10% e 14% abaixo do io_uring e do libaio no Prismo, quando seria de esperar que a eliminação do kernel do caminho crítico produzisse o débito mais elevado de todos. Sendo o mesmo padrão observado no @fio, cujo @spdk fica igualmente abaixo das interfaces do kernel, tudo indica tratar-se de uma característica desta workload e não de uma limitação de qualquer das ferramentas. // TODO: como assim uma caracteristica da workload?
+O @spdk apresenta, no entanto, um comportamento que contraria a expectativa, dado situar-se entre 10% e 14% abaixo do io_uring e do libaio no Prismo, quando seria de esperar que a eliminação do kernel do caminho crítico produzisse o débito mais elevado de todos.
 
-Uma explicação plausível reside na natureza sequencial dos acessos, que permite ao kernel agregar pedidos contíguos e beneficiar do prefetch do dispositivo, vantagem que o @spdk perde ao submeter cada pedido individualmente. Convém realçar, no entanto, que esta interpretação carece de confirmação, não sendo possível excluir que a configuração de reactors adotada não seja a mais favorável a este padrão. // TODO: esta explicacao nao faz sentido pois as workloads foram todas executada com a flag odirect, portanto não é possível benificiar do prefetch do dispositivo. Por outro lado, "configuração de reactors adotada não seja a mais favorável a este padrão" isto é valido.
+Convém realçar que o mesmo padrão se observa no @fio, cujo @spdk fica igualmente abaixo das interfaces do kernel, afastando-se assim a hipótese de a causa residir na implementação de qualquer das ferramentas e apontando antes para o modo como esta interface lida com as características da workload.
+
+Porém, no caso do Prismo, a explicação mais provável reside na configuração de reactors adotada, que reserva quatro núcleos e oito threads lógicas independentemente do perfil da workload, repartição que não é necessariamente a mais favorável a um padrão sequencial servido por um único produtor. Assim sendo, importa admitir que este resultado não fica cabalmente explicado pelos dados recolhidos.
 
 ==== Saturação da Largura de Banda
 
@@ -523,7 +525,7 @@ O confronto entre ferramentas revela, porém, uma diferença assinalável, com o
 
 A @interfaces-lat esclarece a origem desta diferença, dado que a latência reportada pelo Prismo nas interfaces assíncronas duplica a do @fio, ao passo que em POSIX ambas coincidem ao décimo de microssegundo. Uma vez que o débito resulta do quociente entre os pedidos em curso e a latência de cada um, e sendo a profundidade configurada idêntica, o dobro da latência traduz-se necessariamente em metade do débito.
 
-Convém realçar que a coincidência em POSIX é significativa, visto demonstrar medirem as duas ferramentas a mesma grandeza. A discrepância surge, no entanto, apenas quando existem pedidos a aguardar conclusão, ou seja quando a fila deixa de estar vazia. // TODO: não estou a perceber a logica do final deste paragrafo
+Convém realçar que a coincidência em POSIX é significativa, visto as duas ferramentas produzirem resultados equivalentes enquanto não existem pedidos pendentes, divergindo apenas quando estes surgem. Esta diferença é, portanto, atribuível à gestão dos pedidos pendentes, e não à instrumentação.
 
 Merece particular destaque o facto de o Prismo obter praticamente o mesmo valor no io_uring e no libaio, duas interfaces que partilham apenas o carácter assíncrono e diferem por completo na implementação, o que localiza o estrangulamento num ponto anterior à interface e comum a ambas.
 
@@ -558,18 +560,19 @@ O io_uring, no entanto, não acompanha esta evolução no Prismo, mantendo-se pr
   caption: [Utilização de @cpu com um job e com três jobs em cada interface de @io]
 ) <interfaces-recursos>
 
-A @interfaces-recursos, que confronta a workload 05 com a workload 09, oferece a explicação mais provável, dado que o io_uring do Prismo triplica o consumo de processador ao passar de um para três jobs, enquanto o libaio o mantém praticamente inalterado e ainda assim entrega mais 50% de débito. // TODO: o consumor de CPU não foi triplocado no io_uring do prismo
+A @interfaces-recursos, que confronta a workload 05 com a workload 09, oferece a explicação mais provável, dado que o io_uring do Prismo eleva o consumo de processador em mais de metade ao passar de um para três jobs sem qualquer ganho de débito, enquanto o libaio o aumenta apenas 12% e entrega em contrapartida mais 52%.
 
 Esta penalização da performance decorre das threads de polling do kernel, que giram em espera ativa e que a configuração adotada fixa todas no mesmo core do processador, conforme descrito anteriormente, competindo portanto três instâncias por um único núcleo sem que o tempo assim despendido se traduza em pedidos submetidos.
 
-O @spdk exibe neste cenário a degradação mais acentuada de todo o capítulo, caindo de 238 mil operações por segundo com um único job para 87 mil com três, ou seja pouco mais de um terço, quando o @fio mantém nesta interface o mesmo débito das restantes. Trata-se de um resultado que contraria frontalmente o esperado, visto o @spdk dispor de quatro reactors e oito threads lógicas e ser, das quatro interfaces, aquela que à partida melhor acomodaria múltiplos produtores. // TODO: esta afirmação não tem fundamento, não sabes se é a que melhor acumudaria verios produtores
+O @spdk exibe neste cenário a degradação mais acentuada de todo o capítulo, caindo de 238 mil operações por segundo com um único job para 87 mil com três, ou seja pouco mais de um terço, quando o @fio mantém nesta interface o mesmo débito das restantes. Trata-se de um resultado que contraria frontalmente o esperado, visto o @spdk dispor de quatro reactors e oito threads lógicas, recursos que à partida bastariam para servir os três jobs sem degradação.
 
-// TODO: a explicação para o desempenho do spdk ter caido tanto é semelhante à do io_uring no prismo, ou seja, a configuracao do reactor é igual para as tres instancias, entao os recursos dos cores alocadados serao explorados em simultaneo pelos tres jobs, contribuido assim para a degradaçao da performance
+A origem desta degradação é, no entanto, a mesma que penaliza o io_uring, pois a máscara de reactors encontra-se definida ao nível da interface e não do job, sendo por isso replicada tal e qual pelas três instâncias.
 
-Dado que o consumo de processador acompanha a subida do número de jobs sem retorno em débito, tudo indica tratar-se de contenção entre os reactors e as threads lógicas do Prismo, cuja repartição não foi ajustada ao número de jobs da workload. Não sendo possível confirmar esta leitura com os dados disponíveis, importa registar que o suporte a @spdk do Prismo não se encontra validado em cenários concorrentes. // TODO: como assim não se encontra validado, os resultados do spdk para o cenario com multiplos jobs foram apresentados
+Deste modo, os quatro núcleos que a máscara reserva passam a ser disputados pelos três jobs em simultâneo, sem que qualquer deles disponha de recursos exclusivos, o que explica a subida do consumo de processador sem retorno em débito.
 
+Assim sendo, as duas interfaces que fixam afinidade ao processador exibem o mesmo comportamento, enquanto o libaio, por não fixar nenhuma, escala sem dificuldade. Convém realçar que a limitação não reside nas interfaces mas no modelo de configuração adotado, que exprime a afinidade uma única vez e não a reparte pelos jobs existentes.
 
-Em suma, a interface de @io condiciona fortemente o débito medido, com ganhos que vão de nulos, quando o dispositivo satura, até catorze vezes nos acessos aleatórios, disparidade que fundamenta a necessidade de um benchmark capaz de as exercitar a todas. Convém realçar, contudo, que nenhuma interface se revela superior em todos os cenários, pois o @spdk vence nos acessos aleatórios com um único job mas fica atrás nas workloads sequenciais e degrada-se perante concorrência, o que desaconselha recomendações absolutas. Estabelecido este efeito, importa agora verificar se as workloads derivadas de traces reproduzem fielmente as propriedades dos dados originais.
+Em suma, a interface de @io condiciona fortemente o débito medido, com ganhos que vão de nulos, quando o dispositivo satura, até catorze vezes nos acessos aleatórios, disparidade que fundamenta a necessidade de um benchmark capaz de as exercitar a todas. Convém realçar, contudo, que nenhuma interface se revela superior em todos os cenários, pois o @spdk vence nos acessos aleatórios com um único job mas fica atrás nas workloads sequenciais e degrada-se perante concorrência, sendo por isso desaconselhadas recomendações absolutas. Estabelecido este efeito, importa agora verificar se as workloads derivadas de traces reproduzem fielmente as propriedades dos dados originais.
 
 
 #pagebreak()
