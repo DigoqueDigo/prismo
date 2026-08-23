@@ -477,7 +477,7 @@ Porém, no caso do Prismo, a explicação mais provável reside na configuraçã
 
 ==== Saturação da Largura de Banda
 
-As workloads anteriores mantiveram o bloco em 4 KiB, dimensão que obriga a submeter um elevado número de pedidos para movimentar um volume modesto de dados e que coloca por isso o esforço do lado da submissão. A workload 03 altera exclusivamente este parâmetro, elevando-o para 64 KiB, reduzindo para um sexto o número de operações necessárias a transferir a mesma quantidade de dados.
+As workloads anteriores mantiveram o bloco em 4 KiB, dimensão que obriga a submeter um elevado número de pedidos para movimentar um volume modesto de dados e que coloca por isso o esforço do lado da submissão. A workload 03 altera exclusivamente este parâmetro, elevando-o para 64 KiB, reduzindo em 16 vezes o número de operações necessárias para transferir a mesma quantidade de dados.
 
 Deste modo, o dispositivo deixa de ser solicitado pela cadência dos pedidos e passa a sê-lo pelo volume que deles resulta, permitindo assim averiguar se a vantagem das interfaces assíncronas se mantém quando o estrangulamento muda de natureza.
 
@@ -564,7 +564,7 @@ A @interfaces-recursos, que confronta a workload 05 com a workload 09, oferece a
 
 Esta penalização da performance decorre das threads de polling do kernel, que giram em espera ativa e que a configuração adotada fixa todas no mesmo core do processador, conforme descrito anteriormente, competindo portanto três instâncias por um único núcleo sem que o tempo assim despendido se traduza em pedidos submetidos.
 
-O @spdk exibe neste cenário a degradação mais acentuada de todo o capítulo, caindo de 238 mil operações por segundo com um único job para 87 mil com três, ou seja pouco mais de um terço, quando o @fio mantém nesta interface o mesmo débito das restantes. Trata-se de um resultado que contraria frontalmente o esperado, visto o @spdk dispor de quatro reactors e oito threads lógicas, recursos que à partida bastariam para servir os três jobs sem degradação.
+O @spdk exibe neste cenário a degradação mais acentuada de todo o capítulo, caindo de 238 mil operações por segundo com um único job para 87 mil com três, ou seja pouco mais de um terço, enquanto o @fio mantém nesta interface o mesmo débito das restantes.
 
 A origem desta degradação é, no entanto, a mesma que penaliza o io_uring, pois a máscara de reactors encontra-se definida ao nível da interface e não do job, sendo por isso replicada tal e qual pelas três instâncias.
 
