@@ -576,78 +576,74 @@ Em suma, a interface de @io condiciona fortemente o débito medido, com ganhos q
 
 === Workloads Baseadas em Traces <trace-workloads>
 
-A replicação de traces constitui a funcionalidade que mais distingue o Prismo das ferramentas de referência, uma vez que nenhuma destas consegue reproduzir em conjunto os padrões de acesso, o mix de operações e as propriedades do conteúdo registados numa execução real. Esta secção averigua se essa reprodução é fiel e se as estratégias de extensão preservam as características originais.
+A replicação de traces constitui a funcionalidade que mais distingue o Prismo das ferramentas de referência, uma vez que nenhuma destas consegue reproduzir em conjunto os padrões de acesso, o mix de operações e as propriedades do conteúdo registados numa execução real.
+
+Reproduzir um trace não basta, no entanto, visto os registos disponíveis cobrirem uma fração ínfima do tempo necessário para que um dispositivo moderno atinja o regime estacionário. Esta secção averigua, por isso, se a reprodução é fiel e se as estratégias de extensão preservam as características originais.
 
 ==== Traces Utilizados
 
-Os traces provêm do repositório do @fiu e resultam da instrumentação de três servidores em produção ao longo de três semanas, sendo cada pedido registado com o instante de submissão, o processo responsável, o bloco acedido, a dimensão, o tipo de operação e ainda a assinatura do conteúdo de cada setor @koller2010.
-
-Esta última componente é o que torna estes registos adequados ao presente trabalho, dado que a assinatura permite reconstituir a distribuição de duplicados sem exigir o conteúdo original, o qual jamais poderia ser divulgado por conter dados de utilizadores reais.
+Os traces provêm do repositório do @fiu e resultam da instrumentação de três servidores em produção, registando cada pedido o instante de submissão, o processo responsável, o bloco acedido, a dimensão, o tipo de operação e a assinatura do conteúdo de cada setor. É esta última que os torna adequados ao presente trabalho, dado permitir reconstituir a distribuição de duplicados sem exigir o conteúdo original @koller2010.
 
 #figure(
   doc_table(
     columns: (1.1fr, 0.5fr, 0.5fr, 0.5fr),
     align: (x, y) => if x == 0 or y == 0 { horizon + left } else { horizon + right },
     header: ([Trace], [Escritas], [Duplicados], [Bloco]),
-    [homes], [94%], [61.9%], [4 KiB],
-    [webmail], [76%], [41.1%], [4 KiB],
-    [cheetah], [58%], [35.8%], [4 KiB],
+    [homes], [92%], [36.5%], [4 KiB],
+    [webmail], [96%], [37.7%], [4 KiB],
+    [cheetah], [52%], [22.3%], [4 KiB],
   ),
-  caption: [Propriedades dos traces ao longo dos primeiros 300 mil pedidos]
+  caption: [Propriedades dos traces ao longo dos primeiros 100 mil pedidos]
 ) <traces-perfil>
 
-As propriedades reunidas na @traces-perfil evidenciam desde logo o afastamento destas cargas face às workloads sintéticas convencionais, pois os três traces são dominados por escritas e apresentam taxas de duplicados que nenhuma taxa global conseguiria representar com fidelidade.
-// TODO: como assim incapaz, sendo que as taxas de duplicados apresentadas na tabela sao globais
+A @traces-perfil revela uma dispersão considerável entre servidores, indo a proporção de escritas dos 96% do webmail aos 52% do cheetah, o único dedicado a servir páginas web, ao passo que os blocos repetidos variam entre os 37.7% do primeiro e os 22.3% do segundo. Uma amplitude desta ordem desaconselha a adoção do valor único que as ferramentas de referência praticam @fio_docs @vdbench.
 
-Convém realçar que a taxa de duplicados varia entre 22% e 46% consoante o servidor, apresentando o trace homes, proveniente de um servidor de ficheiros pessoais, mais do dobro dos blocos repetidos do cheetah, dedicado a correio eletrónico. Esta amplitude ilustra a variabilidade entre ambientes de produção e reforça o argumento contra a adoção de um valor único.
+Estes números constituem, porém, agregados calculados sobre a totalidade dos pedidos, descrevendo por isso mal aquilo que o sistema de armazenamento observa a cada instante, insuficiência que as figuras seguintes tornam evidente.
 
 ==== Fidelidade do Replay
 
-Uma workload baseada em traces atravessa dois momentos distintos, cuja separação é indispensável à leitura dos resultados. Enquanto o ficheiro dispõe de registos por consumir, cada pedido submetido corresponde exatamente ao que foi observado no servidor original, ao passo que, esgotado o ficheiro, a estratégia de extensão assume o comando e passa a produzir registos sintéticos.
+Uma workload baseada em traces atravessa dois momentos distintos, pois enquanto o ficheiro dispõe de registos por consumir cada pedido corresponde exatamente ao que foi observado no servidor original, ao passo que, esgotado o ficheiro, a estratégia de extensão assume o comando. A fidelidade exigida a cada um é por conseguinte diferente, tratando-se no primeiro de reprodução literal e no segundo de semelhança estatística.
 
-A fidelidade exigida a cada um destes momentos é, por conseguinte, de natureza diferente, pois no primeiro trata-se de reprodução literal, cabendo apenas verificar que a cadeia de submissão não deturpa os registos, ao passo que no segundo se trata de semelhança estatística, dependente da estratégia adotada.
+As figuras seguintes acompanham a execução do trace homes, apresentando as três estratégias e assinalando com uma linha vertical o instante da transição, situado ao fim dos primeiros 100 mil registos, aos quais a experiência ficou limitada apesar de o ficheiro disponibilizar mais de dois milhões. Sendo o material anterior a essa linha idêntico nas três, qualquer divergência que aí se observasse denunciaria distorção introduzida pela ferramenta.
 
-Convém realçar que a amostragem e a regressão recolhem os registos ao mesmo tempo que os replicam, alimentando o reservatório ou os vetores de coeficientes durante a primeira fase, de modo a que o modelo esteja construído no instante em que o ficheiro termina. A repetição dispensa esta recolha, limitando-se a reiniciar a leitura e a submeter novamente a mesma sequência.
-
-As figuras seguintes acompanham a execução do trace homes ao longo do tempo, apresentando em cada uma delas as três estratégias e assinalando com uma linha vertical o instante da transição, situado ao fim dos 100 mil registos que o ficheiro disponibiliza. Sendo o material anterior a essa linha idêntico nas três, as séries sobrepõem-se necessariamente nessa metade, e qualquer divergência que aí se observasse denunciaria distorção introduzida pela ferramenta.
+Cada ponto resume dois mil registos consecutivos e o eixo horizontal conta-os em milhares, sendo o offset apresentado na sua totalidade enquanto as restantes grandezas resultam de uma janela centrada no ponto medido.
 
 #figure(
   trace-lines("traces-offsets.csv", ylabel: [Offset acedido (GiB)]),
   caption: [Evolução dos acessos ao longo da execução do trace homes]
 ) <traces-offsets>
 
-// TODO: preencher traces-offsets.csv com o offset de cada pedido submetido, amostrado a
-//       intervalo regular, para cada uma das três estratégias
-// TODO: verificar se a repetição reproduz o mesmo percurso a cada ciclo, se a amostragem
-//       dispersa os acessos por toda a extensão e se a regressão prolonga a progressão original
-// Evidência: log por operação do Prismo, workload 14, via prismo_log_parser.py
+O percurso desenhado na @traces-offsets é profundamente irregular, recaindo quase metade dos pontos na vizinhança dos 328 GiB enquanto os restantes se espalham entre o primeiro gigabyte e os 431 GiB, alternância que nenhum gerador sintético convencional produz.
+
+A repetição e a amostragem devolvem nuvens que à vista se confundem com a original, semelhança que engana, visto apenas a primeira submeter os offsets pela ordem em que foram observados enquanto a segunda os extrai do reservatório e os sorteia de novo. Aquela nada acrescenta ao segundo ciclo, ao passo que esta conserva o conjunto de endereços mas dissolve a localidade temporal que os organizava.
+
+A regressão rompe com ambas, descrevendo uma única reta que parte dos 357 GiB e recua 775.8 KiB a cada pedido, resultado de o offset ser extrapolado a partir do último valor do trace e do passo médio entre registos consecutivos. Sendo esse passo negativo, a extensão percorre o dispositivo ao contrário, substituindo o padrão irregular do servidor por um varrimento sequencial de regularidade perfeita.
 
 #figure(
   trace-lines("traces-operacoes.csv", ylabel: [Escritas na janela (%)]),
   caption: [Evolução do mix de operações ao longo da execução do trace homes]
 ) <traces-operacoes>
 
-// TODO: preencher traces-operacoes.csv com a percentagem de escritas numa janela deslizante,
-//       de modo a tornar visível a alternância entre leituras e escritas
-// TODO: confirmar que a proporção se mantém após a transição, dado ser esta a propriedade
-//       que as três estratégias preservam com maior facilidade
+O mix de operações é a grandeza que melhor sobrevive à transição, oscilando na @traces-operacoes entre os 76% e os 100% de escritas ao longo do replay, oscilação que a repetição devolve intacta enquanto a amostragem a achata numa linha constante nos 91.5%. Este valor coincide ao décimo com a média do trace, o que confirma serem as frequências marginais a única propriedade que a alias table garante.
+
+Quanto à regressão, fixa-se nos 100% e jamais emite uma leitura, dado que o valor previsto para a operação percorre apenas o intervalo entre 1.20 e 0.95 ao longo dos 100 mil registos sintéticos e arredonda por isso invariavelmente para escrita. Uma carga assim deixa de exercitar o caminho de leitura, precisamente aquele onde a deduplicação se traduz em ganho.
 
 #figure(
   trace-lines("traces-assinaturas.csv", ylabel: [Duplicados na janela (%)]),
   caption: [Evolução das assinaturas de conteúdo ao longo da execução do trace homes]
 ) <traces-assinaturas>
 
-// TODO: preencher traces-assinaturas.csv com a percentagem de blocos repetidos numa janela
-//       deslizante, calculada sobre as assinaturas registadas no trace
-// TODO: averiguar se a repetição eleva artificialmente esta percentagem após a transição,
-//       dado voltar a submeter blocos já escritos, e se a amostragem a mantém estável
-// Evidência: log por operação do Prismo e output do Deltoide, workloads 14 e 15
+A @traces-assinaturas fecha o quadro com a oscilação mais expressiva de todas, variando a percentagem de blocos repetidos entre os 21% e os 46% ao longo do replay, amplitude que revela concentrarem-se os duplicados em rajadas e que uma taxa global de 36.5% jamais conseguiria exprimir.
 
-Os traces disponíveis são demasiado curtos para levar um dispositivo moderno a um regime estacionário, limitação já identificada no @chapter2, pelo que a segunda fase acaba por dominar as execuções mais longas e por determinar, em boa medida, aquilo que é efetivamente medido.
+Embora volte a submeter blocos já escritos, a repetição acompanha aqui a evolução original sem a subida artificial que seria de recear, pois o ciclo abrange 100 mil registos enquanto a janela de medição apenas dois mil.
 
-// TODO: retomar aqui a comparação entre as três estratégias depois de preenchidas as figuras,
-//       relacionando o observado com o previsto no @chapter3, onde se antecipa que a amostragem
-//       perca as correlações entre grandezas e a regressão as preserve
+Por outro lado, a amostragem produz o resultado mais desconcertante desta subsecção, descendo para os 9.9% na janela enquanto a taxa calculada sobre a totalidade da extensão sobe para 54.7%, bem acima dos 36.5% do próprio trace. A contradição é apenas aparente, dado que o sorteio independente dispersa pela execução inteira os duplicados que o servidor produzia em rajadas, elevando a repetição global à custa da local, que é justamente a que o sistema de armazenamento explora.
+
+Por fim, a regressão anula os duplicados por completo, pois o identificador de bloco decresce cerca de $2.3 times 10^13$ a cada registo e nunca reincide num valor já submetido, entregando ao sistema de ficheiros conteúdo integralmente único.
+
+Confrontando estas observações com o previsto no @chapter3, a repetição e a amostragem comportam-se conforme antecipado, preservando a primeira todas as correlações à custa de uma periodicidade estrita e retendo a segunda apenas as distribuições marginais de cada grandeza tomada isoladamente.
+
+A regressão, essa, não confirma a expectativa de capturar as dependências entre dimensões, isto porque o identificador de bloco resulta de uma função de hash e não guarda relação linear alguma com o offset. A estratégia mais sofisticada revela-se portanto a menos variável das três, limitação que decorre da natureza do identificador registado no trace e não do modelo linear em si.
 
 ==== Desempenho das Workloads Baseadas em Traces
 
