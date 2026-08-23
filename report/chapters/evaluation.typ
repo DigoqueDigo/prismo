@@ -1,4 +1,4 @@
-#import "../utils/charts.typ" : tool-bars, tool-lines, cpu-stack, component-bars
+#import "../utils/charts.typ" : tool-bars, tool-lines, cpu-stack, component-bars, trace-lines
 #import "../utils/functions.typ" : question_block, validation_point_block, doc_table, cell_yes, cell_no, cell_partial
 
 == Avaliação Experimental <chapter4>
@@ -574,34 +574,141 @@ Assim sendo, as duas interfaces que fixam afinidade ao processador exibem o mesm
 
 Em suma, a interface de @io condiciona fortemente o débito medido, com ganhos que vão de nulos, quando o dispositivo satura, até catorze vezes nos acessos aleatórios, disparidade que fundamenta a necessidade de um benchmark capaz de as exercitar a todas. Convém realçar, contudo, que nenhuma interface se revela superior em todos os cenários, pois o @spdk vence nos acessos aleatórios com um único job mas fica atrás nas workloads sequenciais e degrada-se perante concorrência, sendo por isso desaconselhadas recomendações absolutas. Estabelecido este efeito, importa agora verificar se as workloads derivadas de traces reproduzem fielmente as propriedades dos dados originais.
 
-
-#pagebreak()
-#pagebreak()
-
-
 === Workloads Baseadas em Traces <trace-workloads>
 
-A capacidade de replicar workloads baseadas em traces de produção constitui uma funcionalidade exclusiva do Prismo no panorama dos benchmarks avaliados. Embora o @fio ofereça suporte limitado ao replay de padrões de acesso, não modela o conteúdo dos dados associado ao trace, enquanto o Vdbench não dispõe de qualquer suporte para traces. Tendo isto em mente, esta secção avalia a fidelidade do replay e a eficácia das estratégias de extensão de traces.
+A replicação de traces constitui a funcionalidade que mais distingue o Prismo das ferramentas de referência, uma vez que nenhuma destas consegue reproduzir em conjunto os padrões de acesso, o mix de operações e as propriedades do conteúdo registados numa execução real. Esta secção averigua se essa reprodução é fiel e se as estratégias de extensão preservam as características originais.
 
-==== Replay de Traces
+==== Traces Utilizados
 
-// TODO: WL 14-15 (traces FIU: homes, webmail)
-// TODO: Deltoide aplicado ao trace original vs dados escritos pelo Prismo → distribuições devem coincidir
-// TODO: métricas do replay: padrão de acesso, mix de operações
-// Evidência: output Deltoide + report.json de workloads 14-15
+Os traces provêm do repositório do @fiu e resultam da instrumentação de três servidores em produção ao longo de três semanas, sendo cada pedido registado com o instante de submissão, o processo responsável, o bloco acedido, a dimensão, o tipo de operação e ainda a assinatura do conteúdo de cada setor @koller2010.
 
-==== Workloads Híbridas e Estratégias de Extensão
+Esta última componente é o que torna estes registos adequados ao presente trabalho, dado que a assinatura permite reconstituir a distribuição de duplicados sem exigir o conteúdo original, o qual jamais poderia ser divulgado por conter dados de utilizadores reais.
 
-// TODO: WL 12-13: extensão por repetição vs sampling vs regressão
-// TODO: Deltoide compara distribuições geradas por cada estratégia de extensão
-// TODO: comparação de throughput e latência entre estratégias
-// TODO: gráfico: distribuição de dedup/compressão por estratégia de extensão
-// Evidência: output Deltoide + report.json de workloads 12-13
+#figure(
+  doc_table(
+    columns: (1.1fr, 0.5fr, 0.5fr, 0.5fr),
+    align: (x, y) => if x == 0 or y == 0 { horizon + left } else { horizon + right },
+    header: ([Trace], [Escritas], [Duplicados], [Bloco]),
+    [homes], [94%], [61.9%], [4 KiB],
+    [webmail], [76%], [41.1%], [4 KiB],
+    [cheetah], [58%], [35.8%], [4 KiB],
+  ),
+  caption: [Propriedades dos traces ao longo dos primeiros 300 mil pedidos]
+) <traces-perfil>
 
-// TODO: o Prismo é o único benchmark a combinar replay de traces com geração de conteúdo realista
-// TODO: tabela comparativa: Prismo vs FIO vs Vdbench em cada capacidade de trace (✓/✗/parcial)
-// TODO: utilidade prática das workloads híbridas para avaliação de sistemas modernos
-// TODO: fundamentação de Q4
+As propriedades reunidas na @traces-perfil evidenciam desde logo o afastamento destas cargas face às workloads sintéticas convencionais, pois os três traces são dominados por escritas e apresentam taxas de duplicados que nenhuma taxa global conseguiria representar com fidelidade.
+// TODO: como assim incapaz, sendo que as taxas de duplicados apresentadas na tabela sao globais
+
+Convém realçar que a taxa de duplicados varia entre 22% e 46% consoante o servidor, apresentando o trace homes, proveniente de um servidor de ficheiros pessoais, mais do dobro dos blocos repetidos do cheetah, dedicado a correio eletrónico. Esta amplitude ilustra a variabilidade entre ambientes de produção e reforça o argumento contra a adoção de um valor único.
+
+==== Fidelidade do Replay
+
+Uma workload baseada em traces atravessa dois momentos distintos, cuja separação é indispensável à leitura dos resultados. Enquanto o ficheiro dispõe de registos por consumir, cada pedido submetido corresponde exatamente ao que foi observado no servidor original, ao passo que, esgotado o ficheiro, a estratégia de extensão assume o comando e passa a produzir registos sintéticos.
+
+A fidelidade exigida a cada um destes momentos é, por conseguinte, de natureza diferente, pois no primeiro trata-se de reprodução literal, cabendo apenas verificar que a cadeia de submissão não deturpa os registos, ao passo que no segundo se trata de semelhança estatística, dependente da estratégia adotada.
+
+Convém realçar que a amostragem e a regressão recolhem os registos ao mesmo tempo que os replicam, alimentando o reservatório ou os vetores de coeficientes durante a primeira fase, de modo a que o modelo esteja construído no instante em que o ficheiro termina. A repetição dispensa esta recolha, limitando-se a reiniciar a leitura e a submeter novamente a mesma sequência.
+
+As figuras seguintes acompanham a execução do trace homes ao longo do tempo, apresentando em cada uma delas as três estratégias e assinalando com uma linha vertical o instante da transição, situado ao fim dos 100 mil registos que o ficheiro disponibiliza. Sendo o material anterior a essa linha idêntico nas três, as séries sobrepõem-se necessariamente nessa metade, e qualquer divergência que aí se observasse denunciaria distorção introduzida pela ferramenta.
+
+#figure(
+  trace-lines("traces-offsets.csv", ylabel: [Offset acedido (GiB)]),
+  caption: [Evolução dos acessos ao longo da execução do trace homes]
+) <traces-offsets>
+
+// TODO: preencher traces-offsets.csv com o offset de cada pedido submetido, amostrado a
+//       intervalo regular, para cada uma das três estratégias
+// TODO: verificar se a repetição reproduz o mesmo percurso a cada ciclo, se a amostragem
+//       dispersa os acessos por toda a extensão e se a regressão prolonga a progressão original
+// Evidência: log por operação do Prismo, workload 14, via prismo_log_parser.py
+
+#figure(
+  trace-lines("traces-operacoes.csv", ylabel: [Escritas na janela (%)]),
+  caption: [Evolução do mix de operações ao longo da execução do trace homes]
+) <traces-operacoes>
+
+// TODO: preencher traces-operacoes.csv com a percentagem de escritas numa janela deslizante,
+//       de modo a tornar visível a alternância entre leituras e escritas
+// TODO: confirmar que a proporção se mantém após a transição, dado ser esta a propriedade
+//       que as três estratégias preservam com maior facilidade
+
+#figure(
+  trace-lines("traces-assinaturas.csv", ylabel: [Duplicados na janela (%)]),
+  caption: [Evolução das assinaturas de conteúdo ao longo da execução do trace homes]
+) <traces-assinaturas>
+
+// TODO: preencher traces-assinaturas.csv com a percentagem de blocos repetidos numa janela
+//       deslizante, calculada sobre as assinaturas registadas no trace
+// TODO: averiguar se a repetição eleva artificialmente esta percentagem após a transição,
+//       dado voltar a submeter blocos já escritos, e se a amostragem a mantém estável
+// Evidência: log por operação do Prismo e output do Deltoide, workloads 14 e 15
+
+Os traces disponíveis são demasiado curtos para levar um dispositivo moderno a um regime estacionário, limitação já identificada no @chapter2, pelo que a segunda fase acaba por dominar as execuções mais longas e por determinar, em boa medida, aquilo que é efetivamente medido.
+
+// TODO: retomar aqui a comparação entre as três estratégias depois de preenchidas as figuras,
+//       relacionando o observado com o previsto no @chapter3, onde se antecipa que a amostragem
+//       perca as correlações entre grandezas e a regressão as preserve
+
+==== Desempenho das Workloads Baseadas em Traces
+
+Estabelecido o grau de fidelidade alcançado, importa averiguar que comportamento estas cargas produzem no sistema de armazenamento, confrontando as réplicas integrais com as workloads híbridas e apurando se a substituição de dimensões reais por sintéticas altera aquilo que é medido.
+
+Estas últimas conservam apenas a dimensão que interessa ao estudo e geram sinteticamente as restantes, extraindo a workload 12 os acessos do trace homes enquanto combina operações sintéticas, e recolhendo a workload 13 o mix de operações do trace cheetah sobre uma distribuição Zipfiana de acessos. Deste modo, cada uma isola uma única dimensão real, o que permite atribuir a essa dimensão qualquer diferença observada.
+
+#figure(
+  tool-bars("traces-iops.csv", ylabel: [Milhares de @iops],
+            xlabel: [Workload], width: 8.5cm, height: 4.6cm),
+  caption: [Débito de operações nas workloads baseadas em traces]
+) <traces-iops>
+
+// TODO: comparar o débito das workloads híbridas com o das réplicas integrais, averiguando
+//       se a substituição de dimensões sintéticas altera o comportamento medido
+// TODO: confrontar com as workloads sintéticas equivalentes das secções anteriores, de modo
+//       a determinar em que medida um padrão real se afasta de um gerado artificialmente
+// Evidência: report.json das workloads 12 a 15
+
+==== Comparação de Capacidades
+
+Independentemente dos valores obtidos, importa situar o Prismo face às ferramentas de referência quanto àquilo que cada uma consegue reproduzir a partir de um trace.
+
+#figure(
+  doc_table(
+    columns: (2.2fr, auto, auto, auto),
+    header: ([Capacidade], [Prismo], [FIO], [Vdbench]),
+    [Replicação dos acessos], cell_yes, cell_partial[Limitado], cell_no,
+    [Replicação das operações], cell_yes, cell_no, cell_no,
+    [Replicação do conteúdo], cell_yes, cell_no, cell_no,
+    [Combinação com geração sintética], cell_yes, cell_no, cell_no,
+    [Extensão para lá da duração original], cell_yes, cell_no, cell_no,
+  ),
+  caption: [Capacidades de replicação de traces suportadas por cada ferramenta]
+) <traces-capacidades>
+
+A @traces-capacidades demonstra ser o Prismo a única das três ferramentas a reproduzir as três dimensões de um trace, dado que o @fio apenas admite a repetição de um padrão de acessos previamente descrito e o Vdbench não oferece qualquer mecanismo equivalente @fio_docs @vdbench.
+
+Merece particular destaque a combinação com geração sintética, funcionalidade que permite isolar o contributo de cada dimensão ao substituir as restantes por valores controlados. Sem ela não seria possível determinar se um comportamento observado decorre do padrão de acessos ou das propriedades do conteúdo.
+
+// TODO: retomar a fundamentação da Q4 depois de preenchidos os valores das figuras anteriores
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#pagebreak()
+
 
 === Efeitos de Localidade e Cache <locality>
 
