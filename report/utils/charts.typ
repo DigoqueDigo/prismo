@@ -15,10 +15,14 @@
   dev_nvme: rgb("#4d4d4d"),
   btrfs: rgb("#1f4e79"),
   zfs: rgb("#e08214"),
+  original: rgb("#4d4d4d"),
+  replay: rgb("#1f4e79"),
+  extensao: rgb("#e08214"),
 )
 
 #let series-labels = tool-labels + (
   dev_nvme: [NVMe], btrfs: [Btrfs], zfs: [ZFS],
+  original: [Trace original], replay: [Fase de replay], extensao: [Fase de extensão],
 )
 
 // Lê um CSV de figura com o formato
@@ -170,5 +174,49 @@
     xlabel: [Milhões de operações por segundo],
     yaxis: (ticks: ys.zip(rows.map(r => [#r.at(1)])).map(((i, l)) => (i, l))),
     lq.hbar(rows.map(r => float(r.at(2))), ys, width: 0.6, fill: tool-colors.prismo),
+  )
+}
+
+// Séries temporais das três estratégias de extensão, com uma linha vertical a assinalar o
+// instante em que o ficheiro de trace se esgota e a extensão assume a geração. Espera-se um
+// CSV com o formato indice,fase,repeat,sample,regression, onde `fase` toma os valores
+// `replay` e `extensao`.
+#let extension-colors = (
+  repeat: rgb("#1f4e79"),
+  sample: rgb("#e08214"),
+  regression: rgb("#4d4d4d"),
+)
+
+#let extension-labels = (
+  repeat: [Repetição], sample: [Amostragem], regression: [Regressão],
+)
+
+#let trace-lines(name, ylabel: none, xlabel: [Milhares de pedidos submetidos],
+                 width: 12.2cm, height: 5.0cm) = {
+  let rows = csv("../data/" + name).slice(1)
+  let estrategias = ("repeat", "sample", "regression")
+  let xs = rows.map(r => float(r.at(0)))
+  // fronteira entre as duas fases, usada para posicionar a linha vertical
+  let corte = rows.position(r => r.at(1) == "extensao")
+
+  lq.diagram(
+    width: width,
+    height: height,
+    xlabel: xlabel,
+    ylabel: ylabel,
+    // fixa o domínio para que o referencial se mantenha completo enquanto não houver séries
+    xlim: (xs.first(), xs.last()),
+    legend: (position: right + top),
+    ..estrategias.enumerate()
+      .filter(((i, e)) => rows.any(r => r.at(i + 2) != ""))
+      .map(((i, e)) => lq.plot(
+        xs,
+        rows.map(r => if r.at(i + 2) == "" { 0.0 } else { float(r.at(i + 2)) }),
+        mark: none,
+        color: extension-colors.at(e),
+        label: extension-labels.at(e),
+      )),
+    ..if corte != none { (lq.vlines(xs.at(corte),
+        stroke: (paint: luma(90), dash: "dashed", thickness: 0.8pt)),) } else { () },
   )
 }
