@@ -1,5 +1,5 @@
-workload,prismo,fio,vdbench,prismo_std,fio_std,vdbench_std
-12,,,,,,
-13,,,,,,
-14,,,,,,
-15,,,,,,
+workload,prismo,prismo_std
+12,3.485,0.743
+13,4.169,0.619
+14,3.942,0.512
+15,4.085,0.578
