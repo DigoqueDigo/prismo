@@ -582,9 +582,7 @@ Replicar o trace não é, porém, suficiente, dado que os registos disponíveis 
 
 ==== Traces Utilizados
 
-Os traces utilizados provêm do repositório do @fiu e resultam da instrumentação de três servidores em produção, apresentando a estrutura já descrita no @chapter2. Cada registo inclui uma assinatura do conteúdo, componente indispensável ao presente trabalho, pois é através dela que se reconstitui a distribuição de duplicados sem aceder aos dados originais @koller2010.
-
-// Antes de serem consumidos, os ficheiros de texto originais são convertidos para o formato binário do Prismo através do Astroide, ferramenta que converte cada linha num registo de tamanho fixo e substitui a assinatura por um valor de 64 bits obtido através de uma função de hash.
+Os traces utilizados provêm do repositório do @fiu e resultam da instrumentação de três servidores em produção, apresentando a estrutura já descrita na @chapter2. Cada registo inclui uma assinatura do conteúdo, componente indispensável ao presente trabalho, pois é através dela que se reconstitui a distribuição de duplicados sem aceder aos dados originais @koller2010.
 
 #figure(
   doc_table(
@@ -595,7 +593,7 @@ Os traces utilizados provêm do repositório do @fiu e resultam da instrumentaç
     [webmail], [0.7 M], [2.6 GiB], [96%], [37.7%], [15],
     [cheetah], [22.7 M], [86.6 GiB], [52%], [22.3%], [13],
   ),
-  caption: [Traces utilizados, com as proporções medidas nos primeiros 100 mil pedidos]
+  caption: [Traces utilizados, com as proporções medidas nos primeiros 100 mil registos]
 ) <traces-perfil>
 
 O primeiro aspeto a reter da @traces-perfil é a dimensão destes ficheiros, dado que mesmo o cheetah, de longe o mais extenso, cobre apenas 11.5% dos 752.91 GiB que uma workload da campanha movimenta, ficando os restantes dois abaixo de 1.1%. Sem extensão, nenhum deles conduziria o dispositivo a um regime estacionário.
@@ -614,6 +612,8 @@ O eixo horizontal conta os pedidos submetidos, em milhares, sendo recolhida uma 
 
 Daí que estas últimas sejam calculadas sobre os dois mil pedidos centrados em cada ponto, janela suficientemente estreita para revelar as oscilações e suficientemente larga para que a proporção não varie entre extremos por efeito de meia dúzia de pedidos.
 
+Convém realçar que as três séries partilham a primeira metade por construção, pelo que a leitura destas figuras deve concentrar-se no que sucede depois da linha vertical, onde cada estratégia passa a responder pela totalidade dos registos submetidos.
+
 ===== Padrões de Acesso
 
 A primeira dimensão a examinar é o offset de cada pedido, do qual depende a localidade dos acessos e, por consequência, o partido que o dispositivo consegue tirar de leituras antecipadas e de escritas contíguas.
@@ -627,7 +627,7 @@ A @traces-offsets revela um percurso irregular, com quase metade dos pontos a re
 
 Embora as extensões por repetição e por amostragem devolvam nuvens semelhantes à original, tal semelhança não deve ser tomada por equivalência. A repetição submete os offsets pela ordem observada, nada acrescentando ao segundo ciclo, enquanto a amostragem os extrai do reservatório e os sorteia de novo, conservando o conjunto de endereços mas não a ordem por que foram visitados.
 
-A consequência é relevante, dado que blocos acedidos pelo servidor em instantes próximos passam a surgir dispersos por toda a execução, sendo precisamente essa proximidade que as caches e os índices parciais de deduplicação exploram @paulo2014.
+A consequência é relevante, dado que blocos acedidos pelo servidor em instantes próximos passam a surgir dispersos por toda a execução, sendo precisamente essa proximidade que as caches exploram intensamente @paulo2014.
 
 Já a extensão por regressão rompe com ambas, desenhando uma única reta que parte dos 357 GiB e recua 775.8 KiB a cada pedido, visto o offset ser extrapolado a partir do último valor do trace e do passo médio entre registos. Sendo esse passo negativo, a extensão percorre o dispositivo em sentido inverso, substituindo o padrão irregular do servidor por um varrimento sequencial.
 
@@ -635,24 +635,25 @@ Assim sendo, das três estratégias apenas a repetição preserva a localidade o
 
 ===== Mix de Operações
 
-A segunda dimensão respeita ao tipo de cada pedido, cuja proporção determina o caminho percorrido dentro do sistema de armazenamento, uma vez que leituras e escritas exercitam mecanismos distintos.
+A segunda dimensão respeita ao tipo de cada pedido, cuja proporção determina o caminho percorrido dentro do sistema de armazenamento. Uma leitura obriga a localizar o bloco e a trazê-lo do dispositivo sempre que este não se encontre em cache, ao passo que uma escrita atravessa a compressão e a deduplicação antes de ser confirmada, sendo o dado efetivamente gravado mais tarde.
+
 
 #figure(
   trace-lines("traces-operacoes.csv", ylabel: [Escritas na janela (%)]),
   caption: [Evolução do mix de operações ao longo da execução do trace homes]
 ) <traces-operacoes>
 
-O mix de operações é a dimensão que melhor sobrevive à transição, oscilando na @traces-operacoes entre os 76% e os 100% de escritas durante o replay, oscilação que a extensão por repetição devolve intacta enquanto a amostragem a achata numa linha constante nos 91.5%. Este valor coincide com a média do trace, do que se conclui reter a alias table as frequências marginais e nada mais.
+O mix de operações é a dimensão que melhor sobrevive à transição, oscilando na @traces-operacoes entre os 76% e os 100% de escritas durante o replay, oscilação que a extensão por repetição devolve intacta enquanto a amostragem a achata numa linha constante nos 91.5%. Este valor coincide com a média do trace, do que se conclui reter a alias table apenas a frequência com que cada tipo de operação ocorre, tomada isoladamente e sem memória da ordem por que os pedidos se sucediam.
 
 O comportamento da extensão por regressão exige atenção ao modo como a operação é representada, dado que o trace a codifica através do valor numérico do respetivo tipo, correspondendo o zero à leitura e o um à escrita.
 
 Ora o modelo linear devolve um número real que é depois arredondado e limitado a esse domínio, e sendo o trace homes dominado por escritas o valor previsto parte de 1.20 e desce até 0.95 ao longo dos 100 mil registos sintéticos, intervalo em que o arredondamento conduz invariavelmente ao valor um.
 
-A série fixa-se portanto nos 100% e a workload deixa de emitir uma única leitura, o que retira à avaliação todo o caminho de leitura, precisamente aquele em que o conteúdo duplicado permite servir pedidos a partir da cache sem chegar ao dispositivo @koller2010.
+A série fixa-se portanto nos 100% e a workload deixa de emitir um único pedido de leitura, ficando por exercitar metade do efeito que o conteúdo duplicado produz, dado que a deduplicação tanto evita escritas de blocos já presentes como permite satisfazer acessos a partir de conteúdo que a cache retém @koller2010.
 
 ===== Duplicados de Conteúdo
 
-Resta a dimensão que motiva o recurso a estes traces, ou seja, a repetição de conteúdo, cuja distribuição ao longo do tempo determina aquilo que a deduplicação consegue efetivamente eliminar.
+Resta a dimensão que motiva o recurso a estes traces, ou seja, a repetição de conteúdo. Ao contrário das duas anteriores, esta não se lê no pedido em si mas na assinatura que o acompanha, sendo a distribuição dessas repetições ao longo do tempo, e não apenas a sua quantidade total, que determina aquilo que a deduplicação consegue eliminar.
 
 #figure(
   trace-lines("traces-assinaturas.csv", ylabel: [Duplicados na janela (%)]),
@@ -663,7 +664,7 @@ A @traces-assinaturas apresenta a percentagem de blocos repetidos a variar entre
 
 Uma taxa global de 36.5%, como a que o @fio e o Vdbench admitem, descreve a média destes períodos mas não a alternância entre eles, sendo esta que determina se um índice parcial de deduplicação ainda retém o duplicado no momento em que a cópia é submetida @paulo2014.
 
-A extensão por repetição volta a submeter os mesmos identificadores de bloco pela mesma ordem, pelo que a curva da segunda metade reproduz exatamente a da primeira. Importa realçar, no entanto, que a medição incide sobre a janela e não sobre a execução completa, dado que a totalidade do conteúdo do segundo ciclo já se encontra em disco e é por isso integralmente duplicado.
+A extensão por repetição volta a submeter os identificadores de bloco pela mesma ordem, pelo que a curva da segunda metade reproduz exatamente a da primeira. Importa realçar, no entanto, que a medição incide sobre a janela e não sobre a execução completa, dado que a totalidade do conteúdo do segundo ciclo já se encontra em disco e é por isso integralmente duplicado.
 
 Por outro lado, a extensão por amostragem produz um resultado aparentemente contraditório, visto a proporção medida na janela descer para 9.9%, contra os 31% do replay, enquanto a proporção calculada sobre a totalidade dos registos sintéticos sobe para 54.7%, acima dos 36.5% do próprio trace.
 
@@ -677,7 +678,7 @@ Um sistema de armazenamento avaliado nestas condições suporta o custo de consu
 
 ===== Comparação entre Estratégias
 
-Confrontando com o previsto no @chapter3, as extensões por repetição e por amostragem comportam-se conforme antecipado, conservando a repetição todas as correlações à custa de uma periodicidade estrita, enquanto a amostragem retém apenas as distribuições marginais de cada dimensão.
+Confrontando com o previsto na @chapter3, as extensões por repetição e por amostragem comportam-se conforme antecipado, conservando a repetição todas as correlações à custa de uma periodicidade estrita, enquanto a amostragem retém apenas as distribuições marginais de cada dimensão.
 
 Já a extensão por regressão não confirma a expectativa de capturar as dependências entre dimensões, isto porque o identificador de bloco resulta de uma função de hash sem relação linear com o offset, acabando a estratégia mais sofisticada por ser a menos variável das três.
 
@@ -687,9 +688,9 @@ Daí que a escolha da estratégia deva depender da propriedade que se pretende e
 
 Conhecido o grau de fidelidade alcançado, importa perceber que comportamento estas cargas produzem no sistema de armazenamento, confrontando as workloads que extraem do trace as três dimensões com aquelas que dele retiram apenas uma.
 
-As workloads 14 e 15 assentam por inteiro no trace, ao passo que a 12 e a 13 conservam somente uma dimensão real e geram sinteticamente as restantes, extraindo a primeira os acessos do homes sobre operações sintéticas e a segunda o mix de operações do cheetah sobre uma distribuição Zipfiana.
+As workloads 14 e 15 assentam por inteiro no trace, ao passo que a 12 e a 13 conservam somente uma dimensão real e geram sinteticamente as restantes, extraindo a primeira os acessos do homes sobre operações sintéticas e a segunda o mix de operações do cheetah sobre uma distribuição Zipfian.
 
-Os valores da @traces-iops resultam de execuções sobre o @zfs através da interface POSIX, pelo que devem ser confrontados com os do @data-properties e nunca com os do @io-interfaces. Apresentam-se unicamente os valores do Prismo, dado que nenhuma das ferramentas de referência replica traces desta natureza @fio_docs @vdbench.
+Os valores da @traces-iops resultam de execuções sobre o @zfs através da interface POSIX, pelo que devem ser confrontados com os da @data-properties e nunca com os da @io-interfaces. Além disso, apresentam-se unicamente os valores do Prismo, dado que nenhuma das ferramentas de referência replica traces desta natureza @fio_docs @vdbench.
 
 #figure(
   tool-bars("traces-iops.csv", ylabel: [Milhares de @iops],
@@ -697,17 +698,19 @@ Os valores da @traces-iops resultam de execuções sobre o @zfs através da inte
   caption: [Débito de operações do Prismo nas workloads baseadas em traces]
 ) <traces-iops>
 
-As quatro workloads distribuem-se entre as 3485 e as 4169 operações por segundo, sendo a maior diferença entre duas delas inferior ao desvio padrão da workload 12, pelo que o critério estabelecido no @validation obriga a tratá-las como equivalentes.
+As quatro workloads distribuem-se entre as 3485 e as 4169 operações por segundo, sendo a maior diferença entre duas delas inferior ao desvio padrão da workload 12, pelo que o critério estabelecido na @validation obriga a tratá-las como equivalentes.
 
 As workloads híbridas ladeiam as restantes, ficando a 12 abaixo de ambas e a 13 acima, distribuição que afasta qualquer efeito sistemático decorrente da substituição de dimensões reais por sintéticas.
 
 Além disso, a workload 12 é a mais dispersa e a única dominada por leituras, aproximando-se por aí da workload 04, a mais lenta de toda a linha de base do @zfs, o que sugere ser a proporção de leituras, e não a proveniência dos acessos, a condicionar o débito.
 
-Esta leitura é corroborada pelo confronto com as workloads sintéticas, dado que as quatro assentam sobre a workload 05, da qual distam menos de 1%, situando-se 25% acima da workload 06 e 85% acima da 04.
+Esta leitura é corroborada pelo confronto com a linha de base do @zfs apresentada na @impacto-baseline, dado que o débito da workload 05 se situa dentro do intervalo de dispersão de cada uma das quatro, ficando estas por seu turno 85% acima da workload 04, composta exclusivamente por leituras.
 
-As workloads 14 e 15 submetem conteúdo genuinamente duplicado, 36.5% e 54.7% respetivamente, enquanto as híbridas escrevem blocos aleatórios, sem que daí resulte vantagem para as primeiras. O resultado é consistente com o observado na subsecção da deduplicação, onde a introdução de duplicados também não alterou o débito do @zfs, reforçando a hipótese aí avançada de o custo da tabela de deduplicação compensar as escritas evitadas.
+As workloads 14 e 15 submetem conteúdo genuinamente duplicado, ao passo que as híbridas escrevem blocos aleatórios, sem que daí resulte vantagem para as primeiras. O resultado é consistente com o observado na subsecção da deduplicação, onde a introdução de duplicados também não alterou o débito do @zfs, reforçando a hipótese aí avançada de o custo da tabela de deduplicação compensar as escritas evitadas.
 
-Deste modo, o débito não constitui a grandeza através da qual uma workload baseada em traces se distingue de uma sintética, visto qualquer delas se situar na banda já coberta pelas secções anteriores. O que verdadeiramente as separa é a estrutura temporal do conteúdo e dos acessos, cujo efeito apenas se manifestaria num sistema capaz de a explorar.
+Deste modo, o débito não constitui a grandeza através da qual uma workload baseada em traces se distingue de uma sintética, visto qualquer delas se situar na banda já coberta pelas secções anteriores. O que verdadeiramente as separa é a estrutura temporal do conteúdo e dos acessos, cuja influência a instrumentação adotada não permitiu isolar.
+
+Determinar esse efeito exigiria acompanhar o espaço ocupado em disco e a taxa de acerto da tabela de deduplicação ao longo da execução, grandezas que as ferramentas utilizadas não expõem por intervalo, constituindo a sua ausência a principal limitação desta subsecção.
 
 ==== Comparação de Capacidades
 
