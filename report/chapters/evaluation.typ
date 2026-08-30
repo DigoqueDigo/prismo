@@ -751,31 +751,33 @@ A dimensão isolada nesta subsecção é a ordenação dos acessos, confrontando
   caption: [Débito de operações do Prismo em cada padrão de acesso]
 ) <localidade-iops>
 
-A @localidade-iops evidencia uma disparidade considerável, dado que a workload 02 alcança 113.0 mil operações por segundo enquanto a workload 04, que dela difere por aceder ao dispositivo de forma aleatória, se fica pelas 13.2 mil, ou seja 8.6 vezes menos.
+A @localidade-iops evidencia uma disparidade considerável, dado que a workload 02 alcança 113 mil operações por segundo enquanto a workload 04, que dela difere por aceder ao dispositivo de forma aleatória, se fica pelas 13.2 mil, ou seja 8.6 vezes menos.
 
 O mecanismo subjacente é conhecido, visto o acesso sequencial permitir ao dispositivo antecipar os blocos seguintes e servi-los a partir do buffer interno, ao passo que o acesso aleatório obriga cada pedido a suportar integralmente o custo de traduzir o endereço e de alcançar a célula correspondente.
 
-Convém realçar que estas duas workloads não diferem exclusivamente no padrão, dado que a 02 submete conteúdo constante e a 04 conteúdo aleatório regenerado a cada pedido, pelo que a razão apurada deve ser lida como um limite superior do efeito.
+Convém realçar que esta disparidade é integralmente imputável ao padrão de acessos, dado que o produtor apenas aciona o gerador de conteúdo quando a operação é de escrita, conforme descrito no @chapter3, e ambas as workloads se limitam a ler. A configuração de conteúdo que as distingue permanece por isso inoperante ao longo de toda a execução.
 
-Assim sendo, a ordenação dos acessos constitui um dos fatores de maior amplitude medidos ao longo do capítulo, a par da escolha da interface de @io, o que estabelece a referência contra a qual os resultados da subsecção seguinte devem ser interpretados.
+Assim sendo, a ordenação dos acessos constitui um dos fatores de maior amplitude medidos ao longo do capítulo, a par da escolha da interface de @io, estabelecendo assim a referência contra a qual os resultados da subsecção seguinte devem ser interpretados.
 
 ==== Localidade Zipfian
 
-As workloads 05 e 06 constituem o par mais controlado de toda a campanha, uma vez que partilham a repartição das operações em partes iguais, o conteúdo aleatório regenerado e a condição de paragem, diferindo unicamente na distribuição que governa os offsets.
+As workloads 05 e 06 constituem o par mais controlado de toda a campanha, dado partilharem a repartição das operações em partes iguais, o conteúdo aleatório regenerado e a condição de paragem, diferindo unicamente na distribuição que governa os offsets.
 
-Contrariando a expectativa, a @localidade-iops mostra a workload 06 a ficar 14.3% abaixo da 05, com 19.2 mil operações por segundo contra 22.4 mil, penalização que a latência média confirma ao subir de 44.6 para 52.0 microssegundos.
+Contrariando a expectativa, a @localidade-iops mostra a workload 06 a ficar 14.3% abaixo da 05, com 19.2 mil operações por segundo contra 22.4 mil, penalização que a latência média confirma ao subir de 44.6 para 52 microssegundos.
 
-O comportamento não é inédito, dado que a @impacto-baseline registou a mesma inversão sobre o Btrfs e o @zfs, tendo ficado então por explicar. A sua reprodução sobre o dispositivo em acesso direto afasta desde logo o sistema de ficheiros da lista de causas possíveis.
+A mesma inversão já havia sido registada na @impacto-baseline sobre o Btrfs e o @zfs, tendo ficado por explicar. Ao reproduzir-se agora sobre o dispositivo em acesso direto, o sistema de ficheiros fica desde logo afastado das causas possíveis.
 
-A explicação admite duas hipóteses que os dados disponíveis não permitem separar. A primeira decorre de um @nvme não possuir deslocação mecânica a poupar, pelo que a proximidade entre endereços nada rende, ao contrário do que sucederia num suporte rotativo.
+A expectativa de que a localidade favoreça o desempenho provém dos suportes rotativos, nos quais a proximidade entre endereços poupa deslocação mecânica. Sendo de estado sólido o dispositivo utilizado, conforme a @hardware, essa poupança não existe, pelo que a ausência de ganho não constitui em si uma surpresa.
 
-A segunda aponta para o paralelismo interno do dispositivo, visto a distribuição Zipfiana concentrar os acessos numa fração reduzida do espaço de endereçamento e reduzir por isso a dispersão dos pedidos pelos vários canais e dies que o compõem.
+A medição revela porém algo mais do que a ausência de ganho, tratando-se de uma penalização consistente para a qual não foi possível apurar causa. Uma conjetura apontaria para o paralelismo interno do dispositivo, admitindo que a concentração dos acessos reduzisse a distribuição dos pedidos pelos componentes que o servem.
 
-Em qualquer dos casos, a localidade deixa de constituir uma vantagem universal e passa a depender do dispositivo subjacente, conclusão que desaconselha transpor para o armazenamento em estado sólido a intuição construída sobre suportes rotativos.
+Tal conjetura não é, no entanto, verificável a partir das medições recolhidas, visto o mapeamento entre endereços lógicos e componentes físicos ser interno ao controlador e nunca exposto ao sistema operativo, podendo até endereços contíguos ficar alojados em componentes distintos.
+
+Regista-se por isso o resultado sem explicação estabelecida, ficando demonstrado que a distribuição Zipfian penaliza este dispositivo de forma reprodutível face à uniforme, ao passo que o esclarecimento da causa exigiria instrumentação ao nível do controlador, indisponível no âmbito deste trabalho.
 
 ==== Estabilidade e Cauda da Latência
 
-O valor médio não esgota o efeito da distribuição de acessos, importando averiguar de que modo esta condiciona a dispersão das medições e o comportamento da cauda da distribuição de latências.
+A penalização apurada na subsecção anterior assenta em valores médios, os quais nada dizem quanto à regularidade com que são alcançados. Importa por isso examinar a dispersão das medições e a cauda da distribuição de latências, grandezas que revelam se a distribuição de acessos afeta igualmente a previsibilidade do sistema.
 
 #figure(
   grid(
@@ -788,7 +790,11 @@ O valor médio não esgota o efeito da distribuição de acessos, importando ave
   caption: [Percentil 99 e dispersão do débito em cada padrão de acesso]
 ) <localidade-cauda>
 
-A @localidade-cauda revela que a penalização se agrava nos percentis, dado que a workload 06 apresenta um p99 de 157.4 microssegundos contra os 120.9 da 05, mais 30.2%, ao passo que o coeficiente de variação sobe de 0.74% para 2.71%. A distribuição Zipfiana produz portanto medições 3.7 vezes mais dispersas do que a uniforme, apesar de submeter o mesmo número de pedidos sobre o mesmo dispositivo e durante igual período.
+A @localidade-cauda revela que a penalização se agrava na cauda, dado o percentil 99 da workload 06 exceder em 30% o da workload 05. A dispersão das medições acompanha essa degradação, sendo quase quatro vezes superior à da distribuição uniforme apesar de ambas submeterem o mesmo número de pedidos durante igual período.
+
+O contraste entre padrões acentua-se nos percentis, dado que as workloads sequenciais registam um p99 uma ordem de grandeza abaixo do das aleatórias. A dispersão elevada não é porém exclusiva da distribuição Zipfian, visto a workload 02 apresentar valor semelhante ao da 06 por operar junto ao limite do dispositivo.
+
+// A consequência é relevante para quem dimensiona sistemas por percentis, visto um serviço ajustado à cauda medida com acessos uniformes ficar aquém do necessário em cerca de 30% caso o tráfego real apresente a concentração que a distribuição Zipfian reproduz.
 
 #figure(
   workload-lines("localidade-series.csv", ylabel: [Milhares de @iops]),
@@ -799,7 +805,9 @@ A @localidade-series esclarece a origem desta dispersão, ao expor sete perturba
 
 Cada perturbação segue o mesmo perfil, com o débito a descer até cerca de 17.4 mil operações por segundo, recuperando de seguida para valores próximos das 22 mil antes de regressar ao regime habitual, assinatura compatível com uma tarefa periódica de manutenção do dispositivo. Uma explicação plausível reside no garbage collection, uma vez que a concentração de escritas numa região restrita esgota mais depressa os blocos livres dessa zona e obriga o dispositivo a recuperá-los, ao passo que a distribuição uniforme reparte esse desgaste por toda a extensão.
 
-Em suma, a distribuição de acessos altera o débito medido em 14%, a cauda da latência em 30% e a estabilidade das medições por um fator próximo de quatro, pelo que um benchmark incapaz de a exprimir avalia um regime que não é aquele em que o sistema opera. Estabelecido este último eixo, importa agora reunir as conclusões dispersas ao longo do capítulo.
+Em suma, a distribuição de acessos altera o débito medido em 14%, a cauda da latência em 30% e a estabilidade das medições por um fator próximo de quatro, valores próprios deste dispositivo e destas workloads, que noutras condições seriam legitimamente distintos.
+
+Independentemente dos valores concretos, fica estabelecido que a escolha da distribuição altera o resultado da avaliação, pelo que um benchmark que apenas ofereça acessos sequenciais ou uniformes mede um regime distinto daquele em que o sistema opera. Estabelecido este último eixo, importa agora reunir as conclusões dispersas ao longo do capítulo.
 
 
 
@@ -807,7 +815,6 @@ Em suma, a distribuição de acessos altera o débito medido em 14%, a cauda da 
 
 
 
-#pagebreak()
 #pagebreak()
 
 === Síntese e Discussão Geral <evaluation-synthesis>
