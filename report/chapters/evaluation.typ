@@ -783,18 +783,18 @@ A penalização apurada na subsecção anterior assenta em valores médios, os q
   grid(
     columns: 2, gutter: 4pt,
     tool-bars("localidade-p99.csv", ylabel: [Latência p99 (µs)],
-              xlabel: [Workload], width: 6.0cm, height: 4.4cm, legend: false),
+              xlabel: [Workload], width: 6.0cm, height: 4.6cm, legend: false),
     tool-bars("localidade-cv.csv", ylabel: [Coeficiente de variação (%)],
-              xlabel: [Workload], width: 6.0cm, height: 4.4cm, legend: false),
+              xlabel: [Workload], width: 6.0cm, height: 4.6cm, legend: false),
   ),
   caption: [Percentil 99 e dispersão do débito em cada padrão de acesso]
 ) <localidade-cauda>
 
-A @localidade-cauda revela que a penalização se agrava na cauda, dado o percentil 99 da workload 06 exceder em 30% o da workload 05. A dispersão das medições acompanha essa degradação, sendo quase quatro vezes superior à da distribuição uniforme apesar de ambas submeterem o mesmo número de pedidos durante igual período.
+A @localidade-cauda mostra o contraste entre padrões a acentuar-se nos percentis, dado que as workloads sequenciais registam um p99 uma ordem de grandeza abaixo do das restantes, disparidade superior à que o débito médio já denunciava.
 
-O contraste entre padrões acentua-se nos percentis, dado que as workloads sequenciais registam um p99 uma ordem de grandeza abaixo do das aleatórias. A dispersão elevada não é porém exclusiva da distribuição Zipfian, visto a workload 02 apresentar valor semelhante ao da 06 por operar junto ao limite do dispositivo.
+A penalização mantém-se no confronto entre a distribuição uniforme e a Zipfian, dado o percentil 99 da workload 06 superar em 30% o da workload 05, com uma dispersão quase quatro vezes maior apesar de ambas submeterem o mesmo número de pedidos durante igual período.
 
-// A consequência é relevante para quem dimensiona sistemas por percentis, visto um serviço ajustado à cauda medida com acessos uniformes ficar aquém do necessário em cerca de 30% caso o tráfego real apresente a concentração que a distribuição Zipfian reproduz.
+A dispersão elevada não é porém exclusiva da distribuição Zipfian, visto a workload 02 apresentar valor semelhante ao da 06, apesar de operar a um nível de desempenho muito superior, bem mais próximo do limite do dispositivo.
 
 #figure(
   workload-lines("localidade-series.csv", ylabel: [Milhares de @iops]),
@@ -805,7 +805,7 @@ A @localidade-series esclarece a origem desta dispersão, ao expor sete perturba
 
 Cada perturbação segue o mesmo perfil, com o débito a descer até cerca de 17.4 mil operações por segundo, recuperando de seguida para valores próximos das 22 mil antes de regressar ao regime habitual, assinatura compatível com uma tarefa periódica de manutenção do dispositivo. Uma explicação plausível reside no garbage collection, uma vez que a concentração de escritas numa região restrita esgota mais depressa os blocos livres dessa zona e obriga o dispositivo a recuperá-los, ao passo que a distribuição uniforme reparte esse desgaste por toda a extensão.
 
-Em suma, a distribuição de acessos altera o débito medido em 14%, a cauda da latência em 30% e a estabilidade das medições por um fator próximo de quatro, valores próprios deste dispositivo e destas workloads, que noutras condições seriam legitimamente distintos.
+Em suma, a substituição da distribuição uniforme pela Zipfian altera o débito medido em 14%, a cauda da latência em 30% e a estabilidade das medições por um fator próximo de quatro, valores próprios deste dispositivo e destas workloads, que noutras condições seriam legitimamente distintos.
 
 Independentemente dos valores concretos, fica estabelecido que a escolha da distribuição altera o resultado da avaliação, pelo que um benchmark que apenas ofereça acessos sequenciais ou uniformes mede um regime distinto daquele em que o sistema opera. Estabelecido este último eixo, importa agora reunir as conclusões dispersas ao longo do capítulo.
 
