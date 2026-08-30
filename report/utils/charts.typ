@@ -220,3 +220,43 @@
         stroke: (paint: luma(90), dash: "dashed", thickness: 0.8pt)),) } else { () },
   )
 }
+
+// Séries por segundo de várias workloads sobre o mesmo referencial temporal. Espera-se um CSV com
+// o formato segundo,wl04,wl05,wl06, sendo cada coluna desenhada como uma linha contínua sem marcas,
+// dado que a densidade de pontos torna qualquer marcador ilegível.
+#let workload-colors = (
+  wl04: rgb("#4d4d4d"),
+  wl05: rgb("#1f4e79"),
+  wl06: rgb("#e08214"),
+)
+
+#let workload-labels = (
+  wl04: [Aleatório, leitura], wl05: [Aleatório, 50/50], wl06: [Zipf(0.9), 50/50],
+)
+
+#let workload-lines(name, ylabel: none, xlabel: [Tempo de execução (s)],
+                    width: 12.2cm, height: 5.0cm) = {
+  let table = csv("../data/" + name)
+  let colunas = table.at(0).slice(1)
+  let rows = table.slice(1)
+  let xs = rows.map(r => float(r.at(0)))
+
+  lq.diagram(
+    width: width,
+    height: height,
+    xlabel: xlabel,
+    ylabel: ylabel,
+    xlim: (xs.first(), xs.last()),
+    legend: (position: right + top),
+    ..colunas.enumerate()
+      .filter(((i, c)) => rows.any(r => r.at(i + 1) != ""))
+      .map(((i, c)) => lq.plot(
+        xs,
+        rows.map(r => if r.at(i + 1) == "" { 0.0 } else { float(r.at(i + 1)) }),
+        mark: none,
+        stroke: 0.5pt,
+        color: workload-colors.at(c),
+        label: workload-labels.at(c),
+      )),
+  )
+}

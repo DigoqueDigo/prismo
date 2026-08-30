@@ -1,4 +1,4 @@
-#import "../utils/charts.typ" : tool-bars, tool-lines, cpu-stack, component-bars, trace-lines
+#import "../utils/charts.typ" : tool-bars, tool-lines, cpu-stack, component-bars, trace-lines, workload-lines
 #import "../utils/functions.typ" : question_block, validation_point_block, doc_table, cell_yes, cell_no, cell_partial
 
 == Avaliação Experimental <chapter4>
@@ -735,24 +735,80 @@ Merece destaque a combinação com geração sintética, que permite isolar o co
 
 Em suma, a replicação é fiel enquanto o ficheiro dura, no entanto nenhuma das estratégias de extensão consegue prolongá-la sem sacrificar alguma das propriedades originais, limitação que importa ter presente sempre que a execução se estenda muito para lá do material disponível. Estabelecido este eixo, importa agora averiguar de que modo a localidade dos acessos condiciona o desempenho observado.
 
-
-#pagebreak()
-
 === Efeitos de Localidade e Cache <locality>
 
 Em ambientes de produção, as workloads exibem frequentemente padrões de acesso com forte localidade espacial e temporal, o que ativa mecanismos internos de cache e prefetching nos dispositivos e sistemas de ficheiros. No entanto, estes comportamentos não são exercitados por workloads puramente aleatórias, como tal esta secção procura avaliar em que medida diferentes distribuições de acesso influenciam o desempenho observado.
 
-==== Zipfian vs Random vs Sequencial
+Toda a análise que se segue incide sobre as workloads executadas no dispositivo em acesso direto, condição em que a flag `O_DIRECT` afasta a page cache e garante que o medido decorre do dispositivo. Os mecanismos aqui exercitados são por isso os internos do @nvme e não os do sistema operativo, ressalva que condiciona a leitura de tudo o que se segue.
 
-// TODO: WL 06 (zipf 0.8) vs WL 05 (random) vs WL 01 (sequencial)
-// TODO: séries temporais de latência: estabilização mais rápida com zipf vs instabilidade com random
-// TODO: séries temporais de throughput ao longo da execução
-// TODO: dstat.csv: disk ops/sec ao longo do tempo
-// Evidência: report.json + dstat.csv das respetivas workloads
+==== Sequencial e Aleatório
 
-// TODO: conclusão: workloads com localidade realista são necessárias para exercitar mecanismos de cache
-// TODO: comparação de latência p99 entre padrões de acesso
-// TODO: fundamentação de Q5
+A dimensão isolada nesta subsecção é a ordenação dos acessos, confrontando-se as workloads sequenciais 01 e 02 com as aleatórias 04 e 05, todas elas assentes em blocos de 4 KiB e submetidas através da interface POSIX.
+
+#figure(
+  tool-bars("localidade-iops.csv", ylabel: [Milhares de @iops],
+            xlabel: [Workload], width: 8.5cm, height: 4.6cm, legend: false),
+  caption: [Débito de operações do Prismo em cada padrão de acesso]
+) <localidade-iops>
+
+A @localidade-iops evidencia uma disparidade considerável, dado que a workload 02 alcança 113.0 mil operações por segundo enquanto a workload 04, que dela difere por aceder ao dispositivo de forma aleatória, se fica pelas 13.2 mil, ou seja 8.6 vezes menos.
+
+O mecanismo subjacente é conhecido, visto o acesso sequencial permitir ao dispositivo antecipar os blocos seguintes e servi-los a partir do buffer interno, ao passo que o acesso aleatório obriga cada pedido a suportar integralmente o custo de traduzir o endereço e de alcançar a célula correspondente.
+
+Convém realçar que estas duas workloads não diferem exclusivamente no padrão, dado que a 02 submete conteúdo constante e a 04 conteúdo aleatório regenerado a cada pedido, pelo que a razão apurada deve ser lida como um limite superior do efeito.
+
+Assim sendo, a ordenação dos acessos constitui um dos fatores de maior amplitude medidos ao longo do capítulo, a par da escolha da interface de @io, o que estabelece a referência contra a qual os resultados da subsecção seguinte devem ser interpretados.
+
+==== Localidade Zipfian
+
+As workloads 05 e 06 constituem o par mais controlado de toda a campanha, uma vez que partilham a repartição das operações em partes iguais, o conteúdo aleatório regenerado e a condição de paragem, diferindo unicamente na distribuição que governa os offsets.
+
+Contrariando a expectativa, a @localidade-iops mostra a workload 06 a ficar 14.3% abaixo da 05, com 19.2 mil operações por segundo contra 22.4 mil, penalização que a latência média confirma ao subir de 44.6 para 52.0 microssegundos.
+
+O comportamento não é inédito, dado que a @impacto-baseline registou a mesma inversão sobre o Btrfs e o @zfs, tendo ficado então por explicar. A sua reprodução sobre o dispositivo em acesso direto afasta desde logo o sistema de ficheiros da lista de causas possíveis.
+
+A explicação admite duas hipóteses que os dados disponíveis não permitem separar. A primeira decorre de um @nvme não possuir deslocação mecânica a poupar, pelo que a proximidade entre endereços nada rende, ao contrário do que sucederia num suporte rotativo.
+
+A segunda aponta para o paralelismo interno do dispositivo, visto a distribuição Zipfiana concentrar os acessos numa fração reduzida do espaço de endereçamento e reduzir por isso a dispersão dos pedidos pelos vários canais e dies que o compõem.
+
+Em qualquer dos casos, a localidade deixa de constituir uma vantagem universal e passa a depender do dispositivo subjacente, conclusão que desaconselha transpor para o armazenamento em estado sólido a intuição construída sobre suportes rotativos.
+
+==== Estabilidade e Cauda da Latência
+
+O valor médio não esgota o efeito da distribuição de acessos, importando averiguar de que modo esta condiciona a dispersão das medições e o comportamento da cauda da distribuição de latências.
+
+#figure(
+  grid(
+    columns: 2, gutter: 4pt,
+    tool-bars("localidade-p99.csv", ylabel: [Latência p99 (µs)],
+              xlabel: [Workload], width: 6.0cm, height: 4.4cm, legend: false),
+    tool-bars("localidade-cv.csv", ylabel: [Coeficiente de variação (%)],
+              xlabel: [Workload], width: 6.0cm, height: 4.4cm, legend: false),
+  ),
+  caption: [Percentil 99 e dispersão do débito em cada padrão de acesso]
+) <localidade-cauda>
+
+A @localidade-cauda revela que a penalização se agrava nos percentis, dado que a workload 06 apresenta um p99 de 157.4 microssegundos contra os 120.9 da 05, mais 30.2%, ao passo que o coeficiente de variação sobe de 0.74% para 2.71%. A distribuição Zipfiana produz portanto medições 3.7 vezes mais dispersas do que a uniforme, apesar de submeter o mesmo número de pedidos sobre o mesmo dispositivo e durante igual período.
+
+#figure(
+  workload-lines("localidade-series.csv", ylabel: [Milhares de @iops]),
+  caption: [Evolução do débito ao longo da execução em cada padrão de acesso]
+) <localidade-series>
+
+A @localidade-series esclarece a origem desta dispersão, ao expor sete perturbações ao longo da execução da workload 06, separadas por intervalos regulares entre 121 e 131 segundos, que as workloads 04 e 05 não apresentam.
+
+Cada perturbação segue o mesmo perfil, com o débito a descer até cerca de 17.4 mil operações por segundo, recuperando de seguida para valores próximos das 22 mil antes de regressar ao regime habitual, assinatura compatível com uma tarefa periódica de manutenção do dispositivo. Uma explicação plausível reside no garbage collection, uma vez que a concentração de escritas numa região restrita esgota mais depressa os blocos livres dessa zona e obriga o dispositivo a recuperá-los, ao passo que a distribuição uniforme reparte esse desgaste por toda a extensão.
+
+Em suma, a distribuição de acessos altera o débito medido em 14%, a cauda da latência em 30% e a estabilidade das medições por um fator próximo de quatro, pelo que um benchmark incapaz de a exprimir avalia um regime que não é aquele em que o sistema opera. Estabelecido este último eixo, importa agora reunir as conclusões dispersas ao longo do capítulo.
+
+
+
+
+
+
+
+#pagebreak()
+#pagebreak()
 
 === Síntese e Discussão Geral <evaluation-synthesis>
 
