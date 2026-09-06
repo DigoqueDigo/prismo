@@ -814,15 +814,15 @@ O capítulo percorreu cinco eixos de avaliação, desde a validação da própri
 
 ==== Síntese dos Resultados
 
-Confrontando os eixos entre si, obtém-se uma hierarquia que nenhuma secção isolada poderia estabelecer. À cabeça surge a interface de @io, cuja escolha vale até catorze vezes na @io-interfaces, seguida da ordem por que os blocos são percorridos, que separa o acesso sequencial do aleatório por um fator de 8.6 na @locality.
+Numa análise geral, obtém-se uma hierarquia que nenhuma secção isolada poderia estabelecer. À cabeça surge a interface de @io, cuja escolha produz diferenças de até catorze vezes na @io-interfaces, seguida da ordem pela qual os blocos são percorridos, que separa o acesso sequencial do aleatório por um fator de 8.6 na @locality.
 
-Bastante abaixo situam-se a concentração dos acessos, responsável pelos 14% que na mesma secção separam a distribuição Zipfian da uniforme, e as propriedades do conteúdo, com os 31% apurados na @data-properties. A comparação é porém indicativa, dado terem os dois primeiros sido medidos sobre o dispositivo e os restantes sobre sistemas de ficheiros.
+Com uma influência bastante menor surgem a concentração dos acessos e as propriedades do conteúdo. A primeira explica os 14% que, na mesma secção, separam a distribuição Zipfian da uniforme, enquanto a segunda corresponde aos 31% apurados na @data-properties. Esta hierarquia deve, porém, ser interpretada com alguma cautela, dado que apenas este último efeito foi medido sobre sistemas de ficheiros, enquanto os restantes correspondem ao dispositivo em acesso direto.
 
 Quanto ao conteúdo, o resultado mais consequente não reside no ganho em si, mas na sua dependência da forma da distribuição, dado que na @data-properties o Prismo e o @fio submeteram cargas com idêntica compressibilidade média e obtiveram no @zfs débitos que diferem em 31%. O sistema responde assim à forma como a redutibilidade se reparte pelos blocos e não ao seu valor agregado, propriedade que uma taxa única é incapaz de exprimir.
 
 Já a replicação de traces confirmou-se fiel enquanto o ficheiro dispõe de registos, revelando a @trace-eval que nenhuma estratégia de extensão prolonga a execução sem sacrificar alguma propriedade, a repetição a variabilidade, a amostragem a concentração temporal dos duplicados e a regressão o conteúdo repetido na sua totalidade.
 
-Por fim, um aspeto atravessa todo o capítulo e condiciona aquilo que dele se pode concluir, ou seja, a dispersão das medições aumenta dos 0.50% e 2.71% registados sobre o dispositivo em acesso direto para os 10% a 18% observados sobre sistemas de ficheiros. Assim, ama diferença observável no primeiro caso exige, no segundo, uma amplitude quase dez vezes superior para o ser.
+Por fim, um aspeto atravessa todo o capítulo e condiciona aquilo que dele se pode concluir, ou seja, a dispersão das medições aumenta dos 0.50% - 2.71% registados sobre o dispositivo em acesso direto para os 10% - 18% observados sobre sistemas de ficheiros. Assim, uma diferença observável no primeiro caso exige, no segundo, uma amplitude quase dez vezes superior para o ser.
 
 ==== Resultados Contrários à Expectativa
 
@@ -832,12 +832,7 @@ Três dos resultados obtidos contrariam aquilo que a literatura ou o próprio de
 
 Esperava-se que a introdução de duplicados elevasse o débito, dado ambos os sistemas de ficheiros disporem de deduplicação e a @conteudo confirmar que o conteúdo submetido continha as cópias configuradas. A @impacto-dedup regista porém diferenças inferiores a 2% face à workload anterior, valor muito abaixo da dispersão das medições.
 
-No Btrfs a janela de medição terminou antes de o serviço em segundo plano iniciar a passagem sobre os dados escritos, pelo que a deduplicação não chegou a ser exercida ao longo da execução e nenhum efeito seria de esperar.
-
-Já no @zfs a deduplicação atua no caminho crítico e foi seguramente exercida, apontando a ausência de ganho para o débito não ser limitado pelo dispositivo nesta configuração. A @impacto-recursos sustenta esta leitura, ao registar um consumo de processador cinco vezes superior ao do Btrfs e perto de sessenta gigabytes de memória, ou seja, um custo que reside no anfitrião e não no acesso ao disco.
-
-Evitar escritas físicas em nada alivia, nestas condições, o recurso que efetivamente limita a execução, o que explica a indiferença do débito à presença de duplicados.
-// TODO: estes dois paragrafos são completamente desnecessario, apenas estás a repetir o que já foi dito, junta a explicação para o btrfs e zfs num unico e brave paragrafo, sem alongar as explicações de cada um
+No Btrfs a janela de medição terminou antes de o serviço em segundo plano percorrer os dados escritos, ao passo que no @zfs a deduplicação foi seguramente exercida, sem que daí resultasse ganho por o débito não ser limitado pelo dispositivo, conforme a @impacto-recursos sugere ao situar o custo dominante no anfitrião.
 
 ===== Localidade a Penalizar o Desempenho
 
@@ -850,7 +845,6 @@ A causa não foi apurada, no entanto a expectativa provinha dos suportes rotativ
 Esperava-se que a extensão por regressão, apresentada na @chapter3 como a mais sofisticada das três, preservasse as dependências entre dimensões. A @traces-assinaturas revela porém que esta anula por completo os duplicados, sendo na prática a menos variável das três estratégias.
 
 A causa reside na natureza do identificador de bloco, que resulta de uma função de hash sem relação linear com o offset, pelo que o ajuste por mínimos quadrados colapsa numa proporcionalidade e a sequência gerada, sendo estritamente monótona, jamais reincide num valor já submetido.
-
 
 ==== Limitações
 
