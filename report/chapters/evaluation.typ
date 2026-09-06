@@ -574,7 +574,7 @@ Assim sendo, as duas interfaces que fixam afinidade ao processador exibem o mesm
 
 Em suma, a interface de @io condiciona fortemente o débito medido, com ganhos que vão de nulos, quando o dispositivo satura, até catorze vezes nos acessos aleatórios, disparidade que fundamenta a necessidade de um benchmark capaz de as exercitar a todas. Convém realçar, contudo, que nenhuma interface se revela superior em todos os cenários, pois o @spdk vence nos acessos aleatórios com um único job mas fica atrás nas workloads sequenciais e degrada-se perante concorrência, sendo por isso desaconselhadas recomendações absolutas. Estabelecido este efeito, importa agora verificar se as workloads derivadas de traces reproduzem fielmente as propriedades dos dados originais.
 
-=== Workloads Baseadas em Traces <trace-workloads>
+=== Workloads Baseadas em Traces <trace-eval>
 
 De todas as funcionalidades do Prismo, a replicação de traces é aquela que mais o distingue das ferramentas de referência, uma vez que nenhuma delas consegue reproduzir em conjunto os padrões de acesso, o mix de operações e as propriedades do conteúdo registados numa execução real.
 
@@ -636,7 +636,6 @@ Assim sendo, das três estratégias apenas a repetição preserva a localidade o
 ===== Mix de Operações
 
 A segunda dimensão respeita ao tipo de cada pedido, cuja proporção determina o caminho percorrido dentro do sistema de armazenamento. Uma leitura obriga a localizar o bloco e a trazê-lo do dispositivo sempre que este não se encontre em cache, ao passo que uma escrita atravessa a compressão e a deduplicação antes de ser confirmada, sendo o dado efetivamente gravado mais tarde.
-
 
 #figure(
   trace-lines("traces-operacoes.csv", ylabel: [Escritas na janela (%)]),
@@ -809,66 +808,50 @@ Em suma, a substituição da distribuição uniforme pela Zipfian altera o débi
 
 Independentemente dos valores concretos, fica estabelecido que a escolha da distribuição altera o resultado da avaliação, pelo que um benchmark que apenas ofereça acessos sequenciais ou uniformes mede um regime distinto daquele em que o sistema opera. Estabelecido este último eixo, importa agora reunir as conclusões dispersas ao longo do capítulo.
 
-
-
-
-
-
-
-#pagebreak()
-
 === Síntese e Discussão Geral <evaluation-synthesis>
 
-// TODO: parágrafo introdutório da síntese
+O capítulo percorreu cinco eixos de avaliação, isolando cada um deles uma dimensão distinta da workload, importando agora confrontar os resultados entre si e apurar o que deles decorre para a avaliação de sistemas de armazenamento.
 
-==== Respostas às Perguntas de Avaliação
+==== Síntese dos Resultados
 
-A Q1 obtém resposta afirmativa na @data-properties, dado que o mesmo padrão de acessos executado sobre o mesmo sistema produz um débito superior em cerca de um terço quando o conteúdo é compressível, diferença que nenhuma outra característica da workload explica.
+O confronto entre eixos revela uma hierarquia que nenhuma secção isolada poderia estabelecer, encabeçando-a a interface de @io com ganhos até catorze vezes, seguida da ordenação dos acessos com 8.6 vezes, ficando a distribuição dos acessos e as propriedades do conteúdo por variações na ordem dos 14% e dos 31%. A comparação é porém indicativa, dado terem os dois primeiros sido medidos sobre o dispositivo e os restantes sobre sistemas de ficheiros.
 
-Já a Q2 admite uma resposta menos linear, pois as duas propriedades avaliadas não se comportam de igual modo, produzindo a compressibilidade um efeito imediato e mensurável enquanto a introdução de duplicados não alterou o débito em qualquer dos sistemas. Este contraste é atribuído na mesma secção tanto ao carácter diferido da deduplicação no Btrfs como ao custo da tabela mantida pelo @zfs.
+Quanto ao conteúdo, o resultado mais consequente não reside no ganho em si, mas na sua dependência da forma da distribuição, dado que o Prismo e o @fio submeteram cargas com idêntica compressibilidade média e obtiveram no @zfs débitos que diferem em 31%. O sistema responde assim à forma como a redutibilidade se reparte pelos blocos e não ao seu valor agregado, propriedade que uma taxa única é incapaz de exprimir.
 
-// TODO: Q3: resposta concisa com referência cruzada à secção de interfaces de I/O
-// TODO: Q4: resposta concisa com referência cruzada à secção de workloads baseadas em traces
-// TODO: Q5: resposta concisa com referência cruzada à secção de localidade e cache
+A replicação de traces confirmou-se fiel enquanto o ficheiro dispõe de registos, revelando-se porém que nenhuma estratégia de extensão prolonga a execução sem sacrificar alguma propriedade, a repetição a variabilidade, a amostragem a concentração temporal dos duplicados e a regressão o conteúdo repetido na sua totalidade.
 
-Quanto à Q6, verifica-se que a escolha do sistema condiciona fortemente o benefício obtido, embora de forma menos evidente do que os valores absolutos sugerem. O Btrfs entrega um débito três a quatro vezes superior, no entanto é no @zfs que o conteúdo realista produz maior ganho relativo, e é também aí que o custo computacional se revela mais elevado.
+Quanto aos sistemas avaliados, o Btrfs entrega entre três e quatro vezes o débito do @zfs, sendo contudo neste último que o conteúdo realista produz maior ganho relativo, a um custo de processador cinco vezes superior.
 
-Deste modo, a recomendação depende do perfil da carga, beneficiando das otimizações do @zfs as cargas dominadas por dados compressíveis, enquanto as pouco redutíveis são melhor servidas por um sistema que não pague esse custo.
+==== Resultados Contrários à Expectativa
 
-// TODO: Q7: resposta transversal — confronto com FIO e Vdbench ao longo de todo o capítulo,
-//       quantificando o erro de avaliação de quem ignora conteúdo e enumerando as conclusões
-//       sobre os sistemas avaliados que só o Prismo permite alcançar
+Três dos resultados obtidos contrariam aquilo que a literatura ou o próprio desenho experimental faziam prever, importando a sua enumeração conjunta tanto quanto a das confirmações. O primeiro respeita à deduplicação, cuja introdução não alterou o débito em qualquer dos sistemas de ficheiros, apesar de a @conteudo confirmar que o conteúdo submetido continha os duplicados configurados.
 
-==== Validação
+A ausência de efeito admite duas leituras que os dados não separam, tendo o serviço em segundo plano do Btrfs terminado a janela de medição sem percorrer os dados escritos, ao passo que no @zfs o custo da tabela consultada a cada escrita pode compensar as escritas evitadas.
 
-// TODO: V1: confirmação com referência à secção de validação do Prismo (geração de conteúdo)
-// TODO: V2: confirmação com referência à secção de reprodutibilidade
-// TODO: V3: confirmação com referência às métricas e relatórios produzidos
-// TODO: V4: confirmação com referência à equivalência demonstrada em workloads genéricas (a
-//       diferença não vem da instrumentação) cruzada com a divergência observada em ZFS/Btrfs,
-//       retomando o erro de avaliação de cerca de um terço quantificado na @data-properties
+O segundo respeita à localidade, dado que a distribuição Zipfian penalizou o débito em 14% e a cauda da latência em 30%, quando a expectativa apontava para o contrário. A causa não foi apurada, exigindo o seu esclarecimento instrumentação ao nível do controlador do dispositivo.
+
+O terceiro respeita à extensão por regressão, apresentada no @chapter3 como a mais sofisticada das três e revelando-se na prática a menos variável, por o identificador de bloco resultar de uma função de hash sem relação linear com o offset.
+
+Todos eles resultam do isolamento controlado de uma dimensão de cada vez, procedimento sem o qual seriam atribuídos a causas erradas, importando a sua enumeração porque uma avaliação que apenas confirme expectativas pouco acrescenta ao que já se supunha.
 
 ==== Limitações
 
-// TODO: workloads não testadas, sistemas não avaliados
-// TODO: condições experimentais (single machine, single device)
-// TODO: cada configuração corresponde a uma única execução, pelo que a variabilidade entre
-//       execuções independentes não foi caracterizada; a dispersão reportada traduz a
-//       estabilidade da medição ao longo da execução
-// TODO: limitações dos traces disponíveis
-// TODO: a linha de base da secção sobre propriedades dos dados recorre à workload 06, que
-//       partilha a distribuição de acessos com as workloads 10 e 11 mas não o mix de operações;
-//       um controlo estrito exigiria uma variante da workload 10 com redução nula, que
-//       diferisse das restantes apenas no conteúdo
-// TODO: as workloads 10 e 11 diferem na presença de duplicados mas também na compressibilidade
-//       média, 30% contra 22%, o que impede o isolamento do contributo da deduplicação; uma
-//       variante da workload 11 com a mesma compressibilidade da 10 resolveria a ambiguidade
-// TODO: o caminho de metadados dos sistemas de ficheiros não é exercitado, dado que o Prismo, tal
-//       como o FIO e o Vdbench, opera sobre um ficheiro pré-alocado; uma avaliação completa exigiria
-//       workloads intensivas em metadados, ficando essa análise fora do âmbito desta dissertação
+A avaliação decorreu sobre uma única máquina e um único dispositivo, correspondendo além disso cada configuração a uma execução, pelo que a dispersão reportada ao longo do capítulo traduz a estabilidade da medição e não a variabilidade entre execuções independentes.
+
+A linha de base da @data-properties recorre à workload 06, que partilha com as workloads 10 e 11 a distribuição de acessos mas não o mix de operações, exigindo um controlo estrito uma variante da workload 10 com redução nula que apenas no conteúdo diferisse das restantes.
+
+Do mesmo modo, as workloads 10 e 11 diferem na presença de duplicados mas também na compressibilidade média, 30% contra 22%, o que impede o isolamento do contributo da deduplicação e cuja resolução passaria por igualar essa propriedade entre ambas.
+
+O espaço efetivamente ocupado em disco não foi acompanhado ao longo das execuções, grandeza que teria permitido confirmar quando e em que medida as otimizações foram acionadas, e cuja ausência limita as conclusões alcançadas sobre a deduplicação.
+
+Os traces disponíveis constituem igualmente uma limitação, quer pela idade quer pela dimensão, cobrindo o mais extenso deles apenas 11.5% do volume que uma workload da campanha movimenta, o que confere à extensão sintética um peso determinante naquilo que é medido.
+
+Por fim, o caminho de metadados dos sistemas de ficheiros não é exercitado, dado que o Prismo, tal como o @fio e o Vdbench, opera sobre um ficheiro previamente alocado, ficando uma avaliação intensiva em metadados fora do âmbito desta dissertação.
 
 ==== Sumário
 
-// TODO: contribuição principal: o Prismo iguala as ferramentas existentes em workloads genéricas,
-//       diferencia-se na geração de conteúdo realista, e é exclusivo no suporte a traces com
-//       propriedades de dados, progressão dos 3 patamares (equivalência → diferenciação → exclusividade)
+O percurso do capítulo assenta em três patamares. O primeiro estabelece equivalência, demonstrando que o Prismo reproduz em workloads genéricas os valores das ferramentas consagradas, com medições cuja oscilação não excede 2.71% e um consumo de recursos comparável ao do @fio.
+
+O segundo estabelece diferenciação, mostrando que a geração de conteúdo com distribuições de duplicados e compressibilidade revela no @zfs um débito cerca de um terço superior ao obtido com uma taxa única. O terceiro estabelece exclusividade, sendo o Prismo a única das três ferramentas a replicar em conjunto os acessos, as operações e o conteúdo de um trace, e a única a prolongá-lo para lá da duração original.
+
+Em suma, a avaliação demonstra que a fidelidade do conteúdo e da distribuição dos acessos não constitui um requisito acessório do benchmarking, mas antes condição para que os valores medidos correspondam ao regime em que o sistema efetivamente opera.
